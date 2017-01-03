@@ -251,6 +251,8 @@ namespace SATInterface
             UnaryCount
         }
 
+        public BoolExpr ExactlyOneOf(params BoolExpr[] _expr) => ExactlyOneOf(_expr.AsEnumerable());
+
         public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod _method=ExactlyOneOfMethod.Commander)
         {
             switch(_method)

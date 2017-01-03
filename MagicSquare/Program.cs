@@ -87,7 +87,6 @@ namespace MagicSquare
                 Console.WriteLine();
             }
 
-            Console.WriteLine();
             Console.WriteLine("Done");
             Console.ReadLine();
         }

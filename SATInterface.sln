@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SATInterface", "SATInterfac
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MagicSquare", "MagicSquare\MagicSquare.csproj", "{97B9328A-F8F8-42BD-948A-E182AEF4BC31}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sudoku", "Sudoku\Sudoku.csproj", "{A3BB87AD-22AC-4276-8CD9-EE50EDCA7644}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{97B9328A-F8F8-42BD-948A-E182AEF4BC31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{97B9328A-F8F8-42BD-948A-E182AEF4BC31}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{97B9328A-F8F8-42BD-948A-E182AEF4BC31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3BB87AD-22AC-4276-8CD9-EE50EDCA7644}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3BB87AD-22AC-4276-8CD9-EE50EDCA7644}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3BB87AD-22AC-4276-8CD9-EE50EDCA7644}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3BB87AD-22AC-4276-8CD9-EE50EDCA7644}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -67,6 +67,22 @@ namespace SATInterface
             }
         }
 
+        public static UIntVar operator >>(UIntVar _a, int _shift)
+        {
+            var res = new UIntVar(_a.Model, _a.UB >> _shift, false);
+            for (var i = 0; i < res.bit.Length; i++)
+                res.bit[i] = _a.bit[i + _shift];
+            return res;
+        }
+
+        public static UIntVar operator<<(UIntVar _a,int _shift)
+        {
+            var res = new UIntVar(_a.Model, _a.UB << _shift, false);
+            for (var i = 0; i < res.bit.Length; i++)
+                res.bit[i] = i>=_shift ? _a.bit[i-_shift] : false;
+            return res;
+        }
+
         private static int Log2(int _n)
         {
             var res = 0;
