@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace SATInterface
 {
@@ -98,11 +97,11 @@ namespace SATInterface
             p.StandardInput.Close();
 
             
-            var log = new List<string>();
-            var oldCursor = Console.CursorTop;
-
             if (LogOutput && LogLines != int.MaxValue)
                 Console.WriteLine(new string('\n',LogLines));
+
+            var log = new List<string>();
+            var oldCursor = Console.CursorTop-LogLines;
 
             for (var line = p.StandardOutput.ReadLine(); line != null; line = p.StandardOutput.ReadLine())
             {
@@ -245,10 +244,67 @@ namespace SATInterface
             OneHot
         }
 
+        public enum AtMostOneOfMethod
+        {
+            Pairwise,
+            Commander
+        }
+
         public enum ExactlyKOfMethod
         {
             BinaryCount,
             UnaryCount
+        }
+
+
+        public BoolExpr AtMostOneOf(params BoolExpr[] _expr) => AtMostOneOf(_expr.AsEnumerable());
+
+        public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod _method = AtMostOneOfMethod.Commander)
+        {
+            switch(_method)
+            {
+                case AtMostOneOfMethod.Commander:
+                    return AtMostOneOfCommander(_expr);
+                case AtMostOneOfMethod.Pairwise:
+                    return AtMostOneOfPairwise(_expr);
+                default:
+                    throw new ArgumentException();
+            }
+        }
+
+        public BoolExpr AtMostOneOfCommander(IEnumerable<BoolExpr> _expr)
+        {
+            if (_expr.Count() < 6)
+                return AtMostOneOfPairwise(_expr);
+
+            var expr = _expr.ToArray();
+            var groups = new BoolExpr[(expr.Length + 2) / 3][];
+            for (var i = 0; i < groups.Length; i++)
+                groups[i] = expr.Skip(i * 3).Take(3).ToArray();
+
+            var commanders = new BoolExpr[groups.Length];
+            var valid = new List<BoolExpr>();
+
+            for (var i = 0; i < commanders.Length; i++)
+                if (groups[i].Length == 1)
+                    commanders[i] = groups[i].Single();
+                else
+                {
+                    commanders[i] = new BoolVar(this);
+
+                    //1
+                    for (var j = 0; j < groups[i].Length; j++)
+                        for (var k = j + 1; k < groups[i].Length; k++)
+                            valid.Add(new OrExpr(!groups[i][j], !groups[i][k]));
+
+                    //AddConstr((!commanders[i]) | new OrExpr(groups[i])); //2
+                    AddConstr(commanders[i] | (!new OrExpr(groups[i]))); //3
+                }
+
+            valid.Add(ExactlyOneOfCommander(commanders));
+
+            return new AndExpr(valid);
+
         }
 
         public BoolExpr ExactlyOneOf(params BoolExpr[] _expr) => ExactlyOneOf(_expr.AsEnumerable());
@@ -276,16 +332,18 @@ namespace SATInterface
 
         private BoolExpr ExactlyOneOfOneHot(IEnumerable<BoolExpr> _expr)
         {
-            return new OrExpr(_expr.Select(hot => new AndExpr(_expr.Select(e => ReferenceEquals(e,hot) ? e:!e))));
+            return new OrExpr(_expr.Select(hot => (BoolExpr)new AndExpr(_expr.Select(e => ReferenceEquals(e,hot) ? e:!e))));
         }
 
         private BoolExpr ExactlyOneOfPairwise(IEnumerable<BoolExpr> _expr)
         {
+            return new OrExpr(_expr) & AtMostOneOfPairwise(_expr);
+        }
+
+        private BoolExpr AtMostOneOfPairwise(IEnumerable<BoolExpr> _expr)
+        {
             var expr = _expr.ToArray();
-            var pairs = new List<BoolExpr>
-            {
-                new OrExpr(expr)
-            };
+            var pairs = new List<BoolExpr>();
             for (var i = 0; i < expr.Length; i++)
                 for (var j = i + 1; j < expr.Length; j++)
                     pairs.Add(new OrExpr(!expr[i], !expr[j]));
@@ -294,7 +352,8 @@ namespace SATInterface
         }
 
 
-        //https://pdfs.semanticscholar.org/11ea/d39e2799fcb85a9064037080c0f2a1733d82.pdf
+        //Formulation by Chen: A New SAT Encoding of the At-Most-One Constraint
+        //- https://pdfs.semanticscholar.org/11ea/d39e2799fcb85a9064037080c0f2a1733d82.pdf
         private BoolExpr ExactlyOneOfTwoFactor(IEnumerable<BoolExpr> _expr)
         {
             if(_expr.Count()<6)
@@ -377,7 +436,8 @@ namespace SATInterface
         }
 
 
-        //https://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
+        //Formulation by Klieber & Kwon: Efficient CNF Encoding for Selecting 1 from N Objects  
+        //- https://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
         private BoolExpr ExactlyOneOfCommander(IEnumerable<BoolExpr> _expr)
         {
             if(_expr.Count()<6)
@@ -413,8 +473,8 @@ namespace SATInterface
         }
 
 
-        //bailleux, boufkhad: EfﬁcientCNFencodingofBooleancardinality constraints
-        //https://pdfs.semanticscholar.org/a948/1bf4ce2b5c20d2e282dd69dcb92bddcc36c9.pdf
+        //Formulation by Bailleux & Boufkhad
+        //- https://pdfs.semanticscholar.org/a948/1bf4ce2b5c20d2e282dd69dcb92bddcc36c9.pdf
         public BoolExpr[] UnaryCount(IEnumerable<BoolExpr> _e)
         {
             var len = _e.Count();

@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("SATInterface")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Library to formulate SAT problems in .NET")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Simon Felix")]
 [assembly: AssemblyProduct("SATInterface")]
-[assembly: AssemblyCopyright("Copyright ©  2017")]
+[assembly: AssemblyCopyright("Copyright ©2017 Simon Felix")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

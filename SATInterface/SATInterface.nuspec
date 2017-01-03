@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>deiruch.SATInterface</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>Simon Felix</authors>
+    <owners>Simon Felix</owners>
+    <licenseUrl>https://raw.githubusercontent.com/deiruch/SATInterface/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/deiruch/SATInterface</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>
+    <releaseNotes></releaseNotes>
+    <copyright>Copyright 2017 Simon Felix</copyright>
+    <tags>SAT cryptominisat DIMACS</tags>
+  </metadata>
+  <files>
+    <file src="readme.txt" target="" />
+  </files>
+</package>

@@ -272,3 +272,5 @@ paket-files/
 __pycache__/
 *.pyc
 >>>>>>> Add .gitignore and .gitattributes.
+/SATInterface/publish.bat
+/SATInterface/publish.bat

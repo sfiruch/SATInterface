@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SATInterface
 {
@@ -34,7 +33,7 @@ namespace SATInterface
             elements = res.ToArray();
         }
 
-        public override string ToString() => "(" + string.Join(" | ",elements.AsEnumerable()) + ")";
+        public override string ToString() => "(" + string.Join(" | ", elements.Select(e => e.ToString()).ToArray()) + ")";
 
         internal override IEnumerable<BoolVar> EnumVars()
         {
@@ -83,7 +82,7 @@ namespace SATInterface
                     }
 
                     var otherElems = uniqueElems.Where(e => !ReferenceEquals(e,andExpr));
-                    return Simplified = new AndExpr(andExpr.elements.Select(e => new OrExpr(otherElems.Concat(new BoolExpr[] { e })))).Simplify();
+                    return Simplified = new AndExpr(andExpr.elements.Select(e => (BoolExpr)new OrExpr(otherElems.Concat(new BoolExpr[] { e })))).Simplify();
             }
         }
 

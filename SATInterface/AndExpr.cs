@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SATInterface
 {
@@ -42,7 +41,7 @@ namespace SATInterface
                     yield return v;
         }
 
-        public override string ToString() => "(" + string.Join(" & ", elements.AsEnumerable()) + ")";
+        public override string ToString() => "(" + string.Join(" & ", elements.Select(e => e.ToString()).ToArray()) + ")";
 
         internal override BoolExpr Simplify()
         {
