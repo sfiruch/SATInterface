@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Text;
 using System.Threading;
 
@@ -62,13 +63,16 @@ namespace SATInterface
         }
 
         public bool LogOutput = true;
-        public int Threads = Environment.ProcessorCount;
+        public int Threads = GetNumerOfPhysicalCores();
         public int LogLines = int.MaxValue;
 
-        public void Solve()
-        {
-            Solve("cryptominisat5_simple.exe", $"--verb={(LogOutput ? "1":"0")} --threads={Threads}");
-        }
+
+        //Code by Kevin Kibler
+        //- http://stackoverflow.com/questions/1542213/how-to-find-the-number-of-cpu-cores-via-net-c
+        private static int GetNumerOfPhysicalCores() => new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor").Get().OfType<ManagementBaseObject>().Sum(i => int.Parse(i["NumberOfCores"].ToString()));
+
+
+        public void Solve() => Solve("cryptominisat5_simple.exe", $"--verb={(LogOutput ? "1":"0")} --threads={Threads}");
 
 
         public void Solve(string _executable, string _arguments)
