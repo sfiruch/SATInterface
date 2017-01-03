@@ -16,5 +16,6 @@
   </metadata>
   <files>
     <file src="readme.txt" target="" />
+	<file src="Install.ps1" target="tools\Install.ps1" />
   </files>
 </package>

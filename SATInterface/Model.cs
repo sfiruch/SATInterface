@@ -219,6 +219,34 @@ namespace SATInterface
             }
         }
 
+        public UIntVar Sum(IEnumerable<BoolExpr> _count)
+        {
+            var simplified = _count.Select(b => b.Simplify()).Where(b => !ReferenceEquals(b, BoolExpr.FALSE)).ToArray();
+            var trueCount = simplified.Count(b => ReferenceEquals(b, BoolExpr.TRUE));
+
+            UIntVar sum;
+            if (trueCount == 0)
+                sum = new UIntVar(this, 0, _enforceUB: false);
+            else
+                sum = UIntVar.Const(this, trueCount);
+
+            simplified = simplified.Where(b => !ReferenceEquals(b, BoolExpr.TRUE)).ToArray();
+            switch (simplified.Length)
+            {
+                case 0:
+                    return sum;
+                case 1:
+                    return sum + simplified[0];
+                /*case 2:
+                    return sum + simplified[0] + simplified[1];*/
+                default:
+                    var firstHalf = simplified.Take(simplified.Length / 2);
+                    var secondHalf = simplified.Skip(simplified.Length / 2);
+                    return (Sum(firstHalf) + Sum(secondHalf)) + sum;
+            }
+        }
+
+
         public UIntVar Sum(IEnumerable<UIntVar> _elems)
         {
             var cnt = _elems.Count();

@@ -58,6 +58,7 @@
     <None Include="App.config" />
     <None Include="publish.bat" />
     <None Include="SATInterface.nuspec" />
+    <None Include="Install.ps1" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="cryptominisat5_simple.exe">

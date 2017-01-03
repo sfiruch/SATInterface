@@ -74,6 +74,19 @@ namespace SATInterface
             return res;
         }
 
+        public static UIntVar operator +(UIntVar _a, int _add) => _a + Const(_a.Model,_add);
+        public static UIntVar operator +(int _add, UIntVar _a) => _a + Const(_a.Model, _add);
+
+        public static UIntVar operator -(UIntVar _a, int _add) => _a - Const(_a.Model, _add);
+        public static UIntVar operator -(int _add, UIntVar _a) => Const(_a.Model, _add) - _a;
+
+        public static UIntVar operator -(UIntVar _a, UIntVar _b)
+        {
+            var res = new UIntVar(_a.Model, _a.UB, false);
+            _a.Model.AddConstr(_b + res == _a);
+            return res;
+        }
+
         public static UIntVar operator<<(UIntVar _a,int _shift)
         {
             var res = new UIntVar(_a.Model, _a.UB << _shift, false);
@@ -112,34 +125,6 @@ namespace SATInterface
             }
             return res;
         }
-
-        public static UIntVar SumOf(Model _model, IEnumerable<BoolExpr> _count)
-        {
-            var simplified = _count.Select(b => b.Simplify()).Where(b => !ReferenceEquals(b, BoolExpr.FALSE)).ToArray();
-            var trueCount = simplified.Count(b => ReferenceEquals(b, BoolExpr.TRUE));
-
-            UIntVar sum;
-            if (trueCount == 0)
-                sum = new UIntVar(_model, 0, _enforceUB: false);
-            else
-                sum = Const(_model, trueCount);
-
-            simplified = simplified.Where(b => !ReferenceEquals(b, BoolExpr.TRUE)).ToArray();
-            switch(simplified.Length)
-            {
-                case 0:
-                    return sum;
-                case 1:
-                    return sum + simplified[0];
-                /*case 2:
-                    return sum + simplified[0] + simplified[1];*/
-                default:
-                    var firstHalf = simplified.Take(simplified.Length / 2);
-                    var secondHalf = simplified.Skip(simplified.Length / 2);
-                    return (SumOf(_model, firstHalf) + SumOf(_model, secondHalf))+sum;
-            }
-        }
-
 
         public int X
         {
