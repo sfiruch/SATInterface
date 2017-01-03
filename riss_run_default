@@ -1,3 +1,0 @@
-#!/bin/bash
-
-./riss -config=505-M -checkModel $1
