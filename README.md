@@ -44,13 +44,13 @@ for (var n = 0; n < 9; n++)
 
 m.Solve();
 
-
-for(var y=0;y<9;y++)
-{
-    for (var x = 0; x < 9; x++)
-        for (var n = 0; n < 9; n++)
-            if (v[x, y, n].X)
-                Console.Write($" {n+1}");
-    Console.WriteLine();
-}
+if(m.IsSatisfiable)
+    for(var y=0;y<9;y++)
+    {
+        for (var x = 0; x < 9; x++)
+            for (var n = 0; n < 9; n++)
+                if (v[x, y, n].X)
+                    Console.Write($" {n+1}");
+        Console.WriteLine();
+    }
 ~~~~
