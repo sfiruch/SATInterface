@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -7,43 +8,37 @@ namespace SATInterface
 {
     public class NotExpr:BoolExpr
     {
-        public BoolExpr inner;
+        public BoolVar inner;
 
-        internal NotExpr(BoolExpr _inner)
+        internal NotExpr(BoolVar _inner)
         {
             inner = _inner;
         }
 
+        public static BoolExpr Create(BoolExpr _inner)
+        {
+            if (_inner is NotExpr)
+                return ((NotExpr)_inner).inner;
+            else if (ReferenceEquals(_inner, TRUE))
+                return FALSE;
+            else if (ReferenceEquals(_inner, FALSE))
+                return TRUE;
+            else if (_inner is BoolVar)
+                return ((BoolVar)_inner).Negated;
+            else if (_inner is AndExpr)
+                return OrExpr.Create(((AndExpr)_inner).elements.Select(e => !e).ToArray());
+            else if (_inner is OrExpr)
+                return AndExpr.Create(((OrExpr)_inner).elements.Select(e => !e).ToArray());
+            else
+                throw new NotImplementedException();
+        }
+
         internal override IEnumerable<BoolVar> EnumVars()
         {
-            foreach (var v in inner.EnumVars())
-                yield return v;
+            yield return inner;
         }
 
         public override string ToString() => "!" + inner;
-
-        internal override BoolExpr Simplify()
-        {
-            if (!ReferenceEquals(Simplified, null))
-                return Simplified;
-
-            if (inner is NotExpr)
-                Simplified = ((NotExpr)inner).inner.Simplify();
-            else if (inner is AndExpr)
-                Simplified = new OrExpr(((AndExpr)inner).elements.Select(e => !e).ToArray()).Simplify();
-            else if (inner is OrExpr)
-                Simplified = new AndExpr(((OrExpr)inner).elements.Select(e => !e).ToArray()).Simplify();
-            else if (ReferenceEquals(inner, TRUE))
-                Simplified = FALSE;
-            else if (ReferenceEquals(inner, FALSE))
-                Simplified = TRUE;
-            else if (inner is BoolVar)
-                Simplified = this;
-            else
-                throw new NotImplementedException();
-
-            return Simplified;
-        }
 
         public override bool X
         {

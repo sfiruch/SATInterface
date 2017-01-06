@@ -41,22 +41,21 @@ namespace SATInterface
             if (proofUnsat)
                 return;
 
-            var simp = _clause.Simplify();
-            if (ReferenceEquals(simp, BoolExpr.FALSE))
+            if (ReferenceEquals(_clause, BoolExpr.FALSE))
                 proofUnsat = true;
-            else if (simp is AndExpr)
+            else if (_clause is AndExpr)
             {
-                foreach (var v in simp.EnumVars())
+                foreach (var v in _clause.EnumVars())
                     v.AssignModelId(this);
 
-                clauses.AddRange(((AndExpr)simp).elements);
+                clauses.AddRange(((AndExpr)_clause).elements);
             }
-            else if (!ReferenceEquals(simp, BoolExpr.TRUE))
+            else if (!ReferenceEquals(_clause, BoolExpr.TRUE))
             {
-                foreach (var v in simp.EnumVars())
+                foreach (var v in _clause.EnumVars())
                     v.AssignModelId(this);
 
-                clauses.Add(simp);
+                clauses.Add(_clause);
             }
 
             proofSat = false;
@@ -96,7 +95,7 @@ namespace SATInterface
 
             //p.PriorityClass = ProcessPriorityClass.BelowNormal;
 
-            p.StandardInput.AutoFlush = false;
+            p.StandardInput.AutoFlush = true;
             Write(p.StandardInput);
             p.StandardInput.Close();
 
@@ -182,46 +181,57 @@ namespace SATInterface
 
         public void Write(StreamWriter _out)
         {
-            _out.WriteLine("c by .SAT");
-            if (clauses.Contains(BoolExpr.FALSE))
+            _out.WriteLine("c Created by SATInterface");
+
+            var root = AndExpr.Create(clauses);
+            /*if (ReferenceEquals(root,BoolExpr.FALSE))
             {
                 _out.WriteLine("c UNSATISFIABLE");
                 _out.WriteLine("p cnf 0 1");
                 _out.WriteLine("0");
                 _out.Flush();
                 return;
-            }
+            }*/
 
-            var vars = clauses.SelectMany(c => c.EnumVars()).Distinct().ToArray();
+            var vars = root.EnumVars().Distinct().ToArray();
 
             _out.WriteLine($"p cnf {vars.Length} {clauses.Count}");
-            foreach (var c in clauses)
-            {
-                if (c is BoolVar)
-                    _out.Write(((BoolVar)c).Id + " ");
-                else if (c is NotExpr)
-                    _out.Write(-((BoolVar)((NotExpr)c).inner).Id + " ");
-                else if (c is OrExpr)
-                {
-                    foreach (var e in ((OrExpr)c).elements)
-                        if (e is BoolVar)
-                            _out.Write(((BoolVar)e).Id + " ");
-                        else if (e is NotExpr)
-                            _out.Write(-((BoolVar)((NotExpr)e).inner).Id + " ");
-                        else
-                            throw new Exception(e.GetType().ToString());
-                }
-                else
-                    throw new Exception(c.GetType().ToString());
 
-                _out.WriteLine("0");
-                _out.Flush();
-            }
+            if (root is BoolVar)
+                _out.WriteLine($"{((BoolVar)root).Id} 0");
+            else if (root is NotExpr)
+                _out.WriteLine($"-{((NotExpr)root).inner.Id} 0");
+            else if (root is AndExpr)
+                foreach (var c in ((AndExpr)root).elements)
+                {
+                    if (c is BoolVar)
+                        _out.WriteLine(((BoolVar)c).Id + " 0");
+                    else if (c is NotExpr)
+                        _out.WriteLine(-((NotExpr)c).inner.Id + " 0");
+                    else if (c is OrExpr)
+                    {
+                        var sb = new StringBuilder();
+                        foreach (var e in ((OrExpr)c).elements)
+                            if (e is BoolVar)
+                                sb.Append(((BoolVar)e).Id + " ");
+                            else if (e is NotExpr)
+                                sb.Append(-((NotExpr)e).inner.Id + " ");
+                            else
+                                throw new Exception(e.GetType().ToString());
+
+                        sb.Append("0");
+                        _out.WriteLine(sb.ToString());
+                    }
+                    else
+                        throw new Exception(c.GetType().ToString());
+                }
+            else
+                throw new Exception(root.GetType().ToString());
         }
 
         public UIntVar Sum(IEnumerable<BoolExpr> _count)
         {
-            var simplified = _count.Select(b => b.Simplify()).Where(b => !ReferenceEquals(b, BoolExpr.FALSE)).ToArray();
+            var simplified = _count.Where(b => !ReferenceEquals(b, BoolExpr.FALSE)).ToArray();
             var trueCount = simplified.Count(b => ReferenceEquals(b, BoolExpr.TRUE));
 
             UIntVar sum;
@@ -273,7 +283,7 @@ namespace SATInterface
             BinaryCount, //165s
             TwoFactor, //forever...
             Pairwise,
-            OneHot
+            //OneHot
         }
 
         public enum AtMostOneOfMethod
@@ -327,15 +337,15 @@ namespace SATInterface
                     //1
                     for (var j = 0; j < groups[i].Length; j++)
                         for (var k = j + 1; k < groups[i].Length; k++)
-                            valid.Add(new OrExpr(!groups[i][j], !groups[i][k]));
+                            valid.Add(OrExpr.Create(!groups[i][j], !groups[i][k]));
 
                     //AddConstr((!commanders[i]) | new OrExpr(groups[i])); //2
-                    AddConstr(commanders[i] | (!new OrExpr(groups[i]))); //3
+                    AddConstr(commanders[i] | (!OrExpr.Create(groups[i]))); //3
                 }
 
             valid.Add(ExactlyOneOfCommander(commanders));
 
-            return new AndExpr(valid);
+            return AndExpr.Create(valid);
 
         }
 
@@ -355,8 +365,8 @@ namespace SATInterface
                     return ExactlyOneOfTwoFactor(_expr);
                 case ExactlyOneOfMethod.Pairwise:
                     return ExactlyOneOfPairwise(_expr);
-                case ExactlyOneOfMethod.OneHot:
-                    return ExactlyOneOfOneHot(_expr);
+                //case ExactlyOneOfMethod.OneHot:
+               //     return ExactlyOneOfOneHot(_expr);
                 default:
                     throw new ArgumentException();
             }
@@ -364,12 +374,12 @@ namespace SATInterface
 
         private BoolExpr ExactlyOneOfOneHot(IEnumerable<BoolExpr> _expr)
         {
-            return new OrExpr(_expr.Select(hot => (BoolExpr)new AndExpr(_expr.Select(e => ReferenceEquals(e,hot) ? e:!e))));
+            return OrExpr.Create(_expr.Select(hot => AndExpr.Create(_expr.Select(e => ReferenceEquals(e,hot) ? e:!e))));
         }
 
         private BoolExpr ExactlyOneOfPairwise(IEnumerable<BoolExpr> _expr)
         {
-            return new OrExpr(_expr) & AtMostOneOfPairwise(_expr);
+            return OrExpr.Create(_expr) & AtMostOneOfPairwise(_expr);
         }
 
         private BoolExpr AtMostOneOfPairwise(IEnumerable<BoolExpr> _expr)
@@ -378,9 +388,9 @@ namespace SATInterface
             var pairs = new List<BoolExpr>();
             for (var i = 0; i < expr.Length; i++)
                 for (var j = i + 1; j < expr.Length; j++)
-                    pairs.Add(new OrExpr(!expr[i], !expr[j]));
+                    pairs.Add(OrExpr.Create(!expr[i], !expr[j]));
 
-            return new AndExpr(pairs);
+            return AndExpr.Create(pairs);
         }
 
 
@@ -415,13 +425,13 @@ namespace SATInterface
             valid.Add(ExactlyOneOfTwoFactor(xv));
             valid.Add(ExactlyOneOfTwoFactor(yv));
 
-            return new AndExpr(valid);
+            return AndExpr.Create(valid);
         }
 
 
         public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method=ExactlyKOfMethod.UnaryCount)
         {
-            var expr = _expr.Select(e => e.Simplify()).Where(e => !ReferenceEquals(e, BoolExpr.FALSE)).ToArray();
+            var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.FALSE)).ToArray();
 
             var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.TRUE));
             if(trueCount>0)
@@ -433,9 +443,9 @@ namespace SATInterface
             if (_k < 0 || _k > expr.Length)
                 return BoolExpr.FALSE;
             else if (_k == 0)
-                return !new OrExpr(expr);
+                return !OrExpr.Create(expr);
             else if (_k == expr.Length)
-                return new AndExpr(expr);
+                return AndExpr.Create(expr);
             else switch (expr.Length)
             {
                 case 0:
@@ -460,7 +470,7 @@ namespace SATInterface
                             })) == _k;
                         case ExactlyKOfMethod.UnaryCount:
                             var uc = UnaryCount(expr);
-                            return new AndExpr(Enumerable.Range(0,uc.Length).Select(i => (i<_k) ? uc[i] : !uc[i]));
+                            return AndExpr.Create(Enumerable.Range(0,uc.Length).Select(i => (i<_k) ? uc[i] : !uc[i]));
                         default:
                             throw new ArgumentException();
                     }
@@ -493,15 +503,15 @@ namespace SATInterface
                     //1
                     for (var j = 0; j < groups[i].Length; j++)
                         for (var k = j + 1; k < groups[i].Length; k++)
-                            valid.Add(new OrExpr(!groups[i][j], !groups[i][k]));
+                            valid.Add(OrExpr.Create(!groups[i][j], !groups[i][k]));
 
-                    AddConstr((!commanders[i]) | new OrExpr(groups[i])); //2
-                    AddConstr(commanders[i] | (!new OrExpr(groups[i]))); //3
+                    AddConstr((!commanders[i]) | OrExpr.Create(groups[i])); //2
+                    AddConstr(commanders[i] | (!OrExpr.Create(groups[i]))); //3
                 }
 
             valid.Add(ExactlyOneOfCommander(commanders));
 
-            return new AndExpr(valid);
+            return AndExpr.Create(valid);
         }
 
 

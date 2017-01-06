@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -7,30 +8,48 @@ namespace SATInterface
 {
     public class OrExpr:BoolExpr
     {
-        public BoolExpr[] elements;
+        internal readonly BoolExpr[] elements;
 
-        public OrExpr(params BoolExpr[] _elems):this(_elems.AsEnumerable())
+        private OrExpr(BoolExpr[] _elems)
         {
+            elements = _elems;
         }
 
-        public OrExpr(IEnumerable<BoolExpr> _elems)
+        public static BoolExpr Create(params BoolExpr[] _elems) => Create(_elems.AsEnumerable());
+
+        public static BoolExpr Create(IEnumerable<BoolExpr> _elems)
         {
-            if (_elems.Any(e => ReferenceEquals(e, null)))
-                throw new ArgumentNullException();
+            var res = new HashSet<BoolExpr>();
+            foreach (var es in _elems)
+                if (ReferenceEquals(es, null))
+                    throw new ArgumentNullException();
+                else if (ReferenceEquals(es, TRUE))
+                    return TRUE;
+                else if (es is OrExpr)
+                    foreach (var subE in ((OrExpr)es).elements)
+                        res.Add(subE);
+                else if (!ReferenceEquals(es, FALSE))
+                    res.Add(es);
 
-            var res = new List<BoolExpr>();
-            foreach (var e in _elems)
-                if (e is OrExpr)
-                    res.AddRange(((OrExpr)e).elements);
-                else if (ReferenceEquals(e, TRUE))
+            if (!res.Any())
+                return FALSE;
+            else if(res.Count==1)
+                return res.Single();
+            else
+            {
+                foreach (var subE in res.OfType<NotExpr>())
+                    if (res.Contains(subE.inner))
+                        return TRUE;
+
+                var andExpr = (AndExpr)res.FirstOrDefault(e => e is AndExpr);
+                if (!ReferenceEquals(andExpr, null))
                 {
-                    elements = new BoolExpr[] { TRUE };
-                    return;
+                    var otherElems = res.Where(e => !ReferenceEquals(e, andExpr));
+                    return AndExpr.Create(andExpr.elements.Select(e => OrExpr.Create(otherElems.Concat(new BoolExpr[] { e }))));
                 }
-                else if (!ReferenceEquals(e, FALSE))
-                    res.Add(e);
 
-            elements = res.ToArray();
+                return new OrExpr(res.ToArray());
+            }
         }
 
         public override string ToString() => "(" + string.Join(" | ", elements.Select(e => e.ToString()).ToArray()) + ")";
@@ -40,50 +59,6 @@ namespace SATInterface
             foreach (var e in elements)
                 foreach (var v in e.EnumVars())
                     yield return v;
-        }
-
-        internal override BoolExpr Simplify()
-        {
-            if (!ReferenceEquals(Simplified,null))
-                return Simplified;
-
-            List<BoolExpr> elems = new List<BoolExpr>();
-            foreach (var e in elements)
-            {
-                var edm = e.Simplify();
-                if (edm is OrExpr)
-                    elems.AddRange(((OrExpr)edm).elements);
-                else if(!ReferenceEquals(edm, FALSE))
-                    elems.Add(edm);
-            }
-
-            if (elems.Contains(TRUE))
-                return Simplified=TRUE;
-
-            var uniqueElems = elems.Distinct().ToArray();
-            switch (uniqueElems.Length)
-            {
-                case 0:
-                    return Simplified=FALSE;
-                case 1:
-                    return Simplified=uniqueElems.Single();
-                default:
-                    for (var i = 0; i < uniqueElems.Length; i++)
-                        if (uniqueElems[i] is NotExpr)
-                            if (uniqueElems.Contains(((NotExpr)uniqueElems[i]).inner))
-                                return Simplified=TRUE;
-
-                    var andExpr = (AndExpr)uniqueElems.FirstOrDefault(e => e is AndExpr);
-                    if (ReferenceEquals(andExpr, null))
-                    {
-                        Simplified = new OrExpr(uniqueElems);
-                        Simplified.Simplified = Simplified;
-                        return Simplified;
-                    }
-
-                    var otherElems = uniqueElems.Where(e => !ReferenceEquals(e,andExpr));
-                    return Simplified = new AndExpr(andExpr.elements.Select(e => (BoolExpr)new OrExpr(otherElems.Concat(new BoolExpr[] { e })))).Simplify();
-            }
         }
 
         public override bool X
@@ -103,6 +78,16 @@ namespace SATInterface
             return elements.Union(other.elements).Count() == elements.Length;
         }
 
-        public override int GetHashCode() => elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b) ^ (1 << 29);
+        private int hashCode;
+        public override int GetHashCode()
+        {
+            if (hashCode == 0)
+            {
+                hashCode = elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b) ^ (1 << 29);
+                if (hashCode == 0)
+                    hashCode++;
+            }
+            return hashCode;
+        }
     }
 }

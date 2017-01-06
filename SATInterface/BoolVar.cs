@@ -13,7 +13,7 @@ namespace SATInterface
         internal bool Value;
         internal Model Model;
         private readonly string Name;
-        private BoolExpr negated;
+        internal BoolExpr negated;
 
         internal BoolExpr Negated
         {

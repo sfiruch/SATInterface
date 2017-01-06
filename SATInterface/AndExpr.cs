@@ -8,30 +8,41 @@ namespace SATInterface
 {
     public class AndExpr:BoolExpr
     {
-        public BoolExpr[] elements;
+        internal readonly BoolExpr[] elements;
 
-        public AndExpr(params BoolExpr[] _elems) : this(_elems.AsEnumerable())
+        private AndExpr(BoolExpr[] _elems)
         {
+            elements = _elems;
         }
 
-        public AndExpr(IEnumerable<BoolExpr> _elems)
+        public static BoolExpr Create(params BoolExpr[] _elems) => Create(_elems.AsEnumerable());
+
+        public static BoolExpr Create(IEnumerable<BoolExpr> _elems)
         {
-            if (_elems.Any(e => ReferenceEquals(e, null)))
-                throw new ArgumentNullException();
+            var res = new HashSet<BoolExpr>();
+            foreach (var es in _elems)
+                if (ReferenceEquals(es, null))
+                    throw new ArgumentNullException();
+                else if (ReferenceEquals(es, FALSE))
+                    return FALSE;
+                else if (es is AndExpr)
+                    foreach (var subElement in ((AndExpr)es).elements)
+                        res.Add(subElement);
+                else if (!ReferenceEquals(es, TRUE))
+                        res.Add(es);
 
-            var res = new List<BoolExpr>();
-            foreach (var e in _elems)
-                if (e is AndExpr)
-                    res.AddRange(((AndExpr)e).elements);
-                else if (ReferenceEquals(e, FALSE))
-                {
-                    elements = new BoolExpr[] { FALSE };
-                    return;
-                }
-                else if (!ReferenceEquals(e, TRUE))
-                    res.Add(e);
+            if (!res.Any())
+                return TRUE;
+            else if (res.Count==1)
+                return res.Single();
+            else
+            {
+                foreach (var subE in res.OfType<NotExpr>())
+                    if (res.Contains(subE.inner))
+                        return FALSE;
 
-            elements = res.ToArray();
+                return new AndExpr(res.ToArray());
+            }
         }
 
         internal override IEnumerable<BoolVar> EnumVars()
@@ -42,46 +53,6 @@ namespace SATInterface
         }
 
         public override string ToString() => "(" + string.Join(" & ", elements.Select(e => e.ToString()).ToArray()) + ")";
-
-        internal override BoolExpr Simplify()
-        {
-            if (!ReferenceEquals(Simplified,null))
-                return Simplified;
-
-            List<BoolExpr> elems = new List<BoolExpr>(elements.Length);
-            foreach(var e in elements)
-            {
-                var edm = e.Simplify();
-                if (edm is AndExpr)
-                    elems.AddRange(((AndExpr)edm).elements);
-                else
-                    elems.Add(edm);
-            }
-
-            if (elems.Contains(FALSE))
-                return Simplified=FALSE;
-
-            if (elems.All(e => ReferenceEquals(e, TRUE)))
-                return Simplified=TRUE;
-
-            var uniqueElems = elems.Where(e => !ReferenceEquals(e, TRUE)).Distinct().ToArray();
-            switch (uniqueElems.Length)
-            {
-                case 0:
-                    return Simplified=FALSE;
-                case 1:
-                    return Simplified=uniqueElems.Single();
-                default:
-                    for (var i = 0; i < uniqueElems.Length; i++)
-                        if (uniqueElems[i] is NotExpr)
-                            if (uniqueElems.Contains(((NotExpr)uniqueElems[i]).inner))
-                                return Simplified=FALSE;
-
-                    Simplified = new AndExpr(uniqueElems);
-                    Simplified.Simplified = Simplified;
-                    return Simplified;
-            }
-        }
 
         public override bool X
         {
@@ -100,6 +71,16 @@ namespace SATInterface
             return elements.Union(other.elements).Count() == elements.Length;
         }
 
-        public override int GetHashCode() => elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b) ^ (1<<30);
+        private int hashCode;
+        public override int GetHashCode()
+        {
+            if (hashCode == 0)
+            {
+                hashCode = elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b) ^ (1 << 30);
+                if (hashCode == 0)
+                    hashCode++;
+            }
+            return hashCode;
+        }
     }
 }
