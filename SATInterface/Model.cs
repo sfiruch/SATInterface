@@ -128,6 +128,7 @@ namespace SATInterface
             var log = new List<string>();
             var oldCursor = Console.CursorTop - LogLines;
 
+            var assignedVarCnt = 0;
             for (var line = p.StandardOutput.ReadLine(); line != null; line = p.StandardOutput.ReadLine())
             {
                 var tk = line.Split(' ').Where(e => e != "").ToArray();
@@ -185,8 +186,8 @@ namespace SATInterface
 
             p.WaitForExit();
 
-            if (proofSat && vars.Any())
-                throw new Exception("Undefined vars");
+            /*if (proofSat && vars.Any())
+                throw new Exception("Undefined vars");*/
         }
 
         public void Write(string _path)
