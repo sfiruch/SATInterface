@@ -95,7 +95,7 @@ namespace SATInterface
         private static int GetNumerOfPhysicalCores() => new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor").Get().OfType<ManagementBaseObject>().Sum(i => int.Parse(i["NumberOfCores"].ToString()));
 
 
-        public void Solve() => Solve("cryptominisat5_simple.exe", $"--verb={(LogOutput ? "1":"0")} --threads={Threads}");
+        public void Solve() => Solve("cryptominisat5_simple.exe", $"--verb={(LogOutput ? "1" : "0")} --threads={Threads}");
 
 
         public void Solve(string _executable, string _arguments)
@@ -121,12 +121,12 @@ namespace SATInterface
             Write(p.StandardInput);
             p.StandardInput.Close();
 
-            
+
             if (LogOutput && LogLines != int.MaxValue)
-                Console.WriteLine(new string('\n',LogLines));
+                Console.WriteLine(new string('\n', LogLines));
 
             var log = new List<string>();
-            var oldCursor = Console.CursorTop-LogLines;
+            var oldCursor = Console.CursorTop - LogLines;
 
             for (var line = p.StandardOutput.ReadLine(); line != null; line = p.StandardOutput.ReadLine())
             {
@@ -139,10 +139,10 @@ namespace SATInterface
                 {
                     if (LogOutput && LogLines != int.MaxValue)
                     {
-                        if(line.Length>Console.BufferWidth-1)
+                        if (line.Length > Console.BufferWidth - 1)
                             line = line.Substring(0, Console.BufferWidth - 1);
-                        if (log.Any() && line.Length<log.Last().TrimEnd(' ').Length)
-                            log.Add(line+new string(' ',log.Last().TrimEnd(' ').Length - line.Length));
+                        if (log.Any() && line.Length < log.Last().TrimEnd(' ').Length)
+                            log.Add(line + new string(' ', log.Last().TrimEnd(' ').Length - line.Length));
                         else
                             log.Add(line);
 
@@ -159,12 +159,12 @@ namespace SATInterface
                             Console.WriteLine(line);
                         }
                     }
-                    else if(LogOutput)
+                    else if (LogOutput)
                         Console.WriteLine(line);
                 }
                 if (tk.Length == 2 && tk[0] == "s")
                 {
-                    if(LogOutput)
+                    if (LogOutput)
                         Console.WriteLine(line);
                     if (tk[1] == "SATISFIABLE")
                         proofSat = true;
@@ -177,15 +177,9 @@ namespace SATInterface
                 {
                     foreach (var n in tk.Skip(1).Select(s => int.Parse(s)))
                         if (n > 0)
-                        {
                             vars[n].Value = true;
-                            vars.Remove(n);
-                        }
                         else if (n < 0)
-                        {
                             vars[-n].Value = false;
-                            vars.Remove(-n);
-                        }
                 }
             }
 
@@ -245,7 +239,7 @@ namespace SATInterface
         public UIntVar Sum(IEnumerable<UIntVar> _elems)
         {
             var cnt = _elems.Count();
-            switch(cnt)
+            switch (cnt)
             {
                 case 0:
                     return UIntVar.Const(this, 0);
@@ -288,7 +282,7 @@ namespace SATInterface
 
         public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod _method = AtMostOneOfMethod.Commander)
         {
-            switch(_method)
+            switch (_method)
             {
                 case AtMostOneOfMethod.Commander:
                     return AtMostOneOfCommander(_expr);
@@ -334,9 +328,9 @@ namespace SATInterface
 
         public BoolExpr ExactlyOneOf(params BoolExpr[] _expr) => ExactlyOneOf(_expr.AsEnumerable());
 
-        public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod _method=ExactlyOneOfMethod.Commander)
+        public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod _method = ExactlyOneOfMethod.Commander)
         {
-            switch(_method)
+            switch (_method)
             {
                 case ExactlyOneOfMethod.UnaryCount:
                     return ExactlyKOf(_expr, 1, ExactlyKOfMethod.UnaryCount);
@@ -349,7 +343,7 @@ namespace SATInterface
                 case ExactlyOneOfMethod.Pairwise:
                     return ExactlyOneOfPairwise(_expr);
                 //case ExactlyOneOfMethod.OneHot:
-               //     return ExactlyOneOfOneHot(_expr);
+                //     return ExactlyOneOfOneHot(_expr);
                 default:
                     throw new ArgumentException();
             }
@@ -357,7 +351,7 @@ namespace SATInterface
 
         private BoolExpr ExactlyOneOfOneHot(IEnumerable<BoolExpr> _expr)
         {
-            return OrExpr.Create(_expr.Select(hot => AndExpr.Create(_expr.Select(e => ReferenceEquals(e,hot) ? e:!e))));
+            return OrExpr.Create(_expr.Select(hot => AndExpr.Create(_expr.Select(e => ReferenceEquals(e, hot) ? e : !e))));
         }
 
         private BoolExpr ExactlyOneOfPairwise(IEnumerable<BoolExpr> _expr)
@@ -384,7 +378,7 @@ namespace SATInterface
         //- https://pdfs.semanticscholar.org/11ea/d39e2799fcb85a9064037080c0f2a1733d82.pdf
         private BoolExpr ExactlyOneOfTwoFactor(IEnumerable<BoolExpr> _expr)
         {
-            if(_expr.Count()<6)
+            if (_expr.Count() < 6)
                 return ExactlyOneOfPairwise(_expr);
 
             var expr = _expr.ToArray();
@@ -415,12 +409,12 @@ namespace SATInterface
         }
 
 
-        public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method=ExactlyKOfMethod.UnaryCount)
+        public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method = ExactlyKOfMethod.UnaryCount)
         {
             var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.FALSE)).ToArray();
 
             var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.TRUE));
-            if(trueCount>0)
+            if (trueCount > 0)
             {
                 _k -= trueCount;
                 expr = expr.Where(e => !ReferenceEquals(e, BoolExpr.TRUE)).ToArray();
@@ -433,34 +427,34 @@ namespace SATInterface
             else if (_k == expr.Length)
                 return AndExpr.Create(expr);
             else switch (expr.Length)
-            {
-                case 0:
-                    throw new Exception();
-                case 1:
-                    throw new Exception();
-                case 2:
-                    if (_k != 1)
+                {
+                    case 0:
                         throw new Exception();
-                    return BoolExpr.Xor(expr[0], expr[1]);
-                default:
+                    case 1:
+                        throw new Exception();
+                    case 2:
+                        if (_k != 1)
+                            throw new Exception();
+                        return BoolExpr.Xor(expr[0], expr[1]);
+                    default:
 
-                    switch(_method)
-                    {
-                        case ExactlyKOfMethod.BinaryCount:
-                            return Sum(expr.Select(b =>
-                            {
-                                if (b is BoolVar)
-                                    return (UIntVar)b;
-                                else
-                                    return UIntVar.Const(this, 1) * b;
-                            })) == _k;
-                        case ExactlyKOfMethod.UnaryCount:
-                            var uc = UnaryCount(expr);
-                            return AndExpr.Create(Enumerable.Range(0,uc.Length).Select(i => (i<_k) ? uc[i] : !uc[i]));
-                        default:
-                            throw new ArgumentException();
-                    }
-            }
+                        switch (_method)
+                        {
+                            case ExactlyKOfMethod.BinaryCount:
+                                return Sum(expr.Select(b =>
+                                {
+                                    if (b is BoolVar)
+                                        return (UIntVar)b;
+                                    else
+                                        return UIntVar.Const(this, 1) * b;
+                                })) == _k;
+                            case ExactlyKOfMethod.UnaryCount:
+                                var uc = UnaryCount(expr);
+                                return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
+                            default:
+                                throw new ArgumentException();
+                        }
+                }
         }
 
 
@@ -468,19 +462,19 @@ namespace SATInterface
         //- https://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
         private BoolExpr ExactlyOneOfCommander(IEnumerable<BoolExpr> _expr)
         {
-            if(_expr.Count()<6)
+            if (_expr.Count() < 6)
                 return ExactlyOneOfPairwise(_expr);
 
             var expr = _expr.ToArray();
             var groups = new BoolExpr[(expr.Length + 2) / 3][];
-            for (var i = 0; i < groups.Length; i ++)
-                groups[i] = expr.Skip(i*3).Take(3).ToArray();
+            for (var i = 0; i < groups.Length; i++)
+                groups[i] = expr.Skip(i * 3).Take(3).ToArray();
 
             var commanders = new BoolExpr[groups.Length];
             var valid = new List<BoolExpr>();
 
             for (var i = 0; i < commanders.Length; i++)
-                if(groups[i].Length==1)
+                if (groups[i].Length == 1)
                     commanders[i] = groups[i].Single();
                 else
                 {
@@ -513,11 +507,11 @@ namespace SATInterface
                 case 1:
                     return new BoolExpr[] { _e.Single() };
                 default:
-                    var R = new BoolExpr[len+2];
+                    var R = new BoolExpr[len + 2];
                     R[0] = BoolExpr.TRUE;
-                    for (var i = 1; i < R.Length-1; i++)
+                    for (var i = 1; i < R.Length - 1; i++)
                         R[i] = new BoolVar(this);
-                    R[R.Length-1] = BoolExpr.FALSE;
+                    R[R.Length - 1] = BoolExpr.FALSE;
 
                     var A = new BoolExpr[] { BoolExpr.TRUE }.Concat(UnaryCount(_e.Take(len / 2))).Concat(new BoolExpr[] { BoolExpr.FALSE }).ToArray();
                     var B = new BoolExpr[] { BoolExpr.TRUE }.Concat(UnaryCount(_e.Skip(len / 2))).Concat(new BoolExpr[] { BoolExpr.FALSE }).ToArray();
@@ -525,7 +519,7 @@ namespace SATInterface
                         for (var b = 0; b < B.Length - 1; b++)
                         {
                             var r = a + b;
-                            if (r >=0 && r<R.Length)
+                            if (r >= 0 && r < R.Length)
                             {
                                 var C1 = OrExpr.Create(!A[a], !B[b], R[r]);
                                 var C2 = OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]);
@@ -533,7 +527,7 @@ namespace SATInterface
                             }
                         }
 
-                    return R.Skip(1).Take(R.Length-2).ToArray();
+                    return R.Skip(1).Take(R.Length - 2).ToArray();
             }
         }
 

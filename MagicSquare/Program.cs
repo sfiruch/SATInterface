@@ -13,16 +13,16 @@ namespace MagicSquare
         static void Main(string[] args)
         {
             //foreach (var s in new[] { 5, 7 })
-                //for(var s = 5;s<15;s++)
+                for(var s = 5;s<15;s++)
                 //for (var seed = 0; seed < 10; seed++)
                     foreach (Model.ExactlyOneOfMethod type in Enum.GetValues(typeof(Model.ExactlyOneOfMethod)))
                     {
-                        //var NUMBERS = Enumerable.Range(1, s * s).ToArray();
+                        var NUMBERS = Enumerable.Range(1, s * s).ToArray();
 
                         //var RNG = new Random(seed);
                         //var NUMBERS = Enumerable.Range(1,s*s).Select(i => RNG.Next(s*s*2)+1).ToArray();
 
-                        var NUMBERS = new[] { 5, 9, 15, 23, 46, 52, 55, 67, 72, 75, 78, 83, 85, 89, 90, 94, 100, 103, 106, 109, 115, 119, 123, 127, 130 };
+                        //var NUMBERS = new[] { 5, 9, 15, 23, 46, 52, 55, 67, 72, 75, 78, 83, 85, 89, 90, 94, 100, 103, 106, 109, 115, 119, 123, 127, 130 };
                         //var NUMBERS = new[] { 75, 130, 5, 90, 94, 123, 15, 119, 52, 85, 9, 127, 109, 46, 103, 115, 67, 83, 106, 23, 72, 55, 78, 100, 89 };
 
                         var N = (int)Math.Sqrt(NUMBERS.Length);
@@ -79,12 +79,12 @@ namespace MagicSquare
 
                         //m.Write($"ms-{N}x{N}-rng{seed}-{type}.dimacs");
                         //m.Write($"ms-{N}x{N}-inc-{type}.dimacs");
-                        m.Write($"ms-{N}x{N}-art1-{type}.dimacs");
-                        //m.Solve();
+                        // m.Write($"ms-{N}x{N}-art1-{type}.dimacs");
+                        m.Solve();
 
                         Console.WriteLine($"{N}x{N} -  {type}");
 
-                        /*if (m.IsSatisfiable)
+                        if (m.IsSatisfiable)
                             for (var y = 0; y < N; y++)
                             {
                                 for (var x = 0; x < N; x++)
@@ -93,7 +93,9 @@ namespace MagicSquare
                                             Console.Write($"{NUMBERS[n],4}");
 
                                 Console.WriteLine();
-                            }*/
+                            }
+
+
                     }
             Console.WriteLine("Done");
             //Console.ReadLine();
