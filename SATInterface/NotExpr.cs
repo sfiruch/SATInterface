@@ -48,15 +48,15 @@ namespace SATInterface
             }
         }
 
-        public override bool Equals(object _obj)
+        /*public override bool Equals(object _obj)
         {
             var other = _obj as NotExpr;
             if (ReferenceEquals(other, null))
                 return false;
 
             return inner.Equals(other.inner);
-        }
+        }*/
 
-        public override int GetHashCode() => inner.GetHashCode() ^ (1 << 28);
+        public override int GetHashCode() => ~inner.GetHashCode();
     }
 }

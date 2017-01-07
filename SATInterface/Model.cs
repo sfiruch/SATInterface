@@ -11,8 +11,9 @@ namespace SATInterface
 {
     public class Model
     {
-        internal int VarIdCounter = 1;
-        private List<BoolExpr> clauses = new List<BoolExpr>();
+        internal int VarCount = 0;
+        private HashSet<string> clauses = new HashSet<string>();
+        private Dictionary<int, BoolVar> vars = new Dictionary<int, BoolVar>();
         internal bool proofSat = false;
         internal bool proofUnsat = false;
 
@@ -36,30 +37,53 @@ namespace SATInterface
         {
         }
 
+        private void AddConstrInternal(BoolExpr _c)
+        {
+            if (ReferenceEquals(_c, BoolExpr.FALSE))
+                proofUnsat = true;
+            else if (_c is BoolVar)
+                clauses.Add($"{((BoolVar)_c).Id} 0");
+            else if (_c is NotExpr)
+                clauses.Add($"-{((NotExpr)_c).inner.Id} 0");
+            else if (_c is OrExpr)
+            {
+                var sb = new StringBuilder(((OrExpr)_c).elements.Count * 7 + 10);
+                foreach (var e in ((OrExpr)_c).elements)
+                    if (e is BoolVar)
+                    {
+                        sb.Append(((BoolVar)e).Id.ToString());
+                        sb.Append(' ');
+                    }
+                    else if (e is NotExpr)
+                    {
+                        sb.Append((-((NotExpr)e).inner.Id).ToString());
+                        sb.Append(' ');
+                    }
+                    else
+                        throw new Exception(e.GetType().ToString());
+
+                sb.Append('0');
+                clauses.Add(sb.ToString());
+            }
+            else
+                throw new Exception(_c.GetType().ToString());
+        }
+
         public void AddConstr(BoolExpr _clause)
         {
             if (proofUnsat)
                 return;
 
-            if (ReferenceEquals(_clause, BoolExpr.FALSE))
-                proofUnsat = true;
-            else if (_clause is AndExpr)
-            {
-                foreach (var v in _clause.EnumVars())
-                    v.AssignModelId(this);
-
-                clauses.AddRange(((AndExpr)_clause).elements);
-            }
+            if (_clause is AndExpr)
+                foreach (var e in ((AndExpr)_clause).elements)
+                    AddConstrInternal(e);
             else if (!ReferenceEquals(_clause, BoolExpr.TRUE))
-            {
-                foreach (var v in _clause.EnumVars())
-                    v.AssignModelId(this);
-
-                clauses.Add(_clause);
-            }
+                AddConstrInternal(_clause);
 
             proofSat = false;
         }
+
+        internal void RegisterVariable(BoolVar boolVar) => vars[boolVar.Id] = boolVar;
 
         public bool LogOutput = true;
         public int Threads = GetNumerOfPhysicalCores();
@@ -78,8 +102,6 @@ namespace SATInterface
         {
             if (proofUnsat)
                 return;
-
-            var vars = clauses.SelectMany(c => c.EnumVars()).Distinct().ToDictionary(v => v.Id, v => v);
 
             proofSat = false;
 
@@ -182,52 +204,15 @@ namespace SATInterface
         public void Write(StreamWriter _out)
         {
             _out.WriteLine("c Created by SATInterface");
-
-            var root = AndExpr.Create(clauses);
-            /*if (ReferenceEquals(root,BoolExpr.FALSE))
-            {
-                _out.WriteLine("c UNSATISFIABLE");
-                _out.WriteLine("p cnf 0 1");
-                _out.WriteLine("0");
-                _out.Flush();
-                return;
-            }*/
-
-            var vars = root.EnumVars().Distinct().ToArray();
-
-            _out.WriteLine($"p cnf {vars.Length} {clauses.Count}");
-
-            if (root is BoolVar)
-                _out.WriteLine($"{((BoolVar)root).Id} 0");
-            else if (root is NotExpr)
-                _out.WriteLine($"-{((NotExpr)root).inner.Id} 0");
-            else if (root is AndExpr)
-                foreach (var c in ((AndExpr)root).elements)
-                {
-                    if (c is BoolVar)
-                        _out.WriteLine(((BoolVar)c).Id + " 0");
-                    else if (c is NotExpr)
-                        _out.WriteLine(-((NotExpr)c).inner.Id + " 0");
-                    else if (c is OrExpr)
-                    {
-                        var sb = new StringBuilder();
-                        foreach (var e in ((OrExpr)c).elements)
-                            if (e is BoolVar)
-                                sb.Append(((BoolVar)e).Id + " ");
-                            else if (e is NotExpr)
-                                sb.Append(-((NotExpr)e).inner.Id + " ");
-                            else
-                                throw new Exception(e.GetType().ToString());
-
-                        sb.Append("0");
-                        _out.WriteLine(sb.ToString());
-                    }
-                    else
-                        throw new Exception(c.GetType().ToString());
-                }
-            else
-                throw new Exception(root.GetType().ToString());
+            _out.WriteLine($"p cnf {vars.Count} {clauses.Count}");
+            foreach (var line in clauses)
+                _out.WriteLine(line);
         }
+
+        //code by Noldorin/Simon
+        //- http://stackoverflow.com/a/812035/742404
+        internal static uint RotateLeft(uint value, int count) => (value << count) | (value >> (32 - count));
+        internal static uint RotateRight(uint value, int count) => (value >> count) | (value << (32 - count));
 
         public UIntVar Sum(IEnumerable<BoolExpr> _count)
         {
@@ -344,9 +329,7 @@ namespace SATInterface
                 }
 
             valid.Add(ExactlyOneOfCommander(commanders));
-
             return AndExpr.Create(valid);
-
         }
 
         public BoolExpr ExactlyOneOf(params BoolExpr[] _expr) => ExactlyOneOf(_expr.AsEnumerable());
@@ -379,7 +362,10 @@ namespace SATInterface
 
         private BoolExpr ExactlyOneOfPairwise(IEnumerable<BoolExpr> _expr)
         {
-            return OrExpr.Create(_expr) & AtMostOneOfPairwise(_expr);
+            var orExpr = new BoolVar(this);
+            AddConstr(orExpr == OrExpr.Create(_expr));
+
+            return orExpr & AtMostOneOfPairwise(_expr);
         }
 
         private BoolExpr AtMostOneOfPairwise(IEnumerable<BoolExpr> _expr)
@@ -528,22 +514,21 @@ namespace SATInterface
                     return new BoolExpr[] { _e.Single() };
                 default:
                     var R = new BoolExpr[len+2];
-                    R[0] = true;
+                    R[0] = BoolExpr.TRUE;
                     for (var i = 1; i < R.Length-1; i++)
                         R[i] = new BoolVar(this);
-                    R[R.Length-1] = false;
+                    R[R.Length-1] = BoolExpr.FALSE;
 
-                    var A = new BoolExpr[] { true }.Concat(UnaryCount(_e.Take(len / 2))).Concat(new BoolExpr[] { false }).ToArray();
-                    var B = new BoolExpr[] { true }.Concat(UnaryCount(_e.Skip(len / 2))).Concat(new BoolExpr[] { false }).ToArray();
+                    var A = new BoolExpr[] { BoolExpr.TRUE }.Concat(UnaryCount(_e.Take(len / 2))).Concat(new BoolExpr[] { BoolExpr.FALSE }).ToArray();
+                    var B = new BoolExpr[] { BoolExpr.TRUE }.Concat(UnaryCount(_e.Skip(len / 2))).Concat(new BoolExpr[] { BoolExpr.FALSE }).ToArray();
                     for (var a = 0; a < A.Length - 1; a++)
                         for (var b = 0; b < B.Length - 1; b++)
                         {
                             var r = a + b;
                             if (r >=0 && r<R.Length)
                             {
-                                var C1 = !A[a] | !B[b] | R[r];
-                                var C2 = A[a + 1] | B[b + 1] | !R[r + 1];
-
+                                var C1 = OrExpr.Create(!A[a], !B[b], R[r]);
+                                var C2 = OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]);
                                 AddConstr(C1 & C2);
                             }
                         }

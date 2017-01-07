@@ -7,8 +7,8 @@ namespace SATInterface
 {
     public class BoolExpr
     {
-        public static readonly BoolExpr TRUE = new BoolVar(null, "true");
-        public static readonly BoolExpr FALSE = new BoolVar(null, "false");
+        public static readonly BoolExpr TRUE = new BoolVar("true");
+        public static readonly BoolExpr FALSE = new BoolVar("false");
 
         internal BoolExpr()
         {
@@ -60,10 +60,6 @@ namespace SATInterface
 
             throw new Exception();
         }
-
-        public override bool Equals(object obj) => ReferenceEquals(this, obj);
-
-        public override int GetHashCode() => GetHashCode();
 
         public static BoolExpr operator !(BoolExpr _v)
         {

@@ -6,11 +6,11 @@ using System.Text;
 
 namespace SATInterface
 {
-    public class OrExpr:BoolExpr
+    public class OrExpr : BoolExpr
     {
-        internal readonly BoolExpr[] elements;
+        internal readonly List<BoolExpr> elements;
 
-        private OrExpr(BoolExpr[] _elems)
+        private OrExpr(List<BoolExpr> _elems)
         {
             elements = _elems;
         }
@@ -19,36 +19,57 @@ namespace SATInterface
 
         public static BoolExpr Create(IEnumerable<BoolExpr> _elems)
         {
-            var res = new HashSet<BoolExpr>();
+            var res = new List<BoolExpr>();
             foreach (var es in _elems)
                 if (ReferenceEquals(es, null))
                     throw new ArgumentNullException();
                 else if (ReferenceEquals(es, TRUE))
                     return TRUE;
                 else if (es is OrExpr)
-                    foreach (var subE in ((OrExpr)es).elements)
-                        res.Add(subE);
+                    res.AddRange(((OrExpr)es).elements);
                 else if (!ReferenceEquals(es, FALSE))
                     res.Add(es);
 
-            if (!res.Any())
+            //remove duplicates
+            for (var i = 0; i < res.Count; i++)
+                for (var j = i + 1; j < res.Count; j++)
+                    if (ReferenceEquals(res[i], res[j]))
+                    {
+                        res.RemoveAt(j);
+                        j--;
+                    }
+
+            if (res.Count==0)
                 return FALSE;
-            else if(res.Count==1)
+            else if (res.Count == 1)
                 return res.Single();
             else
             {
-                foreach (var subE in res.OfType<NotExpr>())
-                    if (res.Contains(subE.inner))
+                /*foreach (var subE in res)
+                    if (subE is NotExpr && res.Contains(((NotExpr)subE).inner))
+                        return TRUE;*/
+
+                for(var i=0;i<res.Count;i++)
+                    if (res[i] is AndExpr)
+                    {
+                        var andExpr = (AndExpr)res[i];
+                        var orExprs = new BoolExpr[andExpr.elements.Length];
+                        for (var j = 0; j < orExprs.Length; j++)
+                        {
+                            res[i] = andExpr.elements[j];
+                            orExprs[j] = OrExpr.Create(res);
+                        }
+
+                        return AndExpr.Create(orExprs);
+                    }
+
+                //find v !a
+                foreach(var e in res)
+                    if (e is NotExpr && res.Contains(((NotExpr)e).inner))
                         return TRUE;
 
-                var andExpr = (AndExpr)res.FirstOrDefault(e => e is AndExpr);
-                if (!ReferenceEquals(andExpr, null))
-                {
-                    var otherElems = res.Where(e => !ReferenceEquals(e, andExpr));
-                    return AndExpr.Create(andExpr.elements.Select(e => OrExpr.Create(otherElems.Concat(new BoolExpr[] { e }))));
-                }
-
-                return new OrExpr(res.ToArray());
+                res.Sort((a,b) => a.GetHashCode().CompareTo(b.GetHashCode()));
+                return new OrExpr(res);
             }
         }
 
@@ -69,13 +90,22 @@ namespace SATInterface
             }
         }
 
-        public override bool Equals(object _obj)
+        /*public override bool Equals(object _obj)
         {
             var other = _obj as OrExpr;
             if (ReferenceEquals(other, null))
                 return false;
 
-            return elements.Union(other.elements).Count() == elements.Length;
+            if (elements.Length != other.elements.Length)
+                return false;
+
+            foreach (var a in elements)
+                if (!other.elements.Contains(a))
+                    return false;
+            foreach (var a in other.elements)
+                if (!elements.Contains(a))
+                    return false;
+            return true;
         }
 
         private int hashCode;
@@ -83,11 +113,11 @@ namespace SATInterface
         {
             if (hashCode == 0)
             {
-                hashCode = elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b) ^ (1 << 29);
+                hashCode = (int)Model.RotateLeft((uint)elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b),4) ^ (1 << 29);
                 if (hashCode == 0)
                     hashCode++;
             }
             return hashCode;
-        }
+        }*/
     }
 }

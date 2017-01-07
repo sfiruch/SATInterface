@@ -7,13 +7,11 @@ namespace SATInterface
 {
     public class BoolVar:BoolExpr
     {
-        static int NameCounter = 0;
-
-        internal int Id;
+        internal readonly int Id;
         internal bool Value;
-        internal Model Model;
+        internal readonly Model Model;
         private readonly string Name;
-        internal BoolExpr negated;
+        private BoolExpr negated;
 
         internal BoolExpr Negated
         {
@@ -25,13 +23,20 @@ namespace SATInterface
             }
         }
 
-        public BoolVar(Model _model):this(_model,"b"+NameCounter++)
+        public BoolVar(Model _model):this(_model,"b"+(_model.VarCount+1))
         {
         }
 
         public BoolVar(Model _model,string _name)
         {
             Model = _model;
+            Name = _name;
+            Id = ++_model.VarCount;
+            Model.RegisterVariable(this);
+        }
+
+        internal BoolVar(string _name)
+        {
             Name = _name;
         }
 
@@ -55,16 +60,6 @@ namespace SATInterface
             yield return this;
         }
 
-        internal void AssignModelId(Model _model)
-        {
-            if (Model != _model)
-                throw new Exception("Already in another model");
-
-            if (Id == 0)
-                Id = Model.VarIdCounter++;
-        }
-
         public override int GetHashCode() => Id;
-        public override bool Equals(object obj) => ReferenceEquals(this, obj);
     }
 }

@@ -6,7 +6,7 @@ using System.Text;
 
 namespace SATInterface
 {
-    public class AndExpr:BoolExpr
+    public class AndExpr : BoolExpr
     {
         internal readonly BoolExpr[] elements;
 
@@ -19,27 +19,35 @@ namespace SATInterface
 
         public static BoolExpr Create(IEnumerable<BoolExpr> _elems)
         {
-            var res = new HashSet<BoolExpr>();
+            var res = new List<BoolExpr>();
             foreach (var es in _elems)
                 if (ReferenceEquals(es, null))
                     throw new ArgumentNullException();
                 else if (ReferenceEquals(es, FALSE))
                     return FALSE;
                 else if (es is AndExpr)
-                    foreach (var subElement in ((AndExpr)es).elements)
-                        res.Add(subElement);
+                    res.AddRange(((AndExpr)es).elements);
                 else if (!ReferenceEquals(es, TRUE))
-                        res.Add(es);
+                    res.Add(es);
+
+            //remove duplicates
+            /*for (var i = 0; i < res.Count; i++)
+                for (var j = i + 1; j < res.Count; j++)
+                    if (ReferenceEquals(res[i], res[j]))
+                    {
+                        res.RemoveAt(j);
+                        j--;
+                    }*/
 
             if (!res.Any())
                 return TRUE;
-            else if (res.Count==1)
+            else if (res.Count == 1)
                 return res.Single();
             else
             {
-                foreach (var subE in res.OfType<NotExpr>())
-                    if (res.Contains(subE.inner))
-                        return FALSE;
+                /*foreach (var subE in res)
+                    if (res is NotExpr && res.Contains(((NotExpr)subE).inner))
+                        return FALSE;*/
 
                 return new AndExpr(res.ToArray());
             }
@@ -62,13 +70,22 @@ namespace SATInterface
             }
         }
 
-        public override bool Equals(object _obj)
+        /*public override bool Equals(object _obj)
         {
             var other = _obj as AndExpr;
             if (ReferenceEquals(other, null))
                 return false;
 
-            return elements.Union(other.elements).Count() == elements.Length;
+            if (elements.Length != other.elements.Length)
+                return false;
+
+            foreach(var a in elements)
+                if (!other.elements.Contains(a))
+                    return false;
+            foreach (var a in other.elements)
+                if (!elements.Contains(a))
+                    return false;
+            return true;
         }
 
         private int hashCode;
@@ -76,11 +93,11 @@ namespace SATInterface
         {
             if (hashCode == 0)
             {
-                hashCode = elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b) ^ (1 << 30);
+                hashCode = (int)Model.RotateLeft((uint)elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b), 8) ^ (1 << 26);
                 if (hashCode == 0)
                     hashCode++;
             }
             return hashCode;
-        }
+        }*/
     }
 }
