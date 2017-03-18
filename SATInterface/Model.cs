@@ -92,13 +92,19 @@ namespace SATInterface
 
         //Code by Kevin Kibler
         //- http://stackoverflow.com/questions/1542213/how-to-find-the-number-of-cpu-cores-via-net-c
-        private static int GetNumerOfPhysicalCores() => new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor").Get().OfType<ManagementBaseObject>().Sum(i => int.Parse(i["NumberOfCores"].ToString()));
+        private static int GetNumerOfPhysicalCores()
+        {
+            using (var ms = new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor"))
+                return ms.Get()
+                    .OfType<ManagementBaseObject>()
+                    .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
+        }
 
 
-        public void Solve() => Solve("cryptominisat5_simple.exe", $"--verb={(LogOutput ? "1" : "0")} --threads={Threads}");
+        public void Solve() => Solve("cryptominisat5_simple.exe", $"--verb={(LogOutput ? "1" : "0")} --threads={Threads}", "\n");
 
 
-        public void Solve(string _executable, string _arguments)
+        public void Solve(string _executable, string _arguments, string _newLine = null)
         {
             if (proofUnsat)
                 return;
@@ -118,6 +124,7 @@ namespace SATInterface
             //p.PriorityClass = ProcessPriorityClass.BelowNormal;
 
             p.StandardInput.AutoFlush = true;
+            p.StandardInput.NewLine = _newLine ?? Environment.NewLine;
             Write(p.StandardInput);
             p.StandardInput.Close();
 
@@ -128,7 +135,7 @@ namespace SATInterface
             var log = new List<string>();
             var oldCursor = Console.CursorTop - LogLines;
 
-            var assignedVarCnt = 0;
+            //var assignedVarCnt = 0;
             for (var line = p.StandardOutput.ReadLine(); line != null; line = p.StandardOutput.ReadLine())
             {
                 var tk = line.Split(' ').Where(e => e != "").ToArray();
@@ -294,7 +301,7 @@ namespace SATInterface
             }
         }
 
-        public BoolExpr AtMostOneOfCommander(IEnumerable<BoolExpr> _expr)
+        private BoolExpr AtMostOneOfCommander(IEnumerable<BoolExpr> _expr)
         {
             if (_expr.Count() < 6)
                 return AtMostOneOfPairwise(_expr);
