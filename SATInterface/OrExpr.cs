@@ -50,9 +50,8 @@ namespace SATInterface
                         return TRUE;*/
 
                 for(var i=0;i<res.Count;i++)
-                    if (res[i] is AndExpr)
+                    if (res[i] is AndExpr andExpr)
                     {
-                        var andExpr = (AndExpr)res[i];
                         var orExprs = new BoolExpr[andExpr.elements.Length];
                         for (var j = 0; j < orExprs.Length; j++)
                         {
@@ -64,7 +63,7 @@ namespace SATInterface
                     }
 
                 //find v !a
-                foreach(var e in res)
+                foreach (var e in res)
                     if (e is NotExpr && res.Contains(((NotExpr)e).inner))
                         return TRUE;
 
