@@ -56,15 +56,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="build\SATInterface.targets" />
     <None Include="publish.bat" />
     <None Include="SATInterface.nuspec" />
-    <None Include="Install.ps1" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="cryptominisat5_simple.exe">
+    <None Include="cryptominisat5_simple.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="readme.txt" />
+    </None>
+    <None Include="readme.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

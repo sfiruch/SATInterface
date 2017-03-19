@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package >
+<package>
   <metadata>
     <id>deiruch.SATInterface</id>
     <version>$version$</version>
@@ -16,6 +16,8 @@
   </metadata>
   <files>
     <file src="readme.txt" target="" />
-	<file src="Install.ps1" target="tools\Install.ps1" />
+    <file src="build\deiruch.SATInterface.targets" target="build\deiruch.SATInterface.targets" />
+    <file src="cryptominisat5_simple.exe" target="cryptominisat5_simple.exe" />
+	  <!--<file src="Install.ps1" target="tools\Install.ps1" />-->
   </files>
 </package>
