@@ -100,6 +100,61 @@ namespace SATInterface
                     .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
         }
 
+        public void Minimize(UIntVar _obj) => Maximize(_obj.UB - _obj);
+
+        public void Maximize(UIntVar _obj)
+        {
+            Solve();
+            if (IsUnsatisfiable)
+                return;
+
+            var lb = _obj.X;
+            var ub = _obj.UB;
+            var lbAssignment = vars.Values.ToDictionary(v => v.Id, v => v.X);
+
+            var varsCopy = vars.Values.ToArray();
+            var clausesCopy = clauses.ToArray();
+
+            for(;;)
+            {
+                var cur = (lb + 1 + ub) / 2;
+
+                //add additional clauses
+                AddConstr(_obj >= cur);
+                LogOutput = false;
+
+                Solve();
+
+                //restore clauses
+                clauses = new HashSet<string>(clausesCopy);
+
+                if (IsSatisfiable)
+                {
+                    lb = _obj.X;
+                    lbAssignment = vars.Values.ToDictionary(v => v.Id, v => v.X);
+                    proofSat = false;
+                }
+                else if (IsUnsatisfiable)
+                {
+                    ub = cur - 1;
+                    proofUnsat = false;
+                }
+                else
+                    throw new Exception();
+
+                Debug.Assert(lb <= ub);
+                if (lb == ub)
+                    break;
+            }
+
+            //restore best known solution
+            proofSat = true;
+            proofUnsat = false;
+            vars = varsCopy.ToDictionary(v => v.Id, v => v);
+            foreach (var v in vars.Values)
+                v.Value = lbAssignment[v.Id];
+        }
+
 
         public void Solve() => Solve("cryptominisat5_simple.exe", $"--verb={(LogOutput ? "1" : "0")} --threads={Threads}", "\n");
 
@@ -121,8 +176,6 @@ namespace SATInterface
                 UseShellExecute = false
             });
 
-            //p.PriorityClass = ProcessPriorityClass.BelowNormal;
-
             p.StandardInput.AutoFlush = true;
             p.StandardInput.NewLine = _newLine ?? Environment.NewLine;
             Write(p.StandardInput);
@@ -135,7 +188,6 @@ namespace SATInterface
             var log = new List<string>();
             var oldCursor = Console.CursorTop - LogLines;
 
-            //var assignedVarCnt = 0;
             for (var line = p.StandardOutput.ReadLine(); line != null; line = p.StandardOutput.ReadLine())
             {
                 var tk = line.Split(' ').Where(e => e != "").ToArray();
@@ -192,9 +244,6 @@ namespace SATInterface
             }
 
             p.WaitForExit();
-
-            /*if (proofSat && vars.Any())
-                throw new Exception("Undefined vars");*/
         }
 
         public void Write(string _path)

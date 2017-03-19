@@ -9,7 +9,7 @@ namespace SATInterface
     {
         private Model Model;
         private BoolExpr[] bit;
-        private int UB;
+        internal int UB;
 
         public UIntVar(Model _model, int _ub, bool _enforceUB = true)
         {
@@ -25,7 +25,12 @@ namespace SATInterface
                     bit[i] = new BoolVar(_model);
 
                 if (_enforceUB && (UB & (UB + 1)) != 0)
-                    Model.AddConstr(this <= UB);
+                {
+                    //work around shortcut evaluation of comparison
+                    UB++;
+                    Model.AddConstr(this <= _ub);
+                    UB--;
+                }
             }
         }
 
@@ -197,7 +202,7 @@ namespace SATInterface
             var res = new BoolExpr[_a.bit.Length];
             for (var i = 0; i < res.Length; i++)
             {
-                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => (((_v >> j) & 1) == 1) ? _a.bit[j] : !_a.bit[j]));
+                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => (((_v >> j) & 1) == 1) ? _a.bit[j] : !_a.bit[j])).Flatten(_a.Model);
                 res[i] = (_a.bit[i] > (((_v >> i) & 1) == 1)) & allesDavorEq;
             }
 
@@ -215,7 +220,7 @@ namespace SATInterface
             var res = new BoolExpr[_a.bit.Length];
             for (var i = 0; i < res.Length; i++)
             {
-                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => (((_v >> j) & 1) == 1) ? _a.bit[j] : !_a.bit[j]));
+                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => (((_v >> j) & 1) == 1) ? _a.bit[j] : !_a.bit[j])).Flatten(_a.Model);
                 res[i] = (_a.bit[i] < (((_v >> i) & 1) == 1)) & allesDavorEq;
             }
 
@@ -231,7 +236,7 @@ namespace SATInterface
             var res = new BoolExpr[Math.Max(_a.bit.Length, _b.bit.Length)];
             for (var i = 0; i < _a.bit.Length && i < _b.bit.Length; i++)
             {
-                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => _a[j] == _b[j]));
+                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => _a[j] == _b[j])).Flatten(_a.Model);
                 res[i] = (_a.bit[i] < _b.bit[i]) & allesDavorEq;
             }
 
