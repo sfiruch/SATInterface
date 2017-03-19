@@ -117,11 +117,13 @@ namespace SATInterface
 
             for(;;)
             {
+                if (LogOutput)
+                    Console.WriteLine("Maximizing objective, range {lb} - {ub}");
+
                 var cur = (lb + 1 + ub) / 2;
 
                 //add additional clauses
                 AddConstr(_obj >= cur);
-                LogOutput = false;
 
                 Solve();
 
