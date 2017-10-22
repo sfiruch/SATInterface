@@ -56,15 +56,17 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="build\SATInterface.targets" />
+    <None Include="build\deiruch.SATInterface.targets" />
     <None Include="publish.bat" />
     <None Include="SATInterface.nuspec" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cryptominisat5_simple.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="readme.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cryptominisat5.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

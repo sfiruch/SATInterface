@@ -20,7 +20,7 @@ namespace Sudoku
 
             //According to http://www.telegraph.co.uk/news/science/science-news/9359579/Worlds-hardest-sudoku-can-you-crack-it.html
             //this is the "World's hardest Sudoku"...
-            var sudoku = 
+            var sudoku =
                 "8........" +
                 "..36....." +
                 ".7..9.2.." +

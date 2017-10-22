@@ -16,11 +16,12 @@ namespace Maximize
             var x = new UIntVar(m, 1000);
             var y = new UIntVar(m, 200);
 
-            m.AddConstr((x < 512) | (y<100));
+            m.AddConstr((x < 512) | (y < 100));
 
-            m.Maximize(x+y);
+            m.LogOutput = false;
+            m.Maximize(x + y, () => Console.WriteLine($"Intermediate result: {x.X} + {y.X} = {x.X + y.X}"));
 
-            Console.WriteLine($"{x.X} + {y.X} = {x.X+y.X}");
+            Console.WriteLine($"{x.X} + {y.X} = {x.X + y.X}");
             Console.ReadLine();
         }
     }

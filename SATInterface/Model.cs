@@ -86,13 +86,13 @@ namespace SATInterface
         internal void RegisterVariable(BoolVar boolVar) => vars[boolVar.Id] = boolVar;
 
         public bool LogOutput = true;
-        public int Threads = GetNumerOfPhysicalCores();
+        public int Threads = GetNumberOfPhysicalCores();
         public int LogLines = int.MaxValue;
 
 
         //Code by Kevin Kibler
         //- http://stackoverflow.com/questions/1542213/how-to-find-the-number-of-cpu-cores-via-net-c
-        private static int GetNumerOfPhysicalCores()
+        private static int GetNumberOfPhysicalCores()
         {
             using (var ms = new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor"))
                 return ms.Get()
@@ -100,13 +100,16 @@ namespace SATInterface
                     .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
         }
 
-        public void Minimize(UIntVar _obj) => Maximize(_obj.UB - _obj);
+        public void Minimize(UIntVar _obj, Action _solutionCallback=null) => Maximize(_obj.UB - _obj, _solutionCallback);
 
-        public void Maximize(UIntVar _obj)
+        public void Maximize(UIntVar _obj, Action _solutionCallback=null)
         {
             Solve();
             if (IsUnsatisfiable)
                 return;
+
+            if (IsSatisfiable)
+                _solutionCallback?.Invoke();
 
             var lb = _obj.X;
             var ub = _obj.UB;
@@ -132,6 +135,9 @@ namespace SATInterface
 
                 if (IsSatisfiable)
                 {
+                    if (IsSatisfiable)
+                        _solutionCallback?.Invoke();
+
                     lb = _obj.X;
                     lbAssignment = vars.Values.ToDictionary(v => v.Id, v => v.X);
                     proofSat = false;
@@ -158,7 +164,7 @@ namespace SATInterface
         }
 
 
-        public void Solve() => Solve("cryptominisat5_simple.exe", $"--verb={(LogOutput ? "1" : "0")} --threads={Threads}", "\n");
+        public void Solve() => Solve("cryptominisat5.exe", $"--verb={(LogOutput ? "1" : "0")} --threads={Threads}", "\n");
 
 
         public void Solve(string _executable, string _arguments, string _newLine = null)
