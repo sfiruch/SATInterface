@@ -18,6 +18,9 @@ namespace SATInterface
         {
         }
 
+        public static bool operator true(BoolExpr _be) => ReferenceEquals(TRUE,_be);
+        public static bool operator false(BoolExpr _be) => ReferenceEquals(FALSE, _be);
+
         public static implicit operator BoolExpr(bool _v) => _v ? TRUE:FALSE;
 
         public virtual bool X
