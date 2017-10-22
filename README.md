@@ -14,7 +14,7 @@ SATInterface is a .NET library to formulate SAT problems
 - Export to DIMACS files
 - Includes CryptoMiniSAT as default solver (see https://github.com/msoos/cryptominisat)
 
-#Usage example: Sudoku
+# Usage example: Sudoku
 ~~~~cs
 var m = new Model();
 var v = new BoolExpr[9, 9, 9];
