@@ -31,13 +31,14 @@ namespace SATInterface
                     res.Add(es);
 
             //remove duplicates
-            for (var i = 0; i < res.Count; i++)
+            res = res.Distinct().ToList();
+            /*for (var i = 0; i < res.Count; i++)
                 for (var j = i + 1; j < res.Count; j++)
                     if (ReferenceEquals(res[i], res[j]))
                     {
                         res.RemoveAt(j);
                         j--;
-                    }
+                    }*/
 
             if (res.Count==0)
                 return FALSE;
@@ -89,13 +90,13 @@ namespace SATInterface
             }
         }
 
-        /*public override bool Equals(object _obj)
+        public override bool Equals(object _obj)
         {
             var other = _obj as OrExpr;
             if (ReferenceEquals(other, null))
                 return false;
 
-            if (elements.Length != other.elements.Length)
+            if (elements.Count != other.elements.Count)
                 return false;
 
             foreach (var a in elements)
@@ -117,6 +118,6 @@ namespace SATInterface
                     hashCode++;
             }
             return hashCode;
-        }*/
+        }
     }
 }

@@ -86,7 +86,6 @@ namespace SATInterface
         internal void RegisterVariable(BoolVar boolVar) => vars[boolVar.Id] = boolVar;
 
         public bool LogOutput = true;
-        public int Threads = GetNumberOfPhysicalCores();
         public int LogLines = int.MaxValue;
 
 
@@ -100,9 +99,17 @@ namespace SATInterface
                     .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
         }
 
-        public void Minimize(UIntVar _obj, Action _solutionCallback=null) => Maximize(_obj.UB - _obj, _solutionCallback);
+        public enum OptimizationStrategy
+        {
+            BinarySearch,
+            Increasing,
+            Decreasing
+        }
 
-        public void Maximize(UIntVar _obj, Action _solutionCallback=null)
+
+        public void Minimize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch) => Maximize(_obj.UB - _obj, _solutionCallback, _strategy==OptimizationStrategy.Increasing ? OptimizationStrategy.Decreasing : (_strategy==OptimizationStrategy.Decreasing ? OptimizationStrategy.Increasing : _strategy));
+
+        public void Maximize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
         {
             Solve();
             if (IsUnsatisfiable)
@@ -118,12 +125,26 @@ namespace SATInterface
             var varsCopy = vars.Values.ToArray();
             var clausesCopy = clauses.ToArray();
 
-            for(;;)
+            for (; ; )
             {
                 if (LogOutput)
                     Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
 
-                var cur = (lb + 1 + ub) / 2;
+                int cur;
+                switch(_strategy)
+                {
+                    case OptimizationStrategy.BinarySearch:
+                        cur = (lb + 1 + ub) / 2;
+                        break;
+                    case OptimizationStrategy.Decreasing:
+                        cur = ub;
+                        break;
+                    case OptimizationStrategy.Increasing:
+                        cur = lb + 1;
+                        break;
+                    default:
+                        throw new ArgumentException(nameof(_strategy));
+                }
 
                 //add additional clauses
                 AddConstr(_obj >= cur);
@@ -164,10 +185,11 @@ namespace SATInterface
         }
 
 
-        public void Solve() => Solve("cryptominisat5.exe", $"--verb={(LogOutput ? "1" : "0")} --threads={Threads}", "\n");
+        public string SolverExecutable = "cryptominisat5.exe";
+        public string SolverArguments = $"--verb=1 --threads={GetNumberOfPhysicalCores()}";
+        public string SolverCRLF = Environment.NewLine;
 
-
-        public void Solve(string _executable, string _arguments, string _newLine = null)
+        public void Solve(string _executable = null, string _arguments = null, string _newLine = null)
         {
             if (proofUnsat)
                 return;
@@ -176,8 +198,8 @@ namespace SATInterface
 
             var p = Process.Start(new ProcessStartInfo()
             {
-                FileName = _executable,
-                Arguments = _arguments,
+                FileName = _executable ?? SolverExecutable,
+                Arguments = _arguments ?? SolverArguments,
 
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
@@ -185,7 +207,7 @@ namespace SATInterface
             });
 
             p.StandardInput.AutoFlush = true;
-            p.StandardInput.NewLine = _newLine ?? Environment.NewLine;
+            p.StandardInput.NewLine = _newLine ?? SolverCRLF;
             Write(p.StandardInput);
             p.StandardInput.Close();
 

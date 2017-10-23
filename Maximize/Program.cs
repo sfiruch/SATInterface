@@ -19,9 +19,9 @@ namespace Maximize
             m.AddConstr((x < 512) | (y < 100));
 
             m.LogOutput = false;
-            m.Maximize(x + y, () => Console.WriteLine($"Intermediate result: {x.X} + {y.X} = {x.X + y.X}"));
+            m.Maximize(x + y, () => Console.WriteLine($"Intermediate result: {x.X} + {y.X} = {x.X + y.X}"),Model.OptimizationStrategy.Increasing);
 
-            Console.WriteLine($"{x.X} + {y.X} = {x.X + y.X}");
+            Console.WriteLine($"Final result: {x.X} + {y.X} = {x.X + y.X}");
             Console.ReadLine();
         }
     }

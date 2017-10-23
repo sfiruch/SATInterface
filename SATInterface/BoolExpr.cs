@@ -5,11 +5,7 @@ using System.Text;
 
 namespace SATInterface
 {
-#pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
-#pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
     public class BoolExpr
-#pragma warning restore CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
-#pragma warning restore CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
     {
         public static readonly BoolExpr TRUE = new BoolVar("true");
         public static readonly BoolExpr FALSE = new BoolVar("false");
@@ -139,5 +135,16 @@ namespace SATInterface
 
         public static BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => ((!_if | _then) & (_if | _else) & (_then | _else)) | (_then & _else);
 
+        public override int GetHashCode()
+        {
+            if (ReferenceEquals(this, TRUE))
+                return -1830369473;
+            else if (ReferenceEquals(this, FALSE))
+                return 43589799;
+            else
+                return 0;
+        }
+
+        public override bool Equals(object obj) => ReferenceEquals(this,obj);
     }
 }

@@ -31,6 +31,7 @@ namespace SATInterface
                     res.Add(es);
 
             //remove duplicates
+            res = res.Distinct().ToList();
             /*for (var i = 0; i < res.Count; i++)
                 for (var j = i + 1; j < res.Count; j++)
                     if (ReferenceEquals(res[i], res[j]))
@@ -70,7 +71,7 @@ namespace SATInterface
             }
         }
 
-        /*public override bool Equals(object _obj)
+        public override bool Equals(object _obj)
         {
             var other = _obj as AndExpr;
             if (ReferenceEquals(other, null))
@@ -98,6 +99,6 @@ namespace SATInterface
                     hashCode++;
             }
             return hashCode;
-        }*/
+        }
     }
 }
