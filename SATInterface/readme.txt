@@ -39,6 +39,15 @@ for (var n = 0; n < 9; n++)
                 v[x + 0, y + 1, n], v[x + 1, y + 1, n], v[x + 2, y + 1, n],
                 v[x + 0, y + 2, n], v[x + 1, y + 2, n], v[x + 2, y + 2, n]));
 
+
+/* perhaps you'd like to run linux solvers on WSL?
+m.UseTmpInputFile = "tmp.dimacs";
+m.UseTmpOutputFile = "tmp.sol";
+m.SolverExecutable = "ubuntu";
+m.SolverArguments = $"run ./lingeling {m.UseTmpInputFile} | tee stdout {m.UseTmpOutputFile}";
+//m.SolverArguments = $"run ./riss -auto {m.UseTmpInputFile} {m.UseTmpOutputFile}";
+*/
+
 m.Solve();
 
 if(m.IsSatisfiable)

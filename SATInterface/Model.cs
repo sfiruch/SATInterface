@@ -107,16 +107,18 @@ namespace SATInterface
         }
 
 
-        public void Minimize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch) => Maximize(_obj.UB - _obj, _solutionCallback, _strategy==OptimizationStrategy.Increasing ? OptimizationStrategy.Decreasing : (_strategy==OptimizationStrategy.Decreasing ? OptimizationStrategy.Increasing : _strategy));
+        public void Minimize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch) => Maximize(_obj.UB - _obj, _solutionCallback, _strategy == OptimizationStrategy.Increasing ? OptimizationStrategy.Decreasing : (_strategy == OptimizationStrategy.Decreasing ? OptimizationStrategy.Increasing : _strategy));
 
         public void Maximize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
         {
             Solve();
+
             if (IsUnsatisfiable)
                 return;
-
-            if (IsSatisfiable)
+            else if (IsSatisfiable)
                 _solutionCallback?.Invoke();
+            else
+                throw new Exception("Solver failed (!SAT & !UNSAT)");
 
             var lb = _obj.X;
             var ub = _obj.UB;
@@ -131,7 +133,7 @@ namespace SATInterface
                     Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
 
                 int cur;
-                switch(_strategy)
+                switch (_strategy)
                 {
                     case OptimizationStrategy.BinarySearch:
                         cur = (lb + 1 + ub) / 2;
@@ -156,6 +158,9 @@ namespace SATInterface
 
                 if (IsSatisfiable)
                 {
+                    if (_obj.X < cur)
+                        throw new Exception("Unreliable solver (SAT & Obj<Cur)");
+
                     if (IsSatisfiable)
                         _solutionCallback?.Invoke();
 
@@ -169,7 +174,7 @@ namespace SATInterface
                     proofUnsat = false;
                 }
                 else
-                    throw new Exception();
+                    throw new Exception("Solver failed (!SAT & !UNSAT)");
 
                 Debug.Assert(lb <= ub);
                 if (lb == ub)
@@ -184,10 +189,12 @@ namespace SATInterface
                 v.Value = lbAssignment[v.Id];
         }
 
-
+        public string UseTmpInputFile = null;
+        public string UseTmpOutputFile = null;
+        public bool DeleteTmpFiles = true;
         public string SolverExecutable = "cryptominisat5.exe";
         public string SolverArguments = $"--verb=1 --threads={GetNumberOfPhysicalCores()}";
-        public string SolverCRLF = Environment.NewLine;
+        public string SolverCRLF = "\n"; // Environment.NewLine is unreliable - many solvers don't handle CRLF correctly, LF seems to be more compatible
 
         public void Solve(string _executable = null, string _arguments = null, string _newLine = null)
         {
@@ -196,21 +203,37 @@ namespace SATInterface
 
             proofSat = false;
 
+            if (UseTmpInputFile != null)
+                Write(UseTmpInputFile);
+
             var p = Process.Start(new ProcessStartInfo()
             {
                 FileName = _executable ?? SolverExecutable,
                 Arguments = _arguments ?? SolverArguments,
 
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
+                RedirectStandardInput = UseTmpInputFile == null,
+                RedirectStandardOutput = UseTmpOutputFile == null,
                 UseShellExecute = false
             });
 
-            p.StandardInput.AutoFlush = true;
-            p.StandardInput.NewLine = _newLine ?? SolverCRLF;
-            Write(p.StandardInput);
-            p.StandardInput.Close();
-
+            Thread satWriterThread = null;
+            if (UseTmpInputFile == null)
+            {
+                satWriterThread = new Thread(new ParameterizedThreadStart(delegate
+                {
+                    p.StandardInput.AutoFlush = false;
+                    p.StandardInput.NewLine = _newLine ?? SolverCRLF;
+                    Write(p.StandardInput);
+                    p.StandardInput.Close();
+                }))
+                {
+                    IsBackground = true,
+                    Name = "SAT Writer Thread"
+                };
+                satWriterThread.Start();
+            }
+            else
+                p.WaitForExit();
 
             if (LogOutput && LogLines != int.MaxValue)
                 Console.WriteLine(new string('\n', LogLines));
@@ -218,62 +241,80 @@ namespace SATInterface
             var log = new List<string>();
             var oldCursor = Console.CursorTop - LogLines;
 
-            for (var line = p.StandardOutput.ReadLine(); line != null; line = p.StandardOutput.ReadLine())
+            try
             {
-                var tk = line.Split(' ').Where(e => e != "").ToArray();
-                if (tk.Length == 0)
-                {
-                    //skip empty lines
-                }
-                if (tk.Length > 1 && tk[0] == "c")
-                {
-                    if (LogOutput && LogLines != int.MaxValue)
+                using (StreamReader output = UseTmpOutputFile == null ? p.StandardOutput : File.OpenText(UseTmpOutputFile))
+                    for (var line = output.ReadLine(); line != null; line = output.ReadLine())
                     {
-                        if (line.Length > Console.BufferWidth - 1)
-                            line = line.Substring(0, Console.BufferWidth - 1);
-                        if (log.Any() && line.Length < log.Last().TrimEnd(' ').Length)
-                            log.Add(line + new string(' ', log.Last().TrimEnd(' ').Length - line.Length));
-                        else
-                            log.Add(line);
-
-                        if (log.Count > LogLines)
+                        var tk = line.Split(' ').Where(e => e != "").ToArray();
+                        if (tk.Length == 0)
                         {
-                            log.RemoveAt(0);
-                            Console.CursorTop = oldCursor;
-                            for (var i = 0; i < log.Count; i++)
-                                Console.WriteLine(log[i]);
+                            //skip empty lines
                         }
-                        else
+                        if (tk.Length > 1 && tk[0] == "c" && UseTmpOutputFile==null)
                         {
-                            Console.CursorTop = oldCursor + log.Count - 1;
-                            Console.WriteLine(line);
+                            if (LogOutput && LogLines != int.MaxValue)
+                            {
+                                if (line.Length > Console.BufferWidth - 1)
+                                    line = line.Substring(0, Console.BufferWidth - 1);
+                                if (log.Any() && line.Length < log.Last().TrimEnd(' ').Length)
+                                    log.Add(line + new string(' ', log.Last().TrimEnd(' ').Length - line.Length));
+                                else
+                                    log.Add(line);
+
+                                if (log.Count > LogLines)
+                                {
+                                    log.RemoveAt(0);
+                                    Console.CursorTop = oldCursor;
+                                    for (var i = 0; i < log.Count; i++)
+                                        Console.WriteLine(log[i]);
+                                }
+                                else
+                                {
+                                    Console.CursorTop = oldCursor + log.Count - 1;
+                                    Console.WriteLine(line);
+                                }
+                            }
+                            else if (LogOutput)
+                                Console.WriteLine(line);
+                        }
+                        if (tk.Length == 2 && tk[0] == "s")
+                        {
+                            if (LogOutput && UseTmpOutputFile == null)
+                                Console.WriteLine(line);
+                            if (tk[1] == "SATISFIABLE")
+                                proofSat = true;
+                            else if (tk[1] == "UNSATISFIABLE")
+                                proofUnsat = true;
+                            else
+                                throw new Exception(tk[2]);
+                        }
+                        else if (tk.Length >= 2 && tk[0] == "v")
+                        {
+                            foreach (var n in tk.Skip(1).Select(s => int.Parse(s)))
+                                if (n > 0)
+                                    vars[n].Value = true;
+                                else if (n < 0)
+                                    vars[-n].Value = false;
                         }
                     }
-                    else if (LogOutput)
-                        Console.WriteLine(line);
-                }
-                if (tk.Length == 2 && tk[0] == "s")
-                {
-                    if (LogOutput)
-                        Console.WriteLine(line);
-                    if (tk[1] == "SATISFIABLE")
-                        proofSat = true;
-                    else if (tk[1] == "UNSATISFIABLE")
-                        proofUnsat = true;
-                    else
-                        throw new Exception(tk[2]);
-                }
-                else if (tk.Length >= 2 && tk[0] == "v")
-                {
-                    foreach (var n in tk.Skip(1).Select(s => int.Parse(s)))
-                        if (n > 0)
-                            vars[n].Value = true;
-                        else if (n < 0)
-                            vars[-n].Value = false;
-                }
             }
+            finally
+            {
+                satWriterThread?.Abort();
+                p.WaitForExit();
 
-            p.WaitForExit();
+                if(UseTmpInputFile==null)
+                    p.StandardInput.Dispose();
+                if (UseTmpOutputFile == null)
+                    p.StandardOutput.Dispose();
+                p.Dispose();
+
+                if (DeleteTmpFiles && UseTmpInputFile != null)
+                    File.Delete(UseTmpInputFile);
+                if (DeleteTmpFiles && UseTmpOutputFile != null)
+                    File.Delete(UseTmpOutputFile);
+            }
         }
 
         public void Write(string _path)
@@ -285,9 +326,14 @@ namespace SATInterface
         public void Write(StreamWriter _out)
         {
             _out.WriteLine("c Created by SATInterface");
+            _out.Flush();
             _out.WriteLine($"p cnf {vars.Count} {clauses.Count}");
+            _out.Flush();
             foreach (var line in clauses)
+            {
                 _out.WriteLine(line);
+                _out.Flush();
+            }
         }
 
         //code by Noldorin/Simon
