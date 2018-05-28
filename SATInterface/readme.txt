@@ -3,7 +3,7 @@
 //
 //
 // By default the bundeled excellent CryptoMiniSAT solver is used as backend, but any solver
-// that supports DIMACS can be used (e.g. Lingeling, RISS, MiniSAT, ...). CryptoMiniSAT
+// that supports DIMACS can be used (e.g. Lingeling, Clasp, RISS, MiniSAT, ...). CryptoMiniSAT
 // is MIT licensed and available from https://github.com/msoos/cryptominisat
 //
 //
@@ -35,17 +35,15 @@ for (var x = 0; x < 9; x++)
 for (var n = 0; n < 9; n++)
     for(var y=0;y<9;y+=3)
         for (var x = 0; x < 9; x += 3)
-            m.AddConstr(m.ExactlyOneOf(v[x+0, y+0, n], v[x + 1, y + 0, n], v[x + 2, y + 0, n],
+            m.AddConstr(m.ExactlyOneOf(v[x + 0, y + 0, n], v[x + 1, y + 0, n], v[x + 2, y + 0, n],
                 v[x + 0, y + 1, n], v[x + 1, y + 1, n], v[x + 2, y + 1, n],
                 v[x + 0, y + 2, n], v[x + 1, y + 2, n], v[x + 2, y + 2, n]));
 
 
-/* perhaps you'd like to run linux solvers on WSL?
-m.UseTmpInputFile = "tmp.dimacs";
+/* perhaps you'd like to use another solver via WSL?
 m.UseTmpOutputFile = "tmp.sol";
-m.SolverExecutable = "ubuntu";
-m.SolverArguments = $"run ./lingeling {m.UseTmpInputFile} | tee stdout {m.UseTmpOutputFile}";
-//m.SolverArguments = $"run ./riss -auto {m.UseTmpInputFile} {m.UseTmpOutputFile}";
+m.SolverExecutable = $@"{(Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "sysnative") : Environment.GetFolderPath(Environment.SpecialFolder.System))}\wsl.exe";
+m.SolverArguments = $"./plingeling | tee {m.UseTmpOutputFile} | sed '/^v / d'";
 */
 
 m.Solve();

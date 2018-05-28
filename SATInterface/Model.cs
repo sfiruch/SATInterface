@@ -39,7 +39,7 @@ namespace SATInterface
 
         private void AddConstrInternal(BoolExpr _c)
         {
-            if (ReferenceEquals(_c, BoolExpr.FALSE))
+            if (ReferenceEquals(_c, BoolExpr.False))
                 proofUnsat = true;
             else if (_c is BoolVar)
                 clauses.Add($"{((BoolVar)_c).Id} 0");
@@ -77,7 +77,7 @@ namespace SATInterface
             if (_clause is AndExpr)
                 foreach (var e in ((AndExpr)_clause).elements)
                     AddConstrInternal(e);
-            else if (!ReferenceEquals(_clause, BoolExpr.TRUE))
+            else if (!ReferenceEquals(_clause, BoolExpr.True))
                 AddConstrInternal(_clause);
 
             proofSat = false;
@@ -89,14 +89,17 @@ namespace SATInterface
         public int LogLines = int.MaxValue;
 
 
-        //Code by Kevin Kibler
-        //- http://stackoverflow.com/questions/1542213/how-to-find-the-number-of-cpu-cores-via-net-c
         private static int GetNumberOfPhysicalCores()
         {
-            using (var ms = new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor"))
-                return ms.Get()
-                    .OfType<ManagementBaseObject>()
-                    .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
+            if (Environment.OSVersion.Platform == PlatformID.Unix)
+                return Environment.ProcessorCount;
+            else
+                //Code by Kevin Kibler
+                //- http://stackoverflow.com/questions/1542213/how-to-find-the-number-of-cpu-cores-via-net-c
+                using (var ms = new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor"))
+                    return ms.Get()
+                        .OfType<ManagementBaseObject>()
+                        .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
         }
 
         public enum OptimizationStrategy
@@ -161,8 +164,7 @@ namespace SATInterface
                     if (_obj.X < cur)
                         throw new Exception("Unreliable solver (SAT & Obj<Cur)");
 
-                    if (IsSatisfiable)
-                        _solutionCallback?.Invoke();
+                    _solutionCallback?.Invoke();
 
                     lb = _obj.X;
                     lbAssignment = vars.Values.ToDictionary(v => v.Id, v => v.X);
@@ -232,7 +234,7 @@ namespace SATInterface
                 };
                 satWriterThread.Start();
             }
-            else
+            if (UseTmpOutputFile != null)
                 p.WaitForExit();
 
             if (LogOutput && LogLines != int.MaxValue)
@@ -240,10 +242,10 @@ namespace SATInterface
 
             var log = new List<string>();
             var oldCursor = Console.CursorTop - LogLines;
-
             try
             {
                 using (StreamReader output = UseTmpOutputFile == null ? p.StandardOutput : File.OpenText(UseTmpOutputFile))
+                {
                     for (var line = output.ReadLine(); line != null; line = output.ReadLine())
                     {
                         var tk = line.Split(' ').Where(e => e != "").ToArray();
@@ -251,7 +253,7 @@ namespace SATInterface
                         {
                             //skip empty lines
                         }
-                        if (tk.Length > 1 && tk[0] == "c" && UseTmpOutputFile==null)
+                        if (tk.Length > 1 && tk[0] == "c" && UseTmpOutputFile == null)
                         {
                             if (LogOutput && LogLines != int.MaxValue)
                             {
@@ -298,13 +300,14 @@ namespace SATInterface
                                     vars[-n].Value = false;
                         }
                     }
+                }
             }
             finally
             {
                 satWriterThread?.Abort();
                 p.WaitForExit();
 
-                if(UseTmpInputFile==null)
+                if (UseTmpInputFile == null)
                     p.StandardInput.Dispose();
                 if (UseTmpOutputFile == null)
                     p.StandardOutput.Dispose();
@@ -341,10 +344,13 @@ namespace SATInterface
         internal static uint RotateLeft(uint value, int count) => (value << count) | (value >> (32 - count));
         internal static uint RotateRight(uint value, int count) => (value >> count) | (value << (32 - count));
 
+
+        public UIntVar Sum(params BoolExpr[] _count) => Sum((IEnumerable<BoolExpr>)_count);
+
         public UIntVar Sum(IEnumerable<BoolExpr> _count)
         {
-            var simplified = _count.Where(b => !ReferenceEquals(b, BoolExpr.FALSE)).ToArray();
-            var trueCount = simplified.Count(b => ReferenceEquals(b, BoolExpr.TRUE));
+            var simplified = _count.Where(b => !ReferenceEquals(b, BoolExpr.False)).ToArray();
+            var trueCount = simplified.Count(b => ReferenceEquals(b, BoolExpr.True));
 
             UIntVar sum;
             if (trueCount == 0)
@@ -352,7 +358,7 @@ namespace SATInterface
             else
                 sum = UIntVar.Const(this, trueCount);
 
-            simplified = simplified.Where(b => !ReferenceEquals(b, BoolExpr.TRUE)).ToArray();
+            simplified = simplified.Where(b => !ReferenceEquals(b, BoolExpr.True)).ToArray();
             switch (simplified.Length)
             {
                 case 0:
@@ -360,7 +366,7 @@ namespace SATInterface
                 case 1:
                     return sum + simplified[0];
                 /*case 2:
-                    return sum + simplified[0] + simplified[1];*/
+                    return sum + (simplified[0] + simplified[1]);*/
                 default:
                     var firstHalf = simplified.Take(simplified.Length / 2);
                     var secondHalf = simplified.Skip(simplified.Length / 2);
@@ -544,17 +550,17 @@ namespace SATInterface
 
         public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method = ExactlyKOfMethod.UnaryCount)
         {
-            var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.FALSE)).ToArray();
+            var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.False)).ToArray();
 
-            var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.TRUE));
+            var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.True));
             if (trueCount > 0)
             {
                 _k -= trueCount;
-                expr = expr.Where(e => !ReferenceEquals(e, BoolExpr.TRUE)).ToArray();
+                expr = expr.Where(e => !ReferenceEquals(e, BoolExpr.True)).ToArray();
             }
 
             if (_k < 0 || _k > expr.Length)
-                return BoolExpr.FALSE;
+                return BoolExpr.False;
             else if (_k == 0)
                 return !OrExpr.Create(expr);
             else if (_k == expr.Length)
@@ -641,13 +647,13 @@ namespace SATInterface
                     return new BoolExpr[] { _e.Single() };
                 default:
                     var R = new BoolExpr[len + 2];
-                    R[0] = BoolExpr.TRUE;
+                    R[0] = BoolExpr.True;
                     for (var i = 1; i < R.Length - 1; i++)
                         R[i] = new BoolVar(this);
-                    R[R.Length - 1] = BoolExpr.FALSE;
+                    R[R.Length - 1] = BoolExpr.False;
 
-                    var A = new BoolExpr[] { BoolExpr.TRUE }.Concat(UnaryCount(_e.Take(len / 2))).Concat(new BoolExpr[] { BoolExpr.FALSE }).ToArray();
-                    var B = new BoolExpr[] { BoolExpr.TRUE }.Concat(UnaryCount(_e.Skip(len / 2))).Concat(new BoolExpr[] { BoolExpr.FALSE }).ToArray();
+                    var A = new BoolExpr[] { BoolExpr.True }.Concat(UnaryCount(_e.Take(len / 2))).Concat(new BoolExpr[] { BoolExpr.False }).ToArray();
+                    var B = new BoolExpr[] { BoolExpr.True }.Concat(UnaryCount(_e.Skip(len / 2))).Concat(new BoolExpr[] { BoolExpr.False }).ToArray();
                     for (var a = 0; a < A.Length - 1; a++)
                         for (var b = 0; b < B.Length - 1; b++)
                         {

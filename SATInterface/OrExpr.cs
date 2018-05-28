@@ -23,11 +23,11 @@ namespace SATInterface
             foreach (var es in _elems)
                 if (ReferenceEquals(es, null))
                     throw new ArgumentNullException();
-                else if (ReferenceEquals(es, TRUE))
-                    return TRUE;
+                else if (ReferenceEquals(es, True))
+                    return True;
                 else if (es is OrExpr)
                     res.AddRange(((OrExpr)es).elements);
-                else if (!ReferenceEquals(es, FALSE))
+                else if (!ReferenceEquals(es, False))
                     res.Add(es);
 
             //remove duplicates
@@ -41,7 +41,7 @@ namespace SATInterface
                     }*/
 
             if (res.Count==0)
-                return FALSE;
+                return False;
             else if (res.Count == 1)
                 return res.Single();
             else
@@ -66,7 +66,7 @@ namespace SATInterface
                 //find v !a
                 foreach (var e in res)
                     if (e is NotExpr && res.Contains(((NotExpr)e).inner))
-                        return TRUE;
+                        return True;
 
                 res.Sort((a,b) => a.GetHashCode().CompareTo(b.GetHashCode()));
                 return new OrExpr(res);

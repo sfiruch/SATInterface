@@ -17,7 +17,7 @@ namespace SATInterface
         {
             get
             {
-                if (ReferenceEquals(negated, null))
+                if (negated is null)
                     negated = new NotExpr(this);
                 return negated;
             }
@@ -46,9 +46,9 @@ namespace SATInterface
         {
             get
             {
-                if (ReferenceEquals(this, TRUE))
+                if (ReferenceEquals(this, True))
                     return true;
-                if (ReferenceEquals(this, FALSE))
+                if (ReferenceEquals(this, False))
                     return false;
 
                 return Value;

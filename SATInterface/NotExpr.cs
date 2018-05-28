@@ -19,10 +19,10 @@ namespace SATInterface
         {
             if (_inner is NotExpr)
                 return ((NotExpr)_inner).inner;
-            else if (ReferenceEquals(_inner, TRUE))
-                return FALSE;
-            else if (ReferenceEquals(_inner, FALSE))
-                return TRUE;
+            else if (ReferenceEquals(_inner, True))
+                return False;
+            else if (ReferenceEquals(_inner, False))
+                return True;
             else if (_inner is BoolVar)
                 return ((BoolVar)_inner).Negated;
             else if (_inner is AndExpr)

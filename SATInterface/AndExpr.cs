@@ -23,11 +23,11 @@ namespace SATInterface
             foreach (var es in _elems)
                 if (ReferenceEquals(es, null))
                     throw new ArgumentNullException();
-                else if (ReferenceEquals(es, FALSE))
-                    return FALSE;
+                else if (ReferenceEquals(es, False))
+                    return False;
                 else if (es is AndExpr)
                     res.AddRange(((AndExpr)es).elements);
-                else if (!ReferenceEquals(es, TRUE))
+                else if (!ReferenceEquals(es, True))
                     res.Add(es);
 
             //remove duplicates
@@ -41,7 +41,7 @@ namespace SATInterface
                     }*/
 
             if (!res.Any())
-                return TRUE;
+                return True;
             else if (res.Count == 1)
                 return res.Single();
             else

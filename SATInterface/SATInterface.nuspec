@@ -11,7 +11,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
     <releaseNotes></releaseNotes>
-    <copyright>Copyright 2017 Simon Felix</copyright>
+    <copyright>Copyright 2018 Simon Felix</copyright>
     <tags>SAT cryptominisat DIMACS</tags>
   </metadata>
   <files>
