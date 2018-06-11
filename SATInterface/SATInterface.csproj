@@ -69,17 +69,12 @@
     <None Include="readme.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cryptominisat5.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="cryptominisat5win.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="clasp.exe" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cryptominisat5-win-amd64.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

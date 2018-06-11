@@ -19,9 +19,7 @@ namespace Maximize
             m.AddConstr((x < 512) | (y < 100));
 
             m.LogOutput = false;
-            m.SolverExecutable = @"C:\Users\de\Source\Projects\SAT\SAT\bin\Debug\SAT.exe";
-            m.SolverArguments = "";
-            m.Maximize(x + 7 * y, () => Console.WriteLine($"Intermediate result: {x.X} + 7*{y.X} = {x.X + 7*y.X}"),Model.OptimizationStrategy.BinarySearch);
+            m.Maximize(x + 7 * y, () => Console.WriteLine($"Intermediate result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}"), Model.OptimizationStrategy.BinarySearch);
 
             Console.WriteLine($"Final result: {x.X} + 7*{y.X} = {x.X + 7*y.X}");
             Console.ReadLine();
