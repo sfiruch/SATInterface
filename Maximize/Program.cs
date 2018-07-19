@@ -15,13 +15,15 @@ namespace Maximize
 
             var x = new UIntVar(m, 1000);
             var y = new UIntVar(m, 200);
+            var c = new UIntVar(m, 1000*200);
 
             m.AddConstr((x < 512) | (y < 100));
+            m.AddConstr(c == x*y);
 
             m.LogOutput = false;
-            m.Maximize(x + 7 * y, () => Console.WriteLine($"Intermediate result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}"), Model.OptimizationStrategy.BinarySearch);
+            m.Maximize(x + 7 * y, () => Console.WriteLine($"Intermediate result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}, x*y = {c.X}"), Model.OptimizationStrategy.BinarySearch);
 
-            Console.WriteLine($"Final result: {x.X} + 7*{y.X} = {x.X + 7*y.X}");
+            Console.WriteLine($"Final result: {x.X} + 7*{y.X} = {x.X + 7*y.X}, x*y = {c.X}");
             Console.ReadLine();
         }
     }

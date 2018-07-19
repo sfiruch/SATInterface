@@ -298,6 +298,23 @@ namespace SATInterface
             return _a.Model.Sum(sum);
         }
 
+        public static UIntVar operator *(UIntVar _a, UIntVar _b)
+        {
+            if (_a.UB == 0 || _b.UB == 0)
+                return Const(_a.Model, 0);
+
+            if (_a.UB > _b.UB)
+                return _b * _a;
+
+            var sum = new List<UIntVar>();
+            for (var b = 0; b < _a.bit.Length; b++)
+                sum.Add((_b << b) * _a.bit[b]);
+
+            var res = _a.Model.Sum(sum);
+            res.UB = _a.UB * _b.UB;
+            return res;
+        }
+
         public static UIntVar operator +(BoolExpr _b, UIntVar _a) => _a + _b;
         public static UIntVar operator +(UIntVar _a, BoolExpr _b)
         {

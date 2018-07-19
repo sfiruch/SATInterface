@@ -194,7 +194,7 @@ namespace SATInterface
         public string UseTmpInputFile = null;
         public string UseTmpOutputFile = null;
         public bool DeleteTmpFiles = true;
-        public string SolverExecutable = "cryptominisat5.exe";
+        public string SolverExecutable = "cryptominisat5-win-amd64.exe";
         public string SolverArguments = $"--verb=1 --threads={GetNumberOfPhysicalCores()}";
         public string SolverCRLF = "\n"; // Environment.NewLine is unreliable - many solvers don't handle CRLF correctly, LF seems to be more compatible
 

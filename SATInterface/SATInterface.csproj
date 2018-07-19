@@ -69,9 +69,6 @@
     <None Include="readme.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="clasp.exe" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="cryptominisat5-win-amd64.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
