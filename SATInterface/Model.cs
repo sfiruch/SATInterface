@@ -12,7 +12,7 @@ namespace SATInterface
     public class Model
     {
         internal int VarCount = 0;
-        private HashSet<string> clauses = new HashSet<string>();
+        private HashSet<int[]> clauses = new HashSet<int[]>();
         private Dictionary<int, BoolVar> vars = new Dictionary<int, BoolVar>();
         internal bool proofSat = false;
         internal bool proofUnsat = false;
@@ -42,28 +42,23 @@ namespace SATInterface
             if (ReferenceEquals(_c, BoolExpr.False))
                 proofUnsat = true;
             else if (_c is BoolVar)
-                clauses.Add($"{((BoolVar)_c).Id} 0");
+                clauses.Add(new[] { ((BoolVar)_c).Id });
             else if (_c is NotExpr)
-                clauses.Add($"-{((NotExpr)_c).inner.Id} 0");
+                clauses.Add(new[] { -((NotExpr)_c).inner.Id });
             else if (_c is OrExpr)
             {
-                var sb = new StringBuilder(((OrExpr)_c).elements.Count * 7 + 10);
+                var sb = new int[((OrExpr)_c).elements.Count];
+                var i = 0;
                 foreach (var e in ((OrExpr)_c).elements)
                     if (e is BoolVar)
-                    {
-                        sb.Append(((BoolVar)e).Id.ToString());
-                        sb.Append(' ');
-                    }
+                        sb[i++] = ((BoolVar)e).Id;
                     else if (e is NotExpr)
-                    {
-                        sb.Append((-((NotExpr)e).inner.Id).ToString());
-                        sb.Append(' ');
-                    }
+                        sb[i++] = -((NotExpr)e).inner.Id;
                     else
                         throw new Exception(e.GetType().ToString());
 
-                sb.Append('0');
-                clauses.Add(sb.ToString());
+                Debug.Assert(i == sb.Length);
+                clauses.Add(sb);
             }
             else
                 throw new Exception(_c.GetType().ToString());
@@ -87,20 +82,6 @@ namespace SATInterface
 
         public bool LogOutput = true;
         public int LogLines = int.MaxValue;
-
-
-        private static int GetNumberOfPhysicalCores()
-        {
-            if (Environment.OSVersion.Platform == PlatformID.Unix)
-                return Environment.ProcessorCount;
-            else
-                //Code by Kevin Kibler
-                //- http://stackoverflow.com/questions/1542213/how-to-find-the-number-of-cpu-cores-via-net-c
-                using (var ms = new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor"))
-                    return ms.Get()
-                        .OfType<ManagementBaseObject>()
-                        .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
-        }
 
         public enum OptimizationStrategy
         {
@@ -157,7 +138,7 @@ namespace SATInterface
                 Solve();
 
                 //restore clauses
-                clauses = new HashSet<string>(clausesCopy);
+                clauses = new HashSet<int[]>(clausesCopy);
 
                 if (IsSatisfiable)
                 {
@@ -191,40 +172,60 @@ namespace SATInterface
                 v.Value = lbAssignment[v.Id];
         }
 
-        public string UseTmpInputFile = null;
-        public string UseTmpOutputFile = null;
-        public bool DeleteTmpFiles = true;
-        public string SolverExecutable = "cryptominisat5-win-amd64.exe";
-        public string SolverArguments = $"--verb=1 --threads={GetNumberOfPhysicalCores()}";
-        public string SolverCRLF = "\n"; // Environment.NewLine is unreliable - many solvers don't handle CRLF correctly, LF seems to be more compatible
-
-        public void Solve(string _executable = null, string _arguments = null, string _newLine = null)
+        public void Solve()
         {
             if (proofUnsat)
                 return;
 
             proofSat = false;
 
-            if (UseTmpInputFile != null)
-                Write(UseTmpInputFile);
+            //set up model
+            using (var m = new CryptoMiniSat())
+            {
+                m.AddVars(vars.Count);
+                foreach (var line in clauses)
+                    m.AddClause(line);
+
+                if (m.Solve())
+                {
+                    proofSat = true;
+                    var res = m.GetModel();
+                    Debug.Assert(res.Length == vars.Count);
+
+                    for (var i = 0; i < vars.Count; i++)
+                        vars[i + 1].Value = res[i];
+                }
+                else
+                    proofUnsat = true;
+            }
+        }
+
+        public void SolveWithExternalSolver(string _executable = null, string _arguments = null, string _newLine = null, string _tmpInputFilename = null, string _tmpOutputFilename = null)
+        {
+            if (proofUnsat)
+                return;
+
+            proofSat = false;
+
+            if (_tmpInputFilename != null)
+                Write(_tmpInputFilename);
 
             var p = Process.Start(new ProcessStartInfo()
             {
-                FileName = _executable ?? SolverExecutable,
-                Arguments = _arguments ?? SolverArguments,
-
-                RedirectStandardInput = UseTmpInputFile == null,
-                RedirectStandardOutput = UseTmpOutputFile == null,
+                FileName = _executable,
+                Arguments = _arguments,
+                RedirectStandardInput = _tmpInputFilename == null,
+                RedirectStandardOutput = _tmpOutputFilename == null,
                 UseShellExecute = false
             });
 
             Thread satWriterThread = null;
-            if (UseTmpInputFile == null)
+            if (_tmpInputFilename == null)
             {
                 satWriterThread = new Thread(new ParameterizedThreadStart(delegate
                 {
                     p.StandardInput.AutoFlush = false;
-                    p.StandardInput.NewLine = _newLine ?? SolverCRLF;
+                    p.StandardInput.NewLine = _newLine ?? _newLine;
                     Write(p.StandardInput);
                     p.StandardInput.Close();
                 }))
@@ -234,7 +235,7 @@ namespace SATInterface
                 };
                 satWriterThread.Start();
             }
-            if (UseTmpOutputFile != null)
+            if (_tmpInputFilename != null)
                 p.WaitForExit();
 
             if (LogOutput && LogLines != int.MaxValue)
@@ -244,7 +245,7 @@ namespace SATInterface
             var oldCursor = Console.CursorTop - LogLines;
             try
             {
-                using (StreamReader output = UseTmpOutputFile == null ? p.StandardOutput : File.OpenText(UseTmpOutputFile))
+                using (StreamReader output = _tmpOutputFilename == null ? p.StandardOutput : File.OpenText(_tmpOutputFilename))
                 {
                     for (var line = output.ReadLine(); line != null; line = output.ReadLine())
                     {
@@ -253,7 +254,7 @@ namespace SATInterface
                         {
                             //skip empty lines
                         }
-                        if (tk.Length > 1 && tk[0] == "c" && UseTmpOutputFile == null)
+                        if (tk.Length > 1 && tk[0] == "c" && _tmpOutputFilename == null)
                         {
                             if (LogOutput && LogLines != int.MaxValue)
                             {
@@ -282,7 +283,7 @@ namespace SATInterface
                         }
                         if (tk.Length == 2 && tk[0] == "s")
                         {
-                            if (LogOutput && UseTmpOutputFile == null)
+                            if (LogOutput && _tmpOutputFilename == null)
                                 Console.WriteLine(line);
                             if (tk[1] == "SATISFIABLE")
                                 proofSat = true;
@@ -307,16 +308,16 @@ namespace SATInterface
                 satWriterThread?.Abort();
                 p.WaitForExit();
 
-                if (UseTmpInputFile == null)
+                if (_tmpInputFilename == null)
                     p.StandardInput.Dispose();
-                if (UseTmpOutputFile == null)
+                if (_tmpOutputFilename == null)
                     p.StandardOutput.Dispose();
                 p.Dispose();
 
-                if (DeleteTmpFiles && UseTmpInputFile != null)
-                    File.Delete(UseTmpInputFile);
-                if (DeleteTmpFiles && UseTmpOutputFile != null)
-                    File.Delete(UseTmpOutputFile);
+                if (_tmpInputFilename != null)
+                    File.Delete(_tmpInputFilename);
+                if (_tmpOutputFilename != null)
+                    File.Delete(_tmpOutputFilename);
             }
         }
 
