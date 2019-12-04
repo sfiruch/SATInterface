@@ -12,11 +12,10 @@
     <description>$description$</description>
     <releaseNotes></releaseNotes>
     <copyright>Copyright 2019 Simon Felix</copyright>
-    <tags>SAT cryptominisat DIMACS</tags>
+    <tags>SAT cryptominisat satisfiability DIMACS</tags>
   </metadata>
   <files>
     <file src="readme.txt" target="" />
-    <file src="build\deiruch.SATInterface.targets" target="build\deiruch.SATInterface.targets" />
     <file src="cryptominisat5win.dll" target="cryptominisat5win.dll" />
     <!--<file src="cryptominisat5.exe" target="cryptominisat5.exe" />-->
     <!--<file src="cryptominisat5-win-amd64.exe" target="cryptominisat5-win-amd64.exe" />-->

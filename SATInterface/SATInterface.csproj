@@ -4,16 +4,13 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Nullable>enable</Nullable>
+    <PackageLicenseExpression>MIT License</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/deiruch/SATInterface</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/deiruch/SATInterface</RepositoryUrl>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  <PropertyGroup>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <PlatformTarget>x64</PlatformTarget>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="System.Management" Version="4.6.0" />
-  </ItemGroup>
   <ItemGroup>
     <None Update="cryptominisat5win.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

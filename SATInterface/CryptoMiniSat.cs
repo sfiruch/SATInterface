@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
-using System.Management;
 
 namespace SATInterface
 {
@@ -30,23 +29,10 @@ namespace SATInterface
             Handle = CryptoMiniSatNative.cmsat_new();
 
             if (_threads == -1)
-                _threads = GetNumberOfPhysicalCores();
+                _threads = Math.Max(1, Environment.ProcessorCount / 2);
 
             if (_threads != 1)
                 CryptoMiniSatNative.cmsat_set_num_threads(Handle, (uint)_threads);
-        }
-
-        private static int GetNumberOfPhysicalCores()
-        {
-            if (Environment.OSVersion.Platform == PlatformID.Unix)
-                return Environment.ProcessorCount;
-            else
-                //Code by Kevin Kibler
-                //- http://stackoverflow.com/questions/1542213/how-to-find-the-number-of-cpu-cores-via-net-c
-                using (var ms = new ManagementObjectSearcher("SELECT NumberOfCores FROM Win32_Processor"))
-                    return ms.Get()
-                        .OfType<ManagementBaseObject>()
-                        .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
         }
 
         public bool[]? Solve(int[]? _assumptions = null)
