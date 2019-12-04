@@ -1,18 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
+    <Version>2.0.2</Version>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Nullable>enable</Nullable>
-    <PackageLicenseExpression>MIT License</PackageLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/deiruch/SATInterface</PackageProjectUrl>
     <RepositoryUrl>https://github.com/deiruch/SATInterface</RepositoryUrl>
-  </PropertyGroup>
-  <PropertyGroup>
     <PlatformTarget>x64</PlatformTarget>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IncludeSource>true</IncludeSource>
+    <PackageId>deiruch.SATInterface</PackageId>
+    <Authors>Simon Felix</Authors>
+    <Description>Library to formulate and solve SAT problems in .NET. Includes CryptoMiniSat as solver.</Description>
+    <Copyright>Copyright 2019 Simon Felix</Copyright>
   </PropertyGroup>
   <ItemGroup>
-    <None Update="cryptominisat5win.dll">
+    <None Pack="true" PackageCopyToOutput="true" Include="cryptominisat5win.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
