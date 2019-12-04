@@ -10,10 +10,16 @@ namespace SATInterface
     public class CryptoMiniSat : IDisposable
     {
         private IntPtr Handle;
+        private int verbosity;
 
         public int Verbosity
         {
-            set => CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)value);
+            get => verbosity;
+            set
+            {
+                verbosity = value;
+                CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)value);
+            }
         }
 
         public CryptoMiniSat(int _threads = -1)
@@ -40,14 +46,28 @@ namespace SATInterface
                         .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
         }
 
-        public bool Solve(int[] _assumptions = null)
+        public bool[] Solve(int[] _assumptions = null)
         {
-            if(_assumptions==null || _assumptions.Length==0)
-                return CryptoMiniSatNative.cmsat_solve(Handle) == CryptoMiniSatNative.c_lbool.L_TRUE;
+            bool satisfiable;
+            if (_assumptions == null || _assumptions.Length == 0)
+                satisfiable = CryptoMiniSatNative.cmsat_solve(Handle) == CryptoMiniSatNative.c_lbool.L_TRUE;
             else
-                return CryptoMiniSatNative.cmsat_solve_with_assumptions(Handle,
+                satisfiable = CryptoMiniSatNative.cmsat_solve_with_assumptions(Handle,
                     _assumptions.Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
                     (IntPtr)_assumptions.Length) == CryptoMiniSatNative.c_lbool.L_TRUE;
+
+            if (Verbosity != 0)
+                CryptoMiniSatNative.cmsat_print_stats(Handle);
+
+            if (satisfiable)
+            {
+                var model = CryptoMiniSatNative.cmsat_get_model(Handle);
+                var bytes = new byte[(int)model.num_vals];
+                Marshal.Copy(model.vals, bytes, 0, (int)model.num_vals);
+                return bytes.Select(v => v == (byte)CryptoMiniSatNative.c_lbool.L_TRUE).ToArray();
+            }
+            else
+                return null;
         }
 
         public void AddVars(int _number) => CryptoMiniSatNative.cmsat_new_vars(Handle, (IntPtr)_number);
@@ -58,16 +78,6 @@ namespace SATInterface
                 _clause.Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
                 (IntPtr)_clause.Length);
         }
-
-        public bool[] GetModel()
-        {
-            var model = CryptoMiniSatNative.cmsat_get_model(Handle);
-            var bytes = new byte[(int)model.num_vals];
-            Marshal.Copy(model.vals, bytes, 0, (int)model.num_vals);
-            return bytes.Select(v => v== (byte)CryptoMiniSatNative.c_lbool.L_TRUE).ToArray();
-        }
-
-        public void PrintStats() => CryptoMiniSatNative.cmsat_print_stats(Handle);
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls

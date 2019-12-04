@@ -12,26 +12,13 @@ namespace SATInterface
     public class Model
     {
         internal int VarCount = 0;
-        private HashSet<int[]> clauses = new HashSet<int[]>();
+        private List<int[]> clauses = new List<int[]>();
         private Dictionary<int, BoolVar> vars = new Dictionary<int, BoolVar>();
         internal bool proofSat = false;
         internal bool proofUnsat = false;
 
-        public bool IsSatisfiable
-        {
-            get
-            {
-                return proofSat;
-            }
-        }
-
-        public bool IsUnsatisfiable
-        {
-            get
-            {
-                return proofUnsat;
-            }
-        }
+        public bool IsSatisfiable => proofSat;
+        public bool IsUnsatisfiable => proofUnsat;
 
         public Model()
         {
@@ -90,85 +77,117 @@ namespace SATInterface
         }
 
 
-        public void Minimize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch) => Maximize(_obj.UB - _obj, _solutionCallback, _strategy == OptimizationStrategy.Increasing ? OptimizationStrategy.Decreasing : (_strategy == OptimizationStrategy.Decreasing ? OptimizationStrategy.Increasing : _strategy));
+        public void Minimize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
+            => Maximize(_obj.UB - _obj, _solutionCallback, _strategy == OptimizationStrategy.Increasing ? OptimizationStrategy.Decreasing : (_strategy == OptimizationStrategy.Decreasing ? OptimizationStrategy.Increasing : _strategy));
 
         public void Maximize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
         {
-            Solve();
-
-            if (IsUnsatisfiable)
-                return;
-            else if (IsSatisfiable)
-                _solutionCallback?.Invoke();
-            else
-                throw new Exception("Solver failed (!SAT & !UNSAT)");
-
-            var lb = _obj.X;
-            var ub = _obj.UB;
-            var lbAssignment = vars.Values.ToDictionary(v => v.Id, v => v.X);
-
-            var varsCopy = vars.Values.ToArray();
-            var clausesCopy = clauses.ToArray();
-
-            for (; ; )
+            using (var m = new CryptoMiniSat())
             {
-                if (LogOutput)
-                    Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
+                m.Verbosity = (LogOutput ? 1 : 0);
 
-                int cur;
-                switch (_strategy)
+                var mVars = vars.Count;
+                var mClauses = clauses.Count;
+
+                m.AddVars(vars.Count);
+                foreach (var line in clauses)
+                    m.AddClause(line);
+
+                var bestAssignment = m.Solve();
+                if (bestAssignment == null)
                 {
-                    case OptimizationStrategy.BinarySearch:
-                        cur = (lb + 1 + ub) / 2;
-                        break;
-                    case OptimizationStrategy.Decreasing:
-                        cur = ub;
-                        break;
-                    case OptimizationStrategy.Increasing:
-                        cur = lb + 1;
-                        break;
-                    default:
-                        throw new ArgumentException(nameof(_strategy));
+                    proofUnsat = true;
+                    return;
                 }
 
-                //add additional clauses
-                AddConstr(_obj >= cur);
+                //found initial, feasible solution
+                Debug.Assert(bestAssignment.Length == vars.Count);
+                for (var i = 0; i < vars.Count; i++)
+                    vars[i + 1].Value = bestAssignment[i];
 
-                Solve();
+                _solutionCallback?.Invoke();
 
-                //restore clauses
-                clauses = new HashSet<int[]>(clausesCopy);
+                //start search
+                var lb = _obj.X;
+                var ub = _obj.UB;
 
-                if (IsSatisfiable)
+                var originalVars = new Dictionary<int,BoolVar>(vars);
+                var originalClauses = clauses.ToList();
+                for (; ; )
                 {
-                    if (_obj.X < cur)
-                        throw new Exception("Unreliable solver (SAT & Obj<Cur)");
+                    if (LogOutput)
+                        Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
 
-                    _solutionCallback?.Invoke();
+                    int cur;
+                    switch (_strategy)
+                    {
+                        case OptimizationStrategy.BinarySearch:
+                            cur = (lb + 1 + ub) / 2;
+                            break;
+                        case OptimizationStrategy.Decreasing:
+                            cur = ub;
+                            break;
+                        case OptimizationStrategy.Increasing:
+                            cur = lb + 1;
+                            break;
+                        default:
+                            throw new ArgumentException(nameof(_strategy));
+                    }
 
-                    lb = _obj.X;
-                    lbAssignment = vars.Values.ToDictionary(v => v.Id, v => v.X);
-                    proofSat = false;
+                    //add additional clauses
+
+                    int[] assumptions;
+                    if (_strategy == OptimizationStrategy.Increasing)
+                    {
+                        AddConstr(_obj >= cur);
+                        assumptions = null;
+                    }
+                    else
+                    {
+                        var objGE = new BoolVar(this);
+                        AddConstr(objGE == (_obj >= cur));
+                        assumptions = new int[] { objGE.Id };
+                    }
+
+                    m.AddVars(vars.Count - mVars);
+                    mVars = vars.Count;
+
+                    for (var i = mClauses; i < clauses.Count; i++)
+                        m.AddClause(clauses[i]);
+                    mClauses = clauses.Count;
+
+                    var assignment = m.Solve(assumptions);
+                    if (assignment != null)
+                    {
+                        for (var i = 0; i < vars.Count; i++)
+                            vars[i + 1].Value = assignment[i];
+
+                        if (_obj.X < cur)
+                            throw new Exception("Unreliable solver (SAT & Obj<Cur)");
+
+                        _solutionCallback?.Invoke();
+
+                        lb = _obj.X;
+                        bestAssignment = assignment;
+                    }
+                    else
+                    {
+                        ub = cur - 1;
+                    }
+
+                    Debug.Assert(lb <= ub);
+                    if (lb == ub)
+                        break;
                 }
-                else if (IsUnsatisfiable)
-                {
-                    ub = cur - 1;
-                    proofUnsat = false;
-                }
-                else
-                    throw new Exception("Solver failed (!SAT & !UNSAT)");
 
-                Debug.Assert(lb <= ub);
-                if (lb == ub)
-                    break;
+                //restore best known solution
+                proofSat = true;
+                proofUnsat = false;
+                vars = originalVars;
+                clauses = originalClauses;
+                for (var i = 0; i < vars.Count; i++)
+                    vars[i + 1].Value = bestAssignment[i];
             }
-
-            //restore best known solution
-            proofSat = true;
-            proofUnsat = false;
-            vars = varsCopy.ToDictionary(v => v.Id, v => v);
-            foreach (var v in vars.Values)
-                v.Value = lbAssignment[v.Id];
         }
 
         public void Solve()
@@ -187,10 +206,10 @@ namespace SATInterface
                 foreach (var line in clauses)
                     m.AddClause(line);
 
-                if (m.Solve())
+                var res = m.Solve();
+                if (res != null)
                 {
                     proofSat = true;
-                    var res = m.GetModel();
                     Debug.Assert(res.Length == vars.Count);
 
                     for (var i = 0; i < vars.Count; i++)
@@ -198,9 +217,6 @@ namespace SATInterface
                 }
                 else
                     proofUnsat = true;
-
-                if (LogOutput)
-                    m.PrintStats();
             }
         }
 
