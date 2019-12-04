@@ -17,9 +17,9 @@
   <files>
     <file src="readme.txt" target="" />
     <file src="build\deiruch.SATInterface.targets" target="build\deiruch.SATInterface.targets" />
+    <file src="cryptominisat5win.dll" target="cryptominisat5win.dll" />
     <!--<file src="cryptominisat5.exe" target="cryptominisat5.exe" />-->
     <!--<file src="cryptominisat5-win-amd64.exe" target="cryptominisat5-win-amd64.exe" />-->
 	  <!--<file src="Install.ps1" target="tools\Install.ps1" />-->
-    <file src="cryptominisat5win.dll" target="cryptominisat5win.dll" />
   </files>
 </package>

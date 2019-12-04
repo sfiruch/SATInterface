@@ -11,7 +11,7 @@ namespace SATInterface
         internal bool Value;
         internal readonly Model Model;
         private readonly string Name;
-        private BoolExpr negated;
+        private BoolExpr? negated;
 
         internal BoolExpr Negated
         {
@@ -38,6 +38,7 @@ namespace SATInterface
         internal BoolVar(string _name)
         {
             Name = _name;
+            Model = null!;
         }
 
         public override string ToString() => Name;

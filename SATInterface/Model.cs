@@ -77,10 +77,10 @@ namespace SATInterface
         }
 
 
-        public void Minimize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
+        public void Minimize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
             => Maximize(_obj.UB - _obj, _solutionCallback, _strategy == OptimizationStrategy.Increasing ? OptimizationStrategy.Decreasing : (_strategy == OptimizationStrategy.Decreasing ? OptimizationStrategy.Increasing : _strategy));
 
-        public void Maximize(UIntVar _obj, Action _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
+        public void Maximize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
         {
             using (var m = new CryptoMiniSat())
             {
@@ -136,7 +136,7 @@ namespace SATInterface
 
                     //add additional clauses
 
-                    int[] assumptions;
+                    int[]? assumptions;
                     if (_strategy == OptimizationStrategy.Increasing)
                     {
                         AddConstr(_obj >= cur);
@@ -220,7 +220,7 @@ namespace SATInterface
             }
         }
 
-        public void SolveWithExternalSolver(string _executable = null, string _arguments = null, string _newLine = null, string _tmpInputFilename = null, string _tmpOutputFilename = null)
+        public void SolveWithExternalSolver(string _executable, string? _arguments = null, string? _newLine = null, string? _tmpInputFilename = null, string? _tmpOutputFilename = null)
         {
             if (proofUnsat)
                 return;
@@ -239,13 +239,13 @@ namespace SATInterface
                 UseShellExecute = false
             });
 
-            Thread satWriterThread = null;
+            Thread? satWriterThread = null;
             if (_tmpInputFilename == null)
             {
                 satWriterThread = new Thread(new ParameterizedThreadStart(delegate
                 {
                     p.StandardInput.AutoFlush = false;
-                    p.StandardInput.NewLine = _newLine ?? _newLine;
+                    p.StandardInput.NewLine = _newLine ?? "\n";
                     Write(p.StandardInput);
                     p.StandardInput.Close();
                 }))
@@ -578,7 +578,7 @@ namespace SATInterface
                                 return Sum(expr.Select(b =>
                                 {
                                     if (b is BoolVar)
-                                        return (UIntVar)b;
+                                        return (UIntVar)b!;
                                     else
                                         return UIntVar.Const(this, 1) * b;
                                 })) == _k;

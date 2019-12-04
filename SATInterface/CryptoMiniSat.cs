@@ -24,6 +24,9 @@ namespace SATInterface
 
         public CryptoMiniSat(int _threads = -1)
         {
+            if (!Environment.Is64BitProcess)
+                throw new Exception("This library only supports x64 when using the bundled CryptoMiniSat solver.");
+
             Handle = CryptoMiniSatNative.cmsat_new();
 
             if (_threads == -1)
@@ -46,7 +49,7 @@ namespace SATInterface
                         .Sum(i => int.Parse(i["NumberOfCores"].ToString()));
         }
 
-        public bool[] Solve(int[] _assumptions = null)
+        public bool[]? Solve(int[]? _assumptions = null)
         {
             bool satisfiable;
             if (_assumptions == null || _assumptions.Length == 0)
