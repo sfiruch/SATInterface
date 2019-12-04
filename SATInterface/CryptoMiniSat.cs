@@ -11,6 +11,11 @@ namespace SATInterface
     {
         private IntPtr Handle;
 
+        public int Verbosity
+        {
+            set => CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)value);
+        }
+
         public CryptoMiniSat(int _threads = -1)
         {
             Handle = CryptoMiniSatNative.cmsat_new();
@@ -45,10 +50,7 @@ namespace SATInterface
                     (IntPtr)_assumptions.Length) == CryptoMiniSatNative.c_lbool.L_TRUE;
         }
 
-        public void AddVars(int _number)
-        {
-            CryptoMiniSatNative.cmsat_new_vars(Handle, (IntPtr)_number);
-        }
+        public void AddVars(int _number) => CryptoMiniSatNative.cmsat_new_vars(Handle, (IntPtr)_number);
 
         public bool AddClause(int[] _clause)
         {
@@ -64,6 +66,8 @@ namespace SATInterface
             Marshal.Copy(model.vals, bytes, 0, (int)model.num_vals);
             return bytes.Select(v => v== (byte)CryptoMiniSatNative.c_lbool.L_TRUE).ToArray();
         }
+
+        public void PrintStats() => CryptoMiniSatNative.cmsat_print_stats(Handle);
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -94,6 +98,7 @@ namespace SATInterface
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
         #endregion
     }
 
@@ -144,6 +149,12 @@ namespace SATInterface
 
         [DllImport("cryptominisat5win.dll")]
         public static extern void cmsat_set_num_threads(IntPtr self, UInt32 n);
+
+        [DllImport("cryptominisat5win.dll")]
+        public static extern void cmsat_print_stats(IntPtr self);
+
+        [DllImport("cryptominisat5win.dll")]
+        public static extern void cmsat_set_verbosity(IntPtr self, UInt32 n);
 
         [DllImport("cryptominisat5win.dll")]
         public static extern c_lbool cmsat_solve(IntPtr self);

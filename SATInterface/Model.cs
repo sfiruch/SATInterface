@@ -81,7 +81,6 @@ namespace SATInterface
         internal void RegisterVariable(BoolVar boolVar) => vars[boolVar.Id] = boolVar;
 
         public bool LogOutput = true;
-        public int LogLines = int.MaxValue;
 
         public enum OptimizationStrategy
         {
@@ -182,6 +181,8 @@ namespace SATInterface
             //set up model
             using (var m = new CryptoMiniSat())
             {
+                m.Verbosity = (LogOutput ? 1 : 0);
+
                 m.AddVars(vars.Count);
                 foreach (var line in clauses)
                     m.AddClause(line);
@@ -197,6 +198,9 @@ namespace SATInterface
                 }
                 else
                     proofUnsat = true;
+
+                if (LogOutput)
+                    m.PrintStats();
             }
         }
 
@@ -238,11 +242,7 @@ namespace SATInterface
             if (_tmpInputFilename != null)
                 p.WaitForExit();
 
-            if (LogOutput && LogLines != int.MaxValue)
-                Console.WriteLine(new string('\n', LogLines));
-
             var log = new List<string>();
-            var oldCursor = Console.CursorTop - LogLines;
             try
             {
                 using (StreamReader output = _tmpOutputFilename == null ? p.StandardOutput : File.OpenText(_tmpOutputFilename))
@@ -256,29 +256,7 @@ namespace SATInterface
                         }
                         if (tk.Length > 1 && tk[0] == "c" && _tmpOutputFilename == null)
                         {
-                            if (LogOutput && LogLines != int.MaxValue)
-                            {
-                                if (line.Length > Console.BufferWidth - 1)
-                                    line = line.Substring(0, Console.BufferWidth - 1);
-                                if (log.Any() && line.Length < log.Last().TrimEnd(' ').Length)
-                                    log.Add(line + new string(' ', log.Last().TrimEnd(' ').Length - line.Length));
-                                else
-                                    log.Add(line);
-
-                                if (log.Count > LogLines)
-                                {
-                                    log.RemoveAt(0);
-                                    Console.CursorTop = oldCursor;
-                                    for (var i = 0; i < log.Count; i++)
-                                        Console.WriteLine(log[i]);
-                                }
-                                else
-                                {
-                                    Console.CursorTop = oldCursor + log.Count - 1;
-                                    Console.WriteLine(line);
-                                }
-                            }
-                            else if (LogOutput)
+                            if (LogOutput)
                                 Console.WriteLine(line);
                         }
                         if (tk.Length == 2 && tk[0] == "s")
