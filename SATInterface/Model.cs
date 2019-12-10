@@ -77,7 +77,13 @@ namespace SATInterface
 
 
         public void Minimize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
-            => Maximize(_obj.UB - _obj, _solutionCallback, _strategy == OptimizationStrategy.Increasing ? OptimizationStrategy.Decreasing : (_strategy == OptimizationStrategy.Decreasing ? OptimizationStrategy.Increasing : _strategy));
+            => Maximize(_obj.UB - _obj, _solutionCallback,
+                _strategy switch
+                {
+                    OptimizationStrategy.Increasing => OptimizationStrategy.Decreasing,
+                    OptimizationStrategy.Decreasing => OptimizationStrategy.Increasing,
+                    _ => _strategy
+                });
 
         public void Maximize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
         {
@@ -110,7 +116,7 @@ namespace SATInterface
                 var lb = _obj.X;
                 var ub = _obj.UB;
 
-                var originalVars = new Dictionary<int,BoolVar>(vars);
+                var originalVars = new Dictionary<int, BoolVar>(vars);
                 var originalClauses = clauses.ToList();
                 for (; ; )
                 {
@@ -328,7 +334,8 @@ namespace SATInterface
             _out.Flush();
             foreach (var line in clauses)
             {
-                _out.WriteLine(line);
+                _out.Write(string.Join(' ', line));
+                _out.WriteLine(" 0");
                 _out.Flush();
             }
         }

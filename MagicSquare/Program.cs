@@ -79,6 +79,7 @@ namespace MagicSquare
                     Console.WriteLine();
                 }
 
+            m.Write("test.dimacs");
             Console.ReadLine();
         }
     }
