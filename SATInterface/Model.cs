@@ -43,6 +43,8 @@ namespace SATInterface
                     else
                         throw new Exception(e.GetType().ToString());
 
+                //Array.Sort(sb);
+
                 Debug.Assert(i == sb.Length);
                 clauses.Add(sb);
             }
@@ -62,6 +64,46 @@ namespace SATInterface
                 AddConstrInternal(_clause);
 
             proofSat = false;
+        }
+
+        public BoolExpr AddVar() => new BoolVar(this);
+
+        public BoolExpr[] AddVars(int _n1)
+        {
+            var res = new BoolVar[_n1];
+            for (var i1 = 0; i1 < _n1; i1++)
+                res[i1] = new BoolVar(this);
+            return res;
+        }
+
+        public BoolExpr[,] AddVars(int _n1, int _n2)
+        {
+            var res = new BoolVar[_n1, _n2];
+            for (var i1 = 0; i1 < _n1; i1++)
+                for (var i2 = 0; i2 < _n2; i2++)
+                    res[i1, i2] = new BoolVar(this);
+            return res;
+        }
+
+        public BoolExpr[,,] AddVars(int _n1, int _n2, int _n3)
+        {
+            var res = new BoolVar[_n1, _n2, _n3];
+            for (var i1 = 0; i1 < _n1; i1++)
+                for (var i2 = 0; i2 < _n2; i2++)
+                    for (var i3 = 0; i3 < _n3; i3++)
+                        res[i1, i2, i3] = new BoolVar(this);
+            return res;
+        }
+
+        public BoolExpr[,,,] AddVars(int _n1, int _n2, int _n3, int _n4)
+        {
+            var res = new BoolVar[_n1, _n2, _n3, _n4];
+            for (var i1 = 0; i1 < _n1; i1++)
+                for (var i2 = 0; i2 < _n2; i2++)
+                    for (var i3 = 0; i3 < _n3; i3++)
+                        for (var i4 = 0; i4 < _n4; i4++)
+                            res[i1, i2, i3, i4] = new BoolVar(this);
+            return res;
         }
 
         internal void RegisterVariable(BoolVar boolVar) => vars[boolVar.Id] = boolVar;
@@ -87,18 +129,18 @@ namespace SATInterface
 
         public void Maximize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
         {
-            using (var m = new CryptoMiniSat())
+            using (var cms = new CryptoMiniSat())
             {
-                m.Verbosity = (LogOutput ? 1 : 0);
+                cms.Verbosity = (LogOutput ? 1 : 0);
 
                 var mVars = vars.Count;
                 var mClauses = clauses.Count;
 
-                m.AddVars(vars.Count);
+                cms.AddVars(vars.Count);
                 foreach (var line in clauses)
-                    m.AddClause(line);
+                    cms.AddClause(line);
 
-                var bestAssignment = m.Solve();
+                var bestAssignment = cms.Solve();
                 if (bestAssignment == null)
                 {
                     proofUnsat = true;
@@ -154,14 +196,14 @@ namespace SATInterface
                         assumptions = new int[] { objGE.Id };
                     }
 
-                    m.AddVars(vars.Count - mVars);
+                    cms.AddVars(vars.Count - mVars);
                     mVars = vars.Count;
 
                     for (var i = mClauses; i < clauses.Count; i++)
-                        m.AddClause(clauses[i]);
+                        cms.AddClause(clauses[i]);
                     mClauses = clauses.Count;
 
-                    var assignment = m.Solve(assumptions);
+                    var assignment = cms.Solve(assumptions);
                     if (assignment != null)
                     {
                         for (var i = 0; i < vars.Count; i++)
@@ -203,15 +245,15 @@ namespace SATInterface
             proofSat = false;
 
             //set up model
-            using (var m = new CryptoMiniSat())
+            using (var cms = new CryptoMiniSat())
             {
-                m.Verbosity = (LogOutput ? 1 : 0);
+                cms.Verbosity = (LogOutput ? 1 : 0);
 
-                m.AddVars(vars.Count);
+                cms.AddVars(vars.Count);
                 foreach (var line in clauses)
-                    m.AddClause(line);
+                    cms.AddClause(line);
 
-                var res = m.Solve();
+                var res = cms.Solve();
                 if (res != null)
                 {
                     proofSat = true;

@@ -13,11 +13,7 @@ namespace Sudoku
         static void Main(string[] args)
         {
             var m = new Model();
-            var v = new BoolExpr[9, 9, 9];
-            for (var y = 0; y < 9; y++)
-                for (var x = 0; x < 9; x++)
-                    for (var n = 0; n < 9; n++)
-                        v[x, y, n] = new BoolVar(m);
+            var v = m.AddVars(9, 9, 9);
 
             //According to http://www.telegraph.co.uk/news/science/science-news/9359579/Worlds-hardest-sudoku-can-you-crack-it.html
             //this is the "World's hardest Sudoku"...
