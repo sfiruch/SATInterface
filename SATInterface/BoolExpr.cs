@@ -35,7 +35,7 @@ namespace SATInterface
 
         public BoolExpr Flatten()
         {
-            if (this is BoolVar)
+            if (this is BoolVar || this is NotExpr)
                 return this;
             else if (ReferenceEquals(this, True))
                 return True;

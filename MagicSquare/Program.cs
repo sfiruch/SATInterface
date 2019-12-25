@@ -9,36 +9,10 @@ using System.Threading.Tasks;
 
 namespace MagicSquare
 {
-    class IEC : IEqualityComparer<int[]>
-    {
-        internal static readonly IEC Default = new IEC();
-
-        private IEC()
-        {
-        }
-
-        public bool Equals([AllowNull] int[] x, [AllowNull] int[] y)
-            => Enumerable.SequenceEqual(x, y);
-
-        public int GetHashCode([DisallowNull] int[] obj)
-        {
-            var hc = obj.Length;
-            for (int i = 0; i < obj.Length; ++i)
-            {
-                hc = unchecked(hc * 314159 + obj[i]);
-            }
-            return hc;
-        }
-    }
-
     class Program
     {
         static void Main(string[] args)
         {
-            var s = new HashSet<int[]>(IEC.Default);
-            s.Add(new int[] { 1, 2 });
-            s.Add(new int[] { 1, 2 });
-
             var NUMBERS = Enumerable.Range(1, 7 * 7).ToArray();
 
             var N = (int)Math.Sqrt(NUMBERS.Length);

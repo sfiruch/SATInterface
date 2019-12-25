@@ -65,10 +65,7 @@ namespace SATInterface
 
         public override bool X
         {
-            get
-            {
-                return elements.All(e => e.X);
-            }
+            get => elements.All(e => e.X);
         }
 
         public override bool Equals(object _obj)

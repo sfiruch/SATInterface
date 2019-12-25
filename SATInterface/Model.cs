@@ -429,8 +429,6 @@ namespace SATInterface
                     return _elems.Single();
                 case 2:
                     return _elems.ElementAt(0) + _elems.ElementAt(1);
-                case 3:
-                    return _elems.ElementAt(0) + _elems.ElementAt(1) + _elems.ElementAt(2);
                 default:
                     return Sum(_elems.Take(cnt / 2)) + Sum(_elems.Skip(cnt / 2));
             }
