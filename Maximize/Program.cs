@@ -30,7 +30,6 @@ namespace Maximize
                 for (var yt = 0; yt <= 200; yt++)
                     if ((xt < 512) || (yt < 100))
                     {
-                        //var ct = xt * yt;
                         var val = xt + 7 * yt;
                         if (val > best.Val)
                             best = (Val: val, X: xt, Y: yt);

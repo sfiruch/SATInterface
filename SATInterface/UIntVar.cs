@@ -9,13 +9,10 @@ namespace SATInterface
     public class UIntVar
     {
         private Model Model;
-        private BoolExpr[] bit;
+        internal BoolExpr[] bit;
         internal int UB;
 
-        public int Bits
-        {
-            get => bit.Length;
-        }
+        public int Bits => bit.Length;
 
         public UIntVar(Model _model, int _ub, bool _enforceUB = true)
         {
@@ -48,6 +45,12 @@ namespace SATInterface
             return res;
         }
 
+        public static UIntVar Convert(Model _m, BoolExpr _v)
+        {
+            var res = new UIntVar(_m, 1, false);
+            res.bit[0] = _v;
+            return res;
+        }
 
         public static explicit operator UIntVar(BoolVar _v)
         {
@@ -94,10 +97,10 @@ namespace SATInterface
             return res;
         }
 
-        public static UIntVar operator +(UIntVar _a, int _add) => _a + Const(_a.Model, _add);
-        public static UIntVar operator +(int _add, UIntVar _a) => _a + Const(_a.Model, _add);
+        public static UIntVar operator +(UIntVar _a, int _add) => (_add==0) ? _a : (_a + Const(_a.Model, _add));
+        public static UIntVar operator +(int _add, UIntVar _a) => (_add==0) ? _a : (_a + Const(_a.Model, _add));
 
-        public static UIntVar operator -(UIntVar _a, int _add) => _a - Const(_a.Model, _add);
+        public static UIntVar operator -(UIntVar _a, int _add) => (_add==0) ? _a : (_a - Const(_a.Model, _add));
         public static UIntVar operator -(int _add, UIntVar _a) => Const(_a.Model, _add) - _a;
 
         public static UIntVar operator -(UIntVar _a, UIntVar _b)
@@ -211,7 +214,7 @@ namespace SATInterface
         {
             if (_v < 0)
                 return true;
-            if (_v >= _a.UB)
+            if (_a.UB <= _v)
                 return false;
 
             var nonZeroes = Log2(_v - 1) + 1;
@@ -346,14 +349,11 @@ namespace SATInterface
             var carry = _b;
             for (var i = 0; i < res.bit.Length; i++)
             {
-                var aiCarry = (_a[i] ^ carry);
-                res.Model.AddConstr(res.bit[i] == aiCarry);
+                res.bit[i] = (_a[i] ^ carry).Flatten();
 
                 if (i < res.bit.Length - 1)
                 {
-                    var nc = new BoolVar(res.Model);
-                    res.Model.AddConstr(nc == aiCarry);
-                    carry = nc;
+                    carry = (_a[i] & carry).Flatten();
 
                     //unitprop
                     res.Model.AddConstr(OrExpr.Create(res.bit[i], carry, !_a[i]));
@@ -410,7 +410,7 @@ namespace SATInterface
             var carry = BoolExpr.False;
             for (var i = 0; i < res.bit.Length; i++)
             {
-                res.Model.AddConstr(res.bit[i] == (carry ^ _a[i] ^ _b[i]).Flatten());
+                res.bit[i] = (carry ^ _a[i] ^ _b[i]).Flatten();
 
                 if (i < res.bit.Length - 1)
                 {
@@ -421,8 +421,8 @@ namespace SATInterface
                     carry = OrExpr.Create(aAndB, aAndCarry, bAndCarry).Flatten();
 
                     //unitprop
-                    //var notAAndNotB = (!_a[i] & !_b[i]).Flatten();
-                    //res.Model.AddConstr(OrExpr.Create(res.bit[i], carry, notAAndNotB));
+                    var notAAndNotB = (!_a[i] & !_b[i]).Flatten();
+                    res.Model.AddConstr(OrExpr.Create(res.bit[i], carry, notAAndNotB));
                 }
             }
 

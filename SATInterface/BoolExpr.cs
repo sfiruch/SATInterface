@@ -14,7 +14,7 @@ namespace SATInterface
         {
         }
 
-        public static bool operator true(BoolExpr _be) => ReferenceEquals(True,_be);
+        public static bool operator true(BoolExpr _be) => ReferenceEquals(True, _be);
         public static bool operator false(BoolExpr _be) => ReferenceEquals(False, _be);
 
         public static implicit operator BoolExpr(bool _v) => _v ? True:False;
@@ -150,6 +150,18 @@ namespace SATInterface
         public static BoolExpr Max(BoolExpr _lhs, BoolExpr _rhs) => _lhs | _rhs;
         public static BoolExpr Min(BoolExpr _lhs, BoolExpr _rhs) => _lhs & _rhs;
 
+        public static UIntVar operator +(BoolExpr _a, BoolVar _b) => _b + _a;
+
+        public static UIntVar operator +(BoolVar _a, BoolExpr _b)
+        {
+            if (ReferenceEquals(_b, BoolExpr.False))
+                return (UIntVar)_a;
+
+            var res = new UIntVar(_a.Model, 2, _enforceUB: false);
+            res.bit[0] = _a ^ _b;
+            res.bit[1] = _a & _b;
+            return res;
+        }
 
         public static BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => ((!_if | _then) & (_if | _else) & (_then | _else)) | (_then & _else);
 

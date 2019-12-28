@@ -1,4 +1,5 @@
-﻿using SATInterface;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SATInterface;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -7,13 +8,44 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MagicSquare
+namespace Tests
 {
-    class Program
+    [TestClass]
+    public class MagicSquareTest
     {
-        static void Main(string[] args)
+        [TestMethod]
+        public void Size3()
         {
-            var NUMBERS = Enumerable.Range(1, 7 * 7).ToArray();
+            MagicSquare(3);
+        }
+
+        [TestMethod]
+        public void Size4()
+        {
+            MagicSquare(4);
+        }
+
+        [TestMethod]
+        public void Size5()
+        {
+            MagicSquare(5);
+        }
+
+        [TestMethod]
+        public void Size6()
+        {
+            MagicSquare(6);
+        }
+
+        [TestMethod]
+        public void Size7()
+        {
+            MagicSquare(7);
+        }
+
+        void MagicSquare(int size)
+        {
+            var NUMBERS = Enumerable.Range(1, size * size).ToArray();
 
             var N = (int)Math.Sqrt(NUMBERS.Length);
             var MAGIC_CONST = NUMBERS.Sum() / N;
@@ -69,16 +101,58 @@ namespace MagicSquare
 
             m.Solve();
 
-            if (m.IsSatisfiable)
-                for (var y = 0; y < N; y++)
-                {
-                    for (var x = 0; x < N; x++)
-                        for (var n = 0; n < NUMBERS.Length; n++)
-                            if (v[x, y, n].X)
-                                Console.Write($"{NUMBERS[n],4}");
+            Assert.IsTrue(m.IsSatisfiable);
 
-                    Console.WriteLine();
+
+            for (var y = 0; y < N; y++)
+            {
+                var sum = 0;
+                for (var x = 0; x < N; x++)
+                {
+                    var cnt = 0;
+                    for (var n = 0; n < NUMBERS.Length; n++)
+                        if (v[x, y, n].X)
+                        {
+                            sum += NUMBERS[n];
+                            cnt++;
+                        }
+
+                    Assert.AreEqual(1, cnt);
                 }
+
+                Assert.AreEqual(MAGIC_CONST, sum);
+            }
+
+            for (var x = 0; x < N; x++)
+            {
+                var sum = 0;
+                for (var y = 0; y < N; y++)
+                    for (var n = 0; n < NUMBERS.Length; n++)
+                        if (v[x, y, n].X)
+                            sum += NUMBERS[n];
+
+                Assert.AreEqual(MAGIC_CONST, sum);
+            }
+
+            {
+                var sum = 0;
+                for (var x = 0; x < N; x++)
+                    for (var n = 0; n < NUMBERS.Length; n++)
+                        if (v[x, x, n].X)
+                            sum += NUMBERS[n];
+
+                Assert.AreEqual(MAGIC_CONST, sum);
+            }
+
+            {
+                var sum = 0;
+                for (var x = 0; x < N; x++)
+                    for (var n = 0; n < NUMBERS.Length; n++)
+                        if (v[N - 1 - x, x, n].X)
+                            sum += NUMBERS[n];
+
+                Assert.AreEqual(MAGIC_CONST, sum);
+            }
         }
     }
 }

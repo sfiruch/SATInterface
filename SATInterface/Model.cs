@@ -129,7 +129,7 @@ namespace SATInterface
 
         public void Maximize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
         {
-            using (var cms = new CryptoMiniSat())
+            using (var cms = new CaDiCaL())
             {
                 cms.Verbosity = (LogOutput ? 1 : 0);
 
@@ -165,24 +165,15 @@ namespace SATInterface
                     if (LogOutput)
                         Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
 
-                    int cur;
-                    switch (_strategy)
+                    int cur = _strategy switch
                     {
-                        case OptimizationStrategy.BinarySearch:
-                            cur = (lb + 1 + ub) / 2;
-                            break;
-                        case OptimizationStrategy.Decreasing:
-                            cur = ub;
-                            break;
-                        case OptimizationStrategy.Increasing:
-                            cur = lb + 1;
-                            break;
-                        default:
-                            throw new ArgumentException(nameof(_strategy));
-                    }
+                        OptimizationStrategy.BinarySearch => (lb + 1 + ub) / 2,
+                        OptimizationStrategy.Decreasing => ub,
+                        OptimizationStrategy.Increasing => lb + 1,
+                        _ => throw new ArgumentException(nameof(_strategy))
+                    };
 
                     //add additional clauses
-
                     int[]? assumptions;
                     if (_strategy == OptimizationStrategy.Increasing)
                     {
@@ -203,14 +194,14 @@ namespace SATInterface
                         cms.AddClause(clauses[i]);
                     mClauses = clauses.Count;
 
-                    var assignment = cms.Solve(assumptions);
+                    var assignment = proofUnsat ? null : cms.Solve(assumptions);
                     if (assignment != null)
                     {
                         for (var i = 0; i < vars.Count; i++)
                             vars[i + 1].Value = assignment[i];
 
                         if (_obj.X < cur)
-                            throw new Exception("Unreliable solver (SAT & Obj<Cur)");
+                            throw new Exception($"Unreliable solver (SAT & Obj<Cur: {_obj.X}<{cur})");
 
                         _solutionCallback?.Invoke();
 
@@ -245,7 +236,7 @@ namespace SATInterface
             proofSat = false;
 
             //set up model
-            using (var cms = new CryptoMiniSat())
+            using (var cms = new CaDiCaL())
             {
                 cms.Verbosity = (LogOutput ? 1 : 0);
 
@@ -394,26 +385,18 @@ namespace SATInterface
         {
             var simplified = _count.Where(b => !ReferenceEquals(b, BoolExpr.False)).ToArray();
             var trueCount = simplified.Count(b => ReferenceEquals(b, BoolExpr.True));
-
-            UIntVar sum;
-            if (trueCount == 0)
-                sum = new UIntVar(this, 0, _enforceUB: false);
-            else
-                sum = UIntVar.Const(this, trueCount);
-
             simplified = simplified.Where(b => !ReferenceEquals(b, BoolExpr.True)).ToArray();
+
             switch (simplified.Length)
             {
                 case 0:
-                    return sum;
+                    return UIntVar.Const(this, trueCount);
                 case 1:
-                    return sum + simplified[0];
-                /*case 2:
-                    return sum + (simplified[0] + simplified[1]);*/
+                    return UIntVar.Convert(this, simplified[0]) + trueCount;
                 default:
                     var firstHalf = simplified.Take(simplified.Length / 2);
                     var secondHalf = simplified.Skip(simplified.Length / 2);
-                    return (Sum(firstHalf) + Sum(secondHalf)) + sum;
+                    return (Sum(firstHalf) + Sum(secondHalf)) + trueCount;
             }
         }
 
@@ -427,8 +410,6 @@ namespace SATInterface
                     return UIntVar.Const(this, 0);
                 case 1:
                     return _elems.Single();
-                case 2:
-                    return _elems.ElementAt(0) + _elems.ElementAt(1);
                 default:
                     return Sum(_elems.Take(cnt / 2)) + Sum(_elems.Skip(cnt / 2));
             }

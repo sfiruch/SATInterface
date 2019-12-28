@@ -29,7 +29,7 @@ namespace SATInterface
             Handle = CryptoMiniSatNative.cmsat_new();
 
             if (_threads == -1)
-                _threads = Math.Max(1, Environment.ProcessorCount / 2);
+                _threads = 1; // Math.Max(1, Environment.ProcessorCount / 2);
 
             if (_threads != 1)
                 CryptoMiniSatNative.cmsat_set_num_threads(Handle, (uint)_threads);
@@ -52,7 +52,8 @@ namespace SATInterface
             {
                 var model = CryptoMiniSatNative.cmsat_get_model(Handle);
                 var bytes = new byte[(int)model.num_vals];
-                Marshal.Copy(model.vals, bytes, 0, (int)model.num_vals);
+                if ((int)model.num_vals != 0)
+                    Marshal.Copy(model.vals, bytes, 0, (int)model.num_vals);
                 return bytes.Select(v => v == (byte)CryptoMiniSatNative.c_lbool.L_TRUE).ToArray();
             }
             else

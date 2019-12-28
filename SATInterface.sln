@@ -1,17 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26228.9
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SATInterface", "SATInterface\SATInterface.csproj", "{1F113811-88B8-417A-8D4A-F4D9A33887AF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SATInterface", "SATInterface\SATInterface.csproj", "{1F113811-88B8-417A-8D4A-F4D9A33887AF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MagicSquare", "MagicSquare\MagicSquare.csproj", "{97B9328A-F8F8-42BD-948A-E182AEF4BC31}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MagicSquare", "MagicSquare\MagicSquare.csproj", "{97B9328A-F8F8-42BD-948A-E182AEF4BC31}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sudoku", "Sudoku\Sudoku.csproj", "{A3BB87AD-22AC-4276-8CD9-EE50EDCA7644}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sudoku", "Sudoku\Sudoku.csproj", "{A3BB87AD-22AC-4276-8CD9-EE50EDCA7644}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{50BF8A3D-8935-4BAE-B9C5-078B4AAC38B1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Maximize", "Maximize\Maximize.csproj", "{D88FD43B-7C7C-4D38-ABD1-5D6932E7A245}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Maximize", "Maximize\Maximize.csproj", "{D88FD43B-7C7C-4D38-ABD1-5D6932E7A245}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{9498A0F7-65E8-4984-8888-3A9135B881E3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,9 +37,16 @@ Global
 		{D88FD43B-7C7C-4D38-ABD1-5D6932E7A245}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D88FD43B-7C7C-4D38-ABD1-5D6932E7A245}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D88FD43B-7C7C-4D38-ABD1-5D6932E7A245}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9498A0F7-65E8-4984-8888-3A9135B881E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9498A0F7-65E8-4984-8888-3A9135B881E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9498A0F7-65E8-4984-8888-3A9135B881E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9498A0F7-65E8-4984-8888-3A9135B881E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3E704075-4493-4508-BDA5-670065E4A80F}
 	EndGlobalSection
 	GlobalSection(Performance) = preSolution
 		HasPerformanceSessions = true
