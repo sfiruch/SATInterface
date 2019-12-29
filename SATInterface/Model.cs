@@ -553,7 +553,7 @@ namespace SATInterface
                 for (var j = i + 1; j < expr.Length; j++)
                     pairs.Add(OrExpr.Create(!expr[i], !expr[j]));
 
-            return AndExpr.Create(pairs);
+            return AndExpr.Create(pairs).Flatten();
         }
 
 
@@ -594,8 +594,8 @@ namespace SATInterface
                 rows.Add(OrExpr.Create(c).Flatten());
             }
 
-            return ExactlyOneOfTwoFactor(rows) &
-                ExactlyOneOfTwoFactor(cols);
+            return ExactlyOneOfTwoFactor(rows).Flatten() &
+                ExactlyOneOfTwoFactor(cols).Flatten();
         }
 
 
@@ -648,7 +648,7 @@ namespace SATInterface
                             for (var j = i + 1; j < expr.Length; j++)
                                 or.Add(expr[i] & expr[j]);
 
-                        return AndExpr.Create(and) & OrExpr.Create(or);
+                        return AndExpr.Create(and).Flatten() & OrExpr.Create(or).Flatten();
                     }
                     else
                     {
@@ -658,7 +658,7 @@ namespace SATInterface
                                 & AndExpr.Create(Enumerable.Range(0, i - 1).Select(j => !expr[j]))
                                 & ExactlyKOf(Enumerable.Range(i + 1, expr.Length - i - 1).Select(j => expr[j]), _k - 1, _method)
                                 ).Flatten());
-                        return OrExpr.Create(or);
+                        return OrExpr.Create(or).Flatten();
                     }
 
                 default:
@@ -700,7 +700,7 @@ namespace SATInterface
 
             valid.Add(ExactlyOneOfCommander(commanders));
 
-            return AndExpr.Create(valid);
+            return AndExpr.Create(valid).Flatten();
         }
 
 
