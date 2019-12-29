@@ -435,7 +435,8 @@ namespace SATInterface
         public enum ExactlyKOfMethod
         {
             BinaryCount,
-            UnaryCount
+            UnaryCount,
+            Pairwise
         }
 
 
@@ -491,6 +492,27 @@ namespace SATInterface
 
         public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod _method = ExactlyOneOfMethod.Commander)
         {
+            var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.False)).ToArray();
+
+            var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.True));
+            if (trueCount > 1)
+                return BoolExpr.False;
+
+            if (trueCount == 1)
+                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, BoolExpr.True)));
+
+            switch (expr.Length)
+            {
+                case 0:
+                    return BoolExpr.False;
+                case 1:
+                    return expr[0];
+                case 2:
+                    return expr[0] ^ expr[1];
+                case 3:
+                    return ExactlyOneOfPairwise(_expr);
+            }
+
             switch (_method)
             {
                 case ExactlyOneOfMethod.UnaryCount:
@@ -540,33 +562,40 @@ namespace SATInterface
         private BoolExpr ExactlyOneOfTwoFactor(IEnumerable<BoolExpr> _expr)
         {
             if (_expr.Count() < 6)
-                return ExactlyOneOfPairwise(_expr);
+                return ExactlyOneOf(_expr);
 
             var expr = _expr.ToArray();
             var W = (int)Math.Ceiling(Math.Sqrt(expr.Length));
             var H = (int)Math.Ceiling(expr.Length / (double)W);
 
-            var xv = Enumerable.Range(0, W).Select(x => new BoolVar(this)).ToArray();
-            var yv = Enumerable.Range(0, H).Select(y => new BoolVar(this)).ToArray();
-
-            var valid = new List<BoolExpr>();
-
+            var rows = new List<BoolExpr>();
+            var cols = new List<BoolExpr>();
+            for (var y = 0; y < H; y++)
             {
-                var i = 0;
-                for (var y = 0; y < H; y++)
-                    for (var x = 0; x < W; x++, i++)
-                        if (i < expr.Length)
-                            valid.Add(expr[i] == (xv[x] & yv[y]));
-                        else
-                            AddConstr(!(xv[x] & yv[y]));
-
-                Debug.Assert(i >= expr.Length);
+                var c = new List<BoolExpr>();
+                for (var x = 0; x < W; x++)
+                {
+                    var i = W * y + x;
+                    if (i < expr.Length)
+                        c.Add(expr[i]);
+                }
+                cols.Add(OrExpr.Create(c).Flatten());
             }
 
-            valid.Add(ExactlyOneOfTwoFactor(xv));
-            valid.Add(ExactlyOneOfTwoFactor(yv));
+            for (var x = 0; x < W; x++)
+            {
+                var c = new List<BoolExpr>();
+                for (var y = 0; y < H; y++)
+                {
+                    var i = W * y + x;
+                    if (i < expr.Length)
+                        c.Add(expr[i]);
+                }
+                rows.Add(OrExpr.Create(c).Flatten());
+            }
 
-            return AndExpr.Create(valid);
+            return ExactlyOneOfTwoFactor(rows) &
+                ExactlyOneOfTwoFactor(cols);
         }
 
 
@@ -587,35 +616,54 @@ namespace SATInterface
                 return !OrExpr.Create(expr);
             else if (_k == expr.Length)
                 return AndExpr.Create(expr);
-            else switch (expr.Length)
-                {
-                    case 0:
-                        throw new Exception();
-                    case 1:
-                        throw new Exception();
-                    case 2:
-                        if (_k != 1)
-                            throw new Exception();
-                        return BoolExpr.Xor(expr[0], expr[1]);
-                    default:
+            else if (_k == 1)
+                return ExactlyOneOf(expr);
 
-                        switch (_method)
-                        {
-                            case ExactlyKOfMethod.BinaryCount:
-                                return Sum(expr.Select(b =>
-                                {
-                                    if (b is BoolVar)
-                                        return (UIntVar)b!;
-                                    else
-                                        return UIntVar.Const(this, 1) * b;
-                                })) == _k;
-                            case ExactlyKOfMethod.UnaryCount:
-                                var uc = UnaryCount(expr);
-                                return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
-                            default:
-                                throw new ArgumentException();
-                        }
-                }
+            Debug.Assert(_k >= 2 && _k < expr.Length);
+
+            switch (_method)
+            {
+                case ExactlyKOfMethod.BinaryCount:
+                    return Sum(expr) == _k;
+
+                case ExactlyKOfMethod.UnaryCount:
+                    var uc = UnaryCount(expr);
+                    return uc[_k - 1] && !uc[_k];
+                    //return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
+
+                case ExactlyKOfMethod.Pairwise:
+
+                    if (_k == 2)
+                    {
+                        //at most 2
+                        var and = new List<BoolExpr>();
+                        for (var i = 0; i < expr.Length; i++)
+                            for (var j = i + 1; j < expr.Length; j++)
+                                for (var k = j + 1; k < expr.Length; k++)
+                                    and.Add(!expr[i] | !expr[j] | !expr[k]);
+
+                        //at least 2
+                        var or = new List<BoolExpr>();
+                        for (var i = 0; i < expr.Length; i++)
+                            for (var j = i + 1; j < expr.Length; j++)
+                                or.Add(expr[i] & expr[j]);
+
+                        return AndExpr.Create(and) & OrExpr.Create(or);
+                    }
+                    else
+                    {
+                        var or = new List<BoolExpr>();
+                        for (var i = 0; i < expr.Length; i++)
+                            or.Add((expr[i]
+                                & AndExpr.Create(Enumerable.Range(0, i - 1).Select(j => !expr[j]))
+                                & ExactlyKOf(Enumerable.Range(i + 1, expr.Length - i - 1).Select(j => expr[j]), _k - 1, _method)
+                                ).Flatten());
+                        return OrExpr.Create(or);
+                    }
+
+                default:
+                    throw new ArgumentException(nameof(_method));
+            }
         }
 
 
@@ -623,7 +671,7 @@ namespace SATInterface
         //- https://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
         private BoolExpr ExactlyOneOfCommander(IEnumerable<BoolExpr> _expr)
         {
-            if (_expr.Count() < 6)
+            if (_expr.Count() < 5)
                 return ExactlyOneOfPairwise(_expr);
 
             var expr = _expr.ToArray();
@@ -682,8 +730,8 @@ namespace SATInterface
                             var r = a + b;
                             if (r >= 0 && r < R.Length)
                             {
-                                var C1 = OrExpr.Create(!A[a], !B[b], R[r]);
-                                var C2 = OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]);
+                                var C1 = OrExpr.Create(!A[a], !B[b], R[r]).Flatten();
+                                var C2 = OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]).Flatten();
                                 AddConstr(C1 & C2);
                             }
                         }
