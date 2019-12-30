@@ -553,7 +553,7 @@ namespace SATInterface
                 for (var j = i + 1; j < expr.Length; j++)
                     pairs.Add(OrExpr.Create(!expr[i], !expr[j]));
 
-            return AndExpr.Create(pairs).Flatten();
+            return AndExpr.Create(pairs);
         }
 
 
@@ -594,8 +594,8 @@ namespace SATInterface
                 rows.Add(OrExpr.Create(c).Flatten());
             }
 
-            return ExactlyOneOfTwoFactor(rows).Flatten() &
-                ExactlyOneOfTwoFactor(cols).Flatten();
+            return ExactlyOneOfTwoFactor(rows) &
+                ExactlyOneOfTwoFactor(cols);
         }
 
 
@@ -700,7 +700,7 @@ namespace SATInterface
 
             valid.Add(ExactlyOneOfCommander(commanders));
 
-            return AndExpr.Create(valid).Flatten();
+            return AndExpr.Create(valid);
         }
 
 
