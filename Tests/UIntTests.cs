@@ -9,6 +9,49 @@ namespace Tests
     public class UIntTests
     {
         [TestMethod]
+        public void UIntLessEqual()
+        {
+            foreach (var strategy in Enum.GetValues(typeof(Model.OptimizationStrategy)).Cast<Model.OptimizationStrategy>())
+                for (var i = 0; i < 140; i++)
+                {
+                    var m = new Model();
+                    m.LogOutput = false;
+
+                    var v = new UIntVar(m, 100, true);
+                    m.AddConstr(v <= i);
+
+                    m.Maximize(v, _strategy: strategy);
+
+                    Assert.IsTrue(m.IsSatisfiable);
+                    Assert.AreEqual(Math.Min(i, 100), v.X);
+                }
+        }
+
+        [TestMethod]
+        public void UIntGreaterEqual()
+        {
+            foreach (var strategy in Enum.GetValues(typeof(Model.OptimizationStrategy)).Cast<Model.OptimizationStrategy>())
+                for (var i = 0; i < 140; i++)
+                {
+                    var m = new Model();
+                    m.LogOutput = false;
+
+                    var v = new UIntVar(m, 100, true);
+                    m.AddConstr(v >= i);
+
+                    m.Minimize(v, _strategy: strategy);
+
+                    if (i <= 100)
+                    {
+                        Assert.IsTrue(m.IsSatisfiable);
+                        Assert.AreEqual(i, v.X);
+                    }
+                    else
+                        Assert.IsTrue(m.IsUnsatisfiable);
+                }
+        }
+
+        [TestMethod]
         public void UIntAddBool()
         {
             for (var i = 0; i < 100; i++)

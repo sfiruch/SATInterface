@@ -97,10 +97,10 @@ namespace SATInterface
             return res;
         }
 
-        public static UIntVar operator +(UIntVar _a, int _add) => (_add==0) ? _a : (_a + Const(_a.Model, _add));
-        public static UIntVar operator +(int _add, UIntVar _a) => (_add==0) ? _a : (_a + Const(_a.Model, _add));
+        public static UIntVar operator +(UIntVar _a, int _add) => (_add == 0) ? _a : (_a + Const(_a.Model, _add));
+        public static UIntVar operator +(int _add, UIntVar _a) => (_add == 0) ? _a : (_a + Const(_a.Model, _add));
 
-        public static UIntVar operator -(UIntVar _a, int _add) => (_add==0) ? _a : (_a - Const(_a.Model, _add));
+        public static UIntVar operator -(UIntVar _a, int _add) => (_add == 0) ? _a : (_a - Const(_a.Model, _add));
         public static UIntVar operator -(int _add, UIntVar _a) => Const(_a.Model, _add) - _a;
 
         public static UIntVar operator -(UIntVar _a, UIntVar _b)
@@ -214,24 +214,29 @@ namespace SATInterface
         {
             if (_v < 0)
                 return true;
+            if (_v == 0)
+                return OrExpr.Create(_a.bit);
             if (_a.UB <= _v)
                 return false;
 
-            var nonZeroes = Log2(_v - 1) + 1;
+            var nonZeroes = Log2(_v) + 1;
+            Debug.Assert(nonZeroes <= _a.bit.Length);
+
             var resAny = new BoolExpr[_a.bit.Length - nonZeroes];
             for (var i = nonZeroes; i < _a.bit.Length; i++)
                 resAny[i - nonZeroes] = _a.bit[i];
-            var leadingZeroes = (resAny.Length != 0) ? OrExpr.Create(resAny).Flatten() : false;
-
+            var leadingZeroes = (resAny.Length != 0) ? OrExpr.Create(resAny) : false;
 
             var resOr = new List<BoolExpr>();
             for (var i = 0; i < nonZeroes; i++)
                 if (((_v >> i) & 1) == 0)
                 {
-                    var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i - 1).Select(j => (((_v >> j) & 1) == 1) ? _a.bit[j] : !_a.bit[j])).Flatten();
+                    var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i)
+                        .Where(j => ((_v >> j) & 1) == 1)
+                        .Select(j => _a.bit[j]));
                     resOr.Add((_a.bit[i] & allesDavorEq).Flatten());
                 }
-            var orExpr = (resOr.Count != 0) ? OrExpr.Create(resOr).Flatten() : false;
+            var orExpr = (resOr.Count != 0) ? OrExpr.Create(resOr) : false;
 
             return leadingZeroes | orExpr;
         }
@@ -241,6 +246,8 @@ namespace SATInterface
         {
             if (_v <= 0)
                 return false;
+            if (_v == 1)
+                return !OrExpr.Create(_a.bit);
             if (_v > _a.UB)
                 return true;
 
@@ -256,7 +263,9 @@ namespace SATInterface
             for (var i = 0; i < nonZeroes; i++)
                 if (((_v >> i) & 1) == 1)
                 {
-                    var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i - 1).Select(j => (((_v >> j) & 1) == 1) ? _a.bit[j] : !_a.bit[j])).Flatten();
+                    var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i - 1)
+                        .Where(j => ((_v >> j) & 1) == 0)
+                        .Select(j => !_a.bit[j]));
                     resOr.Add((!_a.bit[i] & allesDavorEq).Flatten());
                 }
             var orExpr = (resOr.Count != 0) ? OrExpr.Create(resOr).Flatten() : true;
@@ -421,8 +430,7 @@ namespace SATInterface
                     carry = OrExpr.Create(aAndB, aAndCarry, bAndCarry).Flatten();
 
                     //unitprop
-                    var notAAndNotB = (!_a[i] & !_b[i]).Flatten();
-                    res.Model.AddConstr(OrExpr.Create(res.bit[i], carry, notAAndNotB));
+                    res.Model.AddConstr(OrExpr.Create(res.bit[i], carry, (!_a[i] & !_b[i])));
                 }
             }
 

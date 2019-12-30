@@ -129,6 +129,9 @@ namespace SATInterface
 
         public void Maximize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
         {
+            if (proofUnsat)
+                return;
+
             using (var cms = new CaDiCaL())
             {
                 cms.Verbosity = (LogOutput ? 1 : 0);
@@ -539,10 +542,7 @@ namespace SATInterface
 
         private BoolExpr ExactlyOneOfPairwise(IEnumerable<BoolExpr> _expr)
         {
-            var orExpr = new BoolVar(this);
-            AddConstr(orExpr == OrExpr.Create(_expr));
-
-            return orExpr & AtMostOneOfPairwise(_expr);
+            return OrExpr.Create(_expr).Flatten() & AtMostOneOfPairwise(_expr);
         }
 
         private BoolExpr AtMostOneOfPairwise(IEnumerable<BoolExpr> _expr)
@@ -648,7 +648,7 @@ namespace SATInterface
                             for (var j = i + 1; j < expr.Length; j++)
                                 or.Add(expr[i] & expr[j]);
 
-                        return AndExpr.Create(and).Flatten() & OrExpr.Create(or).Flatten();
+                        return AndExpr.Create(and) & OrExpr.Create(or);
                     }
                     else
                     {
@@ -692,7 +692,7 @@ namespace SATInterface
                     //1
                     for (var j = 0; j < groups[i].Length; j++)
                         for (var k = j + 1; k < groups[i].Length; k++)
-                            valid.Add(OrExpr.Create(!groups[i][j], !groups[i][k]));
+                            valid.Add(OrExpr.Create(!groups[i][j], !groups[i][k]).Flatten());
 
                     AddConstr((!commanders[i]) | OrExpr.Create(groups[i])); //2
                     AddConstr(commanders[i] | (!OrExpr.Create(groups[i]))); //3
