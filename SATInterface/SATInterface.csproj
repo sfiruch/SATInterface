@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <Version>2.1.8</Version>
+    <Version>2.1.9</Version>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -14,7 +14,7 @@
     <PackageId>deiruch.SATInterface</PackageId>
     <Authors>Simon Felix</Authors>
     <Description>Library to formulate and solve SAT problems in .NET. Includes CaDiCaL as solver.</Description>
-    <Copyright>Copyright 2019 Simon Felix</Copyright>
+    <Copyright>Copyright 2020 Simon Felix</Copyright>
   </PropertyGroup>
   <ItemGroup>
     <None Pack="true" PackageCopyToOutput="true" Include="CaDiCaL.dll">
