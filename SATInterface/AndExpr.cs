@@ -54,6 +54,16 @@ namespace SATInterface
             }
         }
 
+        public override BoolExpr Flatten()
+        {
+            var model = EnumVars().First().Model;
+            var res = new BoolVar(model);
+            model.AddConstr(OrExpr.Create(elements.Select(e => !e).Append(res)));
+            foreach (var e in elements)
+                model.AddConstr(e | !res);
+            return res;
+        }
+
         internal override IEnumerable<BoolVar> EnumVars()
         {
             foreach (var e in elements)
@@ -63,10 +73,7 @@ namespace SATInterface
 
         public override string ToString() => "(" + string.Join(" & ", elements.Select(e => e.ToString()).ToArray()) + ")";
 
-        public override bool X
-        {
-            get => elements.All(e => e.X);
-        }
+        public override bool X => elements.All(e => e.X);
 
         public override bool Equals(object _obj)
         {

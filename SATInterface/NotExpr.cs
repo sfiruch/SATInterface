@@ -33,6 +33,8 @@ namespace SATInterface
                 throw new NotImplementedException();
         }
 
+        public override BoolExpr Flatten() => this;
+
         internal override IEnumerable<BoolVar> EnumVars()
         {
             yield return inner;
@@ -40,13 +42,7 @@ namespace SATInterface
 
         public override string ToString() => "!" + inner;
 
-        public override bool X
-        {
-            get
-            {
-                return !inner.X;
-            }
-        }
+        public override bool X => !inner.X;
 
         public override bool Equals(object _obj)
         {

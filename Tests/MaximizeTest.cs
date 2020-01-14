@@ -86,5 +86,37 @@ namespace Tests
                 RunTest(xLB, xUB, yLB, yUB, xLimit, yLimit, xWeight, yWeight, _strategy);
             }
         }
+
+        [TestMethod]
+        public void UnsatAtEnd()
+        {
+            var m = new Model();
+            m.LogOutput = false;
+
+            var a = m.AddVar();
+            var b = m.AddVar();
+            m.AddConstr(a);
+            m.AddConstr(!b);
+            m.AddConstr(a==b);
+
+            var v = new UIntVar(m, 10, true);
+            m.Maximize(v);
+
+            Assert.IsFalse(m.IsSatisfiable);
+            Assert.IsTrue(m.IsUnsatisfiable);
+        }
+
+        [TestMethod]
+        public void SatAtEnd()
+        {
+            var m = new Model();
+            m.LogOutput = false;
+
+            var v = new UIntVar(m, 10, true);
+            m.Maximize(v);
+
+            Assert.IsTrue(m.IsSatisfiable);
+            Assert.IsFalse(m.IsUnsatisfiable);
+        }
     }
 }

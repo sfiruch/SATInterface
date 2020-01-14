@@ -27,6 +27,8 @@ namespace SATInterface
         {
         }
 
+        public override BoolExpr Flatten() => this;
+
         public BoolVar(Model _model,string _name)
         {
             Model = _model;
@@ -51,6 +53,9 @@ namespace SATInterface
                     return true;
                 if (ReferenceEquals(this, False))
                     return false;
+
+                if (!Model.IsSatisfiable)
+                    throw new InvalidOperationException("Model is not SAT");
 
                 return Value;
             }

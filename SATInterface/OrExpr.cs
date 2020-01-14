@@ -40,7 +40,7 @@ namespace SATInterface
                         j--;
                     }*/
 
-            if (res.Count==0)
+            if (res.Count == 0)
                 return False;
             else if (res.Count == 1)
                 return res.Single();
@@ -50,30 +50,44 @@ namespace SATInterface
                     if (subE is NotExpr && res.Contains(((NotExpr)subE).inner))
                         return TRUE;*/
 
-                for(var i=0;i<res.Count;i++)
-                    if (res[i] is AndExpr andExpr)
-                    {
-                        var orExprs = new BoolExpr[andExpr.elements.Length];
-                        for (var j = 0; j < orExprs.Length; j++)
+                if (res.Any(e => e is AndExpr a && a.elements.Length >= 8))
+                    for (var i = 0; i < res.Count; i++)
+                        if (res[i] is AndExpr andExpr)
                         {
-                            res[i] = andExpr.elements[j];
-                            orExprs[j] = OrExpr.Create(res);
+                            var orExprs = new BoolExpr[andExpr.elements.Length];
+                            for (var j = 0; j < orExprs.Length; j++)
+                            {
+                                res[i] = andExpr.elements[j];
+                                orExprs[j] = OrExpr.Create(res);
+                            }
+
+                            return AndExpr.Create(orExprs);
                         }
 
-                        return AndExpr.Create(orExprs);
-                    }
+                for (var i = 0; i < res.Count; i++)
+                    if (res[i] is AndExpr andExpr)
+                        res[i] = andExpr.Flatten();
 
                 //find v !a
                 foreach (var e in res)
                     if (e is NotExpr && res.Contains(((NotExpr)e).inner))
                         return True;
 
-                res.Sort((a,b) => a.GetHashCode().CompareTo(b.GetHashCode()));
                 return new OrExpr(res);
             }
         }
 
         public override string ToString() => "(" + string.Join(" | ", elements.Select(e => e.ToString()).ToArray()) + ")";
+
+        public override BoolExpr Flatten()
+        {
+            var model = EnumVars().First().Model;
+            var res = new BoolVar(model);
+            model.AddConstr(OrExpr.Create(elements.Append(!res)));
+            foreach (var e in elements)
+                model.AddConstr(!e | res);
+            return res;
+        }
 
         internal override IEnumerable<BoolVar> EnumVars()
         {
@@ -82,13 +96,7 @@ namespace SATInterface
                     yield return v;
         }
 
-        public override bool X
-        {
-            get
-            {
-                return elements.Any(e => e.X);
-            }
-        }
+        public override bool X => elements.Any(e => e.X);
 
         public override bool Equals(object _obj)
         {
@@ -113,7 +121,7 @@ namespace SATInterface
         {
             if (hashCode == 0)
             {
-                hashCode = (int)Model.RotateLeft((uint)elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b),4) ^ (1 << 29);
+                hashCode = (int)Model.RotateLeft((uint)elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b), 4) ^ (1 << 29);
                 if (hashCode == 0)
                     hashCode++;
             }

@@ -33,21 +33,15 @@ namespace SATInterface
         }
 
 
-        public BoolExpr Flatten()
+        public virtual BoolExpr Flatten()
         {
-            if (this is BoolVar || this is NotExpr)
+            if (ReferenceEquals(this, True) || ReferenceEquals(this, False))
                 return this;
-            else if (ReferenceEquals(this, True))
-                return True;
-            else if (ReferenceEquals(this, False))
-                return False;
-            else
-            {
-                var model = EnumVars().First().Model;
-                var res = new BoolVar(model);
-                model.AddConstr(res == this);
-                return res;
-            }
+            
+            var model = EnumVars().First().Model;
+            var res = new BoolVar(model);
+            model.AddConstr(res == this);
+            return res;
         }
 
         internal virtual IEnumerable<BoolVar> EnumVars()

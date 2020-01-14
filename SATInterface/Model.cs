@@ -154,6 +154,7 @@ namespace SATInterface
                 Debug.Assert(bestAssignment.Length == vars.Count);
                 for (var i = 0; i < vars.Count; i++)
                     vars[i + 1].Value = bestAssignment[i];
+                proofSat = true;
 
                 _solutionCallback?.Invoke();
 
@@ -202,6 +203,8 @@ namespace SATInterface
                     {
                         for (var i = 0; i < vars.Count; i++)
                             vars[i + 1].Value = assignment[i];
+
+                        proofSat = true;
 
                         if (_obj.X < cur)
                             throw new Exception($"Unreliable solver (SAT & Obj<Cur: {_obj.X}<{cur})");
