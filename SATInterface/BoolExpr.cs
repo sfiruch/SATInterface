@@ -17,7 +17,7 @@ namespace SATInterface
         public static bool operator true(BoolExpr _be) => ReferenceEquals(True, _be);
         public static bool operator false(BoolExpr _be) => ReferenceEquals(False, _be);
 
-        public static implicit operator BoolExpr(bool _v) => _v ? True:False;
+        public static implicit operator BoolExpr(bool _v) => _v ? True : False;
 
         public virtual bool X
         {
@@ -37,7 +37,7 @@ namespace SATInterface
         {
             if (ReferenceEquals(this, True) || ReferenceEquals(this, False))
                 return this;
-            
+
             var model = EnumVars().First().Model;
             var res = new BoolVar(model);
             model.AddConstr(res == this);
@@ -78,7 +78,7 @@ namespace SATInterface
 
             return NotExpr.Create(_v);
         }
-        
+
 
         public static BoolExpr operator |(BoolExpr lhs, BoolExpr rhs) => OrExpr.Create(lhs, rhs);
         public static BoolExpr operator &(BoolExpr lhs, BoolExpr rhs) => AndExpr.Create(lhs, rhs);
@@ -105,39 +105,41 @@ namespace SATInterface
             if (ReferenceEquals(rhsS, False))
                 return !lhsS;
 
-            //return (lhsS & rhsS) | (!lhsS & !rhsS);
+            if (rhsS is AndExpr andExpr && andExpr.elements.Length > 8)
+            {
+                var other = lhsS.Flatten();
+                var ands = new List<BoolExpr>();
+                ands.Add(OrExpr.Create(andExpr.elements.Select(e => !e).Append(other)));
+                foreach (var e in andExpr.elements)
+                    ands.Add(e | !other);
+                return AndExpr.Create(ands);
+            }
+            if (!(rhsS is AndExpr) && lhsS is AndExpr)
+                return (rhsS == lhsS);
+
+            if (rhsS is OrExpr orExpr && orExpr.elements.Length > 8)
+            {
+                var other = lhsS.Flatten();
+                var ands = new List<BoolExpr>();
+                ands.Add(OrExpr.Create(orExpr.elements.Append(!other)));
+                foreach (var e in orExpr.elements)
+                    ands.Add(!e | other);
+                return AndExpr.Create(ands);
+            }
+            if (!(rhsS is OrExpr) && lhsS is OrExpr)
+                return (rhsS == lhsS);
+
             return (lhsS | !rhsS) & (rhsS | !lhsS);
         }
 
-        public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => Xor(lhs,rhs);
+        public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);
 
         public static BoolExpr operator >(BoolExpr lhs, BoolExpr rhs) => lhs & !rhs;
         public static BoolExpr operator <(BoolExpr lhs, BoolExpr rhs) => !lhs & rhs;
         public static BoolExpr operator >=(BoolExpr lhs, BoolExpr rhs) => lhs | !rhs;
         public static BoolExpr operator <=(BoolExpr lhs, BoolExpr rhs) => !lhs | rhs;
 
-        public static BoolExpr operator ^(BoolExpr lhsS, BoolExpr rhsS)
-        {
-            if (lhsS is null)
-                throw new ArgumentNullException();
-            if (rhsS is null)
-                throw new ArgumentNullException();
-
-            if (ReferenceEquals(lhsS, rhsS))
-                return False;
-
-            if (ReferenceEquals(lhsS, False))
-                return rhsS;
-            if (ReferenceEquals(lhsS, True))
-                return !rhsS;
-
-            if (ReferenceEquals(rhsS, False))
-                return lhsS;
-            if (ReferenceEquals(rhsS, True))
-                return !lhsS;
-
-            return (lhsS | rhsS) & (!lhsS | !rhsS);
-        }
+        public static BoolExpr operator ^(BoolExpr lhsS, BoolExpr rhsS) => !(lhsS == rhsS);
 
         public static BoolExpr Xor(BoolExpr _lhs, BoolExpr _rhs) => _lhs ^ _rhs;
 
@@ -169,6 +171,6 @@ namespace SATInterface
                 return 0;
         }
 
-        public override bool Equals(object obj) => ReferenceEquals(this,obj);
+        public override bool Equals(object obj) => ReferenceEquals(this, obj);
     }
 }

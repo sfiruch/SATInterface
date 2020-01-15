@@ -8,9 +8,9 @@ namespace SATInterface
 {
     public class OrExpr : BoolExpr
     {
-        internal readonly List<BoolExpr> elements;
+        internal readonly BoolExpr[] elements;
 
-        private OrExpr(List<BoolExpr> _elems)
+        private OrExpr(BoolExpr[] _elems)
         {
             elements = _elems;
         }
@@ -73,7 +73,7 @@ namespace SATInterface
                     if (e is NotExpr && res.Contains(((NotExpr)e).inner))
                         return True;
 
-                return new OrExpr(res);
+                return new OrExpr(res.ToArray());
             }
         }
 
@@ -104,7 +104,7 @@ namespace SATInterface
             if (ReferenceEquals(other, null))
                 return false;
 
-            if (elements.Count != other.elements.Count)
+            if (elements.Length != other.elements.Length)
                 return false;
 
             foreach (var a in elements)

@@ -31,15 +31,15 @@ namespace SATInterface
                 clauses.Add(new[] { ((BoolVar)_c).Id });
             else if (_c is NotExpr)
                 clauses.Add(new[] { -((NotExpr)_c).inner.Id });
-            else if (_c is OrExpr)
+            else if (_c is OrExpr orExpr)
             {
-                var sb = new int[((OrExpr)_c).elements.Count];
+                var sb = new int[orExpr.elements.Length];
                 var i = 0;
-                foreach (var e in ((OrExpr)_c).elements)
-                    if (e is BoolVar)
-                        sb[i++] = ((BoolVar)e).Id;
-                    else if (e is NotExpr)
-                        sb[i++] = -((NotExpr)e).inner.Id;
+                foreach (var e in orExpr.elements)
+                    if (e is BoolVar bv)
+                        sb[i++] = bv.Id;
+                    else if (e is NotExpr ne)
+                        sb[i++] = -ne.inner.Id;
                     else
                         throw new Exception(e.GetType().ToString());
 
