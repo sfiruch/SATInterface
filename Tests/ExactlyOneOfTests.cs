@@ -54,11 +54,27 @@ namespace Tests
         }
 
         [TestMethod]
+        public void PigeonholeRandomOneHot()
+        {
+            var RNG = new Random(1);
+            for (var i = 0; i < 50; i++)
+                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.OneHot);
+        }
+
+        [TestMethod]
         public void PigeonholeRandomUnary()
         {
             var RNG = new Random(1);
             for (var i = 0; i < 50; i++)
                 Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.UnaryCount);
+        }
+
+        [TestMethod]
+        public void PigeonholeRandomSequential()
+        {
+            var RNG = new Random(1);
+            for (var i = 0; i < 50; i++)
+                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.Sequential);
         }
 
         [TestMethod]
@@ -82,6 +98,12 @@ namespace Tests
         }
 
         [TestMethod]
+        public void PigeonholeSingleOneHot()
+        {
+            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.OneHot);
+        }
+
+        [TestMethod]
         public void PigeonholeSingleBinary()
         {
             Pigeonhole(100, 1, Model.ExactlyOneOfMethod.BinaryCount);
@@ -94,6 +116,12 @@ namespace Tests
         }
 
         [TestMethod]
+        public void PigeonholeSingleSequential()
+        {
+            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.Sequential);
+        }
+
+        [TestMethod]
         public void PigeonholeSingleTwoFactor()
         {
             Pigeonhole(100, 1, Model.ExactlyOneOfMethod.TwoFactor);
@@ -102,8 +130,8 @@ namespace Tests
         [TestMethod]
         public void PigeonholeSymmetricSATCommander()
         {
-            for(var size=1;size<20;size++)
-            Pigeonhole(size,size, Model.ExactlyOneOfMethod.Commander);
+            for (var size = 1; size < 20; size++)
+                Pigeonhole(size, size, Model.ExactlyOneOfMethod.Commander);
         }
 
         [TestMethod]
@@ -121,10 +149,24 @@ namespace Tests
         }
 
         [TestMethod]
+        public void PigeonholeSymmetricSATOneHot()
+        {
+            for (var size = 1; size < 20; size++)
+                Pigeonhole(size, size, Model.ExactlyOneOfMethod.OneHot);
+        }
+
+        [TestMethod]
         public void PigeonholeSymmetricSATUnary()
         {
             for (var size = 1; size < 20; size++)
                 Pigeonhole(size, size, Model.ExactlyOneOfMethod.UnaryCount);
+        }
+
+        [TestMethod]
+        public void PigeonholeSymmetricSATSequential()
+        {
+            for (var size = 1; size < 20; size++)
+                Pigeonhole(size, size, Model.ExactlyOneOfMethod.Sequential);
         }
 
         [TestMethod]
@@ -138,14 +180,28 @@ namespace Tests
         public void PigeonholeSymmetricUNSATCommander()
         {
             for (var size = 1; size < 12; size++)
-                Pigeonhole(size-1, size, Model.ExactlyOneOfMethod.Commander);
+                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.Commander);
+        }
+
+        [TestMethod]
+        public void PigeonholeSymmetricUNSATSequential()
+        {
+            for (var size = 1; size < 12; size++)
+                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.Sequential);
         }
 
         [TestMethod]
         public void PigeonholeSymmetricUNSATPairwise()
         {
             for (var size = 1; size < 11; size++)
-                Pigeonhole(size-1, size, Model.ExactlyOneOfMethod.Pairwise);
+                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.Pairwise);
+        }
+
+        [TestMethod]
+        public void PigeonholeSymmetricUNSATOneHot()
+        {
+            for (var size = 1; size < 12; size++)
+                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.OneHot);
         }
 
         [TestMethod]

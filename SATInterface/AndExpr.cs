@@ -61,6 +61,9 @@ namespace SATInterface
             model.AddConstr(OrExpr.Create(elements.Select(e => !e).Append(res)));
             foreach (var e in elements)
                 model.AddConstr(e | !res);
+
+            //model.AddConstr(res | OrExpr.Create(elements.Select(e => !e)));
+
             return res;
         }
 

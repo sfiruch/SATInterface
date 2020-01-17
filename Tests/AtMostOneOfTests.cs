@@ -37,11 +37,27 @@ namespace Tests
         }
 
         [TestMethod]
+        public void PigeonholeRandomSequential()
+        {
+            var RNG = new Random(1);
+            for (var i = 0; i < 50; i++)
+                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.AtMostOneOfMethod.Sequential);
+        }
+
+        [TestMethod]
         public void PigeonholeRandomPairwise()
         {
             var RNG = new Random(1);
             for (var i = 0; i < 50; i++)
                 Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.AtMostOneOfMethod.Pairwise);
+        }
+
+        [TestMethod]
+        public void PigeonholeRandomOneHot()
+        {
+            var RNG = new Random(1);
+            for (var i = 0; i < 50; i++)
+                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.AtMostOneOfMethod.OneHot);
         }
 
         [TestMethod]
@@ -51,9 +67,21 @@ namespace Tests
         }
 
         [TestMethod]
+        public void PigeonholeSingleSequential()
+        {
+            Pigeonhole(100, 1, Model.AtMostOneOfMethod.Sequential);
+        }
+
+        [TestMethod]
         public void PigeonholeSinglePairwise()
         {
             Pigeonhole(100, 1, Model.AtMostOneOfMethod.Pairwise);
+        }
+
+        [TestMethod]
+        public void PigeonholeSingleOneHot()
+        {
+            Pigeonhole(100, 1, Model.AtMostOneOfMethod.OneHot);
         }
 
         [TestMethod]
@@ -64,6 +92,13 @@ namespace Tests
         }
 
         [TestMethod]
+        public void PigeonholeSymmetricSATOneHot()
+        {
+            for (var size = 1; size < 20; size++)
+                Pigeonhole(size, size, Model.AtMostOneOfMethod.OneHot);
+        }
+
+        [TestMethod]
         public void PigeonholeSymmetricSATPairwise()
         {
             for (var size = 1; size < 20; size++)
@@ -71,10 +106,31 @@ namespace Tests
         }
 
         [TestMethod]
+        public void PigeonholeSymmetricSATSequential()
+        {
+            for (var size = 1; size < 20; size++)
+                Pigeonhole(size, size, Model.AtMostOneOfMethod.Sequential);
+        }
+
+        [TestMethod]
         public void PigeonholeSymmetricUNSATCommander()
         {
             for (var size = 1; size < 12; size++)
                 Pigeonhole(size-1, size, Model.AtMostOneOfMethod.Commander);
+        }
+
+        [TestMethod]
+        public void PigeonholeSymmetricUNSATSequential()
+        {
+            for (var size = 1; size < 12; size++)
+                Pigeonhole(size - 1, size, Model.AtMostOneOfMethod.Sequential);
+        }
+
+        [TestMethod]
+        public void PigeonholeSymmetricUNSATOneHot()
+        {
+            for (var size = 1; size < 11; size++)
+                Pigeonhole(size - 1, size, Model.AtMostOneOfMethod.OneHot);
         }
 
         [TestMethod]

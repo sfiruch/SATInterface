@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SATInterface;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Tests
@@ -91,7 +92,7 @@ namespace Tests
         public void SumBools()
         {
             var RNG = new Random(0);
-            for (var n = 0; n < 30; n++)
+            for (var n = 0; n < 100; n++)
                 for (var i = 0; i < 5; i++)
                 {
                     var m = new Model();
@@ -105,7 +106,7 @@ namespace Tests
                     var sum = m.Sum(v);
                     m.Solve();
                     Assert.IsTrue(m.IsSatisfiable);
-                    Assert.AreEqual(values.Count(i => i), sum.X);
+                    Assert.AreEqual(values.Count(i => i), sum.X, $"{n} {i} {string.Join("",values)}");
                 }
         }
     }

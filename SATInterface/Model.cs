@@ -10,6 +10,9 @@ namespace SATInterface
 {
     public class Model
     {
+        //TODO add support for linear combinations as data type
+        //TODO add support for encoding of PBE constraints
+
         internal int VarCount = 0;
         private List<int[]> clauses = new List<int[]>();
         private Dictionary<int, BoolVar> vars = new Dictionary<int, BoolVar>();
@@ -23,29 +26,39 @@ namespace SATInterface
         {
         }
 
+        //TODO common subexpression elimination
         private void AddConstrInternal(BoolExpr _c)
         {
             if (ReferenceEquals(_c, BoolExpr.False))
                 proofUnsat = true;
-            else if (_c is BoolVar)
-                clauses.Add(new[] { ((BoolVar)_c).Id });
-            else if (_c is NotExpr)
-                clauses.Add(new[] { -((NotExpr)_c).inner.Id });
+            else if (_c is BoolVar boolVar)
+                clauses.Add(new[] { boolVar.Id });
+            else if (_c is NotExpr notExpr)
+                clauses.Add(new[] { -notExpr.inner.Id });
             else if (_c is OrExpr orExpr)
             {
-                var sb = new int[orExpr.elements.Length];
-                var i = 0;
-                foreach (var e in orExpr.elements)
-                    if (e is BoolVar bv)
-                        sb[i++] = bv.Id;
-                    else if (e is NotExpr ne)
-                        sb[i++] = -ne.inner.Id;
-                    else
-                        throw new Exception(e.GetType().ToString());
+                //TODO splitting might lead to more CSE matches?
+                //if(orExpr.elements.Length>4)
+                //{
+                //    var ors = new List<BoolExpr>();
+                //    for(var i=0;i<orExpr.elements.Length;i+=3)
+                //        ors.Add(OrExpr.Create(orExpr.elements.Skip(i).Take(3)).Flatten());
+                //    AddConstr(OrExpr.Create(ors));
+                //    return;
+                //}
 
+                var sb = new int[orExpr.elements.Length];
+                for (var i = 0; i < orExpr.elements.Length; i++)
+                    if (orExpr.elements[i] is BoolVar bv)
+                        sb[i] = bv.Id;
+                    else if (orExpr.elements[i] is NotExpr ne)
+                        sb[i] = -ne.inner.Id;
+                    else
+                        throw new Exception(orExpr.elements[i].GetType().ToString());
+
+                //TODO perform CSE
                 //Array.Sort(sb);
 
-                Debug.Assert(i == sb.Length);
                 clauses.Add(sb);
             }
             else
@@ -57,8 +70,8 @@ namespace SATInterface
             if (proofUnsat)
                 return;
 
-            if (_clause is AndExpr)
-                foreach (var e in ((AndExpr)_clause).elements)
+            if (_clause is AndExpr andExpr)
+                foreach (var e in andExpr.elements)
                     AddConstrInternal(e);
             else if (!ReferenceEquals(_clause, BoolExpr.True))
                 AddConstrInternal(_clause);
@@ -424,46 +437,88 @@ namespace SATInterface
 
         public enum ExactlyOneOfMethod
         {
-            Commander, //61s
-            UnaryCount, //106s
-            BinaryCount, //165s
-            TwoFactor, //forever...
+            Commander,
+            UnaryCount,
+            BinaryCount,
+            TwoFactor,
             Pairwise,
-            //OneHot
+            OneHot,
+            Sequential
         }
 
         public enum AtMostOneOfMethod
         {
             Pairwise,
-            Commander
+            Commander,
+            OneHot,
+            Sequential
         }
 
         public enum ExactlyKOfMethod
         {
             BinaryCount,
             UnaryCount,
-            Pairwise
+            Pairwise,
+            Sequential
         }
 
 
         public BoolExpr AtMostOneOf(params BoolExpr[] _expr) => AtMostOneOf(_expr.AsEnumerable());
 
-        public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod _method = AtMostOneOfMethod.Commander)
+        public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod _method = AtMostOneOfMethod.Sequential)
         {
+            var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.False)).ToArray();
+
+            var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.True));
+            if (trueCount > 1)
+                return BoolExpr.False;
+
+            if (trueCount == 1)
+                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, BoolExpr.True))).Flatten();
+
+            Debug.Assert(trueCount == 0);
+
+            switch (expr.Length)
+            {
+                case 0:
+                case 1:
+                    return BoolExpr.True;
+                case 2:
+                    return !expr[0] | !expr[1];
+                case 3:
+                    return AtMostOneOfPairwise(_expr);
+            }
+
             switch (_method)
             {
                 case AtMostOneOfMethod.Commander:
-                    return AtMostOneOfCommander(_expr);
+                    return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Pairwise:
-                    return AtMostOneOfPairwise(_expr);
+                    return AtMostOneOfPairwise(expr);
+                case AtMostOneOfMethod.OneHot:
+                    return AtMostOneOfOneHot(expr);
+                case AtMostOneOfMethod.Sequential:
+                    return AtMostOneOfSequential(expr);
                 default:
                     throw new ArgumentException();
             }
         }
 
+        private BoolExpr AtMostOneOfSequential(IEnumerable<BoolExpr> _expr)
+        {
+            var v0 = BoolExpr.False;
+            var v1 = BoolExpr.False;
+            foreach (var e in _expr)
+            {
+                v1 = ((v0 & e) | v1).Flatten();
+                v0 = (v0 | e).Flatten();
+            }
+            return !v1;
+        }
+
         private BoolExpr AtMostOneOfCommander(IEnumerable<BoolExpr> _expr)
         {
-            if (_expr.Count() < 6)
+            if (_expr.Count() <= 5)
                 return AtMostOneOfPairwise(_expr);
 
             var expr = _expr.ToArray();
@@ -505,7 +560,9 @@ namespace SATInterface
                 return BoolExpr.False;
 
             if (trueCount == 1)
-                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, BoolExpr.True)));
+                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, BoolExpr.True))).Flatten();
+
+            Debug.Assert(trueCount == 0);
 
             switch (expr.Length)
             {
@@ -525,22 +582,46 @@ namespace SATInterface
                     return ExactlyKOf(_expr, 1, ExactlyKOfMethod.UnaryCount);
                 case ExactlyOneOfMethod.BinaryCount:
                     return ExactlyKOf(_expr, 1, ExactlyKOfMethod.BinaryCount);
+                case ExactlyOneOfMethod.Sequential:
+                    return ExactlyKOf(_expr, 1, ExactlyKOfMethod.Sequential);
                 case ExactlyOneOfMethod.Commander:
                     return ExactlyOneOfCommander(_expr);
                 case ExactlyOneOfMethod.TwoFactor:
                     return ExactlyOneOfTwoFactor(_expr);
                 case ExactlyOneOfMethod.Pairwise:
                     return ExactlyOneOfPairwise(_expr);
-                //case ExactlyOneOfMethod.OneHot:
-                //     return ExactlyOneOfOneHot(_expr);
+                case ExactlyOneOfMethod.OneHot:
+                    return ExactlyOneOfOneHot(_expr.ToArray());
                 default:
                     throw new ArgumentException();
             }
         }
 
-        private BoolExpr ExactlyOneOfOneHot(IEnumerable<BoolExpr> _expr)
+        private BoolExpr ExactlyOneOfOneHot(BoolExpr[] _expr)
         {
-            return OrExpr.Create(_expr.Select(hot => AndExpr.Create(_expr.Select(e => ReferenceEquals(e, hot) ? e : !e))));
+            var ors = new List<BoolExpr>();
+            for (var i = 0; i < _expr.Length; i++)
+            {
+                var ands = new List<BoolExpr>();
+                for (var j = 0; j < _expr.Length; j++)
+                    ands.Add((i == j) ? _expr[j] : !_expr[j]);
+                ors.Add(AndExpr.Create(ands).Flatten());
+            }
+            return OrExpr.Create(ors);
+        }
+
+        private BoolExpr AtMostOneOfOneHot(BoolExpr[] _expr)
+        {
+            var ors = new List<BoolExpr>();
+            for (var i = 0; i < _expr.Length; i++)
+            {
+                var ands = new List<BoolExpr>();
+                for (var j = 0; j < _expr.Length; j++)
+                    if (i != j)
+                        ands.Add(!_expr[j]);
+                ors.Add(AndExpr.Create(ands).Flatten());
+            }
+            return OrExpr.Create(ors);
         }
 
         private BoolExpr ExactlyOneOfPairwise(IEnumerable<BoolExpr> _expr)
@@ -602,7 +683,7 @@ namespace SATInterface
         }
 
 
-        public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method = ExactlyKOfMethod.UnaryCount)
+        public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method = ExactlyKOfMethod.Sequential)
         {
             var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.False)).ToArray();
 
@@ -616,13 +697,11 @@ namespace SATInterface
             if (_k < 0 || _k > expr.Length)
                 return BoolExpr.False;
             else if (_k == 0)
-                return !OrExpr.Create(expr);
+                return !OrExpr.Create(expr).Flatten();
             else if (_k == expr.Length)
-                return AndExpr.Create(expr);
-            else if (_k == 1)
-                return ExactlyOneOf(expr);
+                return AndExpr.Create(expr).Flatten();
 
-            Debug.Assert(_k >= 2 && _k < expr.Length);
+            Debug.Assert(_k >= 1 && _k < expr.Length);
 
             switch (_method)
             {
@@ -631,12 +710,26 @@ namespace SATInterface
 
                 case ExactlyKOfMethod.UnaryCount:
                     var uc = UnaryCount(expr);
-                    return uc[_k - 1] && !uc[_k];
-                    //return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
+                    return uc[_k - 1] & !uc[_k];
+                //return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
+
+                case ExactlyKOfMethod.Sequential:
+                    var v = Enumerable.Repeat(BoolExpr.False, _k + 1).ToArray();
+                    foreach (var e in expr)
+                    {
+                        var vnext = new BoolExpr[_k + 1];
+                        vnext[0] = (v[0] | e).Flatten();
+                        for (var i = 1; i < _k + 1; i++)
+                            vnext[i] = ((v[i - 1] & e) | v[i]).Flatten();
+                        v = vnext;
+                    }
+                    return v[_k - 1] & !v[_k];
 
                 case ExactlyKOfMethod.Pairwise:
 
-                    if (_k == 2)
+                    if (_k == 1)
+                        return ExactlyOneOfPairwise(expr);
+                    else if (_k == 2)
                     {
                         //at most 2
                         var and = new List<BoolExpr>();
@@ -742,60 +835,5 @@ namespace SATInterface
                     return R.Skip(1).Take(R.Length - 2).ToArray();
             }
         }
-
-        /*
-        public BoolExpr[] UnaryCountSorting(BoolExpr[] _v) => SortDescending(_v);
-
-        public BoolExpr[] SortAscending(BoolExpr[] _v) => SortDescending(_v).Reverse().ToArray();
-
-        public BoolExpr[] SortDescending(BoolExpr[] _v)
-        {
-            switch(_v.Length)
-            {
-                case 0:
-                case 1:
-                    return _v;
-                case 2:
-                    return new BoolExpr[] { BoolExpr.Max(_v[0], _v[1]), BoolExpr.Min(_v[0], _v[1]) };
-                default:
-
-                    var v2size=_v.Length-1;
-                    v2size |= v2size >> 1;
-                    v2size |= v2size >> 2;
-                    v2size |= v2size >> 4;
-                    v2size |= v2size >> 8;
-                    v2size |= v2size >> 16;
-                    v2size++;
-
-                    var v1size = v2size >> 1;
-
-                    var v2 = _v;
-                    if(v2size!=_v.Length)
-                        v2 = _v.Concat(Enumerable.Repeat(BoolExpr.FALSE,v2size-_v.Length)).ToArray();
-
-                    var firstHalf = SortDescending(v2.Take(v1size).ToArray());
-                    var secondHalf = SortDescending(v2.Skip(v1size).ToArray());
-
-                    //bitonic sort
-                    var result = new BoolExpr[v2size];
-                    for (var i = 0; i < v1size; i++)
-                    {
-                        AddConstr((result[i] = new BoolVar(this)) == BoolExpr.Max(firstHalf[i], secondHalf[v1size - i - 1]));
-                        AddConstr((result[v2size-i-1] = new BoolVar(this)) == BoolExpr.Min(firstHalf[i], secondHalf[v1size - i - 1]));
-                    }
-
-                    for(var s=v1size>>1;s>=1;s>>=1)
-                        for(var b=0;b<v2size;b+=s+s)
-                            for(var i=0;i<s;i++)
-                            {
-                                var max = BoolExpr.Max(result[i + b], result[i + s + b]);
-                                var min = BoolExpr.Min(result[i + b], result[i + s + b]);
-                                AddConstr((result[i + b] = new BoolVar(this)) == max);
-                                AddConstr((result[i+s+b] = new BoolVar(this)) == min);
-                            }
-
-                    return result.Take(_v.Length).ToArray();
-            }
-        }*/
     }
 }

@@ -9,6 +9,9 @@ namespace SATInterface
     {
         public static readonly BoolExpr True = new BoolVar("true");
         public static readonly BoolExpr False = new BoolVar("false");
+        
+        //TODO cache flattened expressions
+        //private BoolVar? flattened;
 
         internal BoolExpr()
         {
@@ -82,6 +85,8 @@ namespace SATInterface
 
         public static BoolExpr operator |(BoolExpr lhs, BoolExpr rhs) => OrExpr.Create(lhs, rhs);
         public static BoolExpr operator &(BoolExpr lhs, BoolExpr rhs) => AndExpr.Create(lhs, rhs);
+
+        //TODO track equality for CSE
         public static BoolExpr operator ==(BoolExpr lhsS, BoolExpr rhsS)
         {
             if (lhsS is null && rhsS is null)
@@ -153,10 +158,7 @@ namespace SATInterface
             if (ReferenceEquals(_b, BoolExpr.False))
                 return (UIntVar)_a;
 
-            var res = new UIntVar(_a.Model, 2, _enforceUB: false);
-            res.bit[0] = _a ^ _b;
-            res.bit[1] = _a & _b;
-            return res;
+            return new UIntVar(_a.Model, 2, new[] { _a ^ _b, _a & _b });
         }
 
         public static BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => ((!_if | _then) & (_if | _else) & (_then | _else)) | (_then & _else);
