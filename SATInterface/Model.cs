@@ -138,10 +138,16 @@ namespace SATInterface
                     OptimizationStrategy.Increasing => OptimizationStrategy.Decreasing,
                     OptimizationStrategy.Decreasing => OptimizationStrategy.Increasing,
                     _ => _strategy
-                });
+                }, _minimization: true);
 
         public void Maximize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
+            => Maximize(_obj, _solutionCallback, _strategy, _minimization: false);
+
+        private void Maximize(UIntVar _obj, Action? _solutionCallback, OptimizationStrategy _strategy, bool _minimization)
         {
+            if (_obj.UB == UIntVar.Unbounded)
+                throw new ArgumentException($"Optimization supports optimization of bounded variables only.");
+
             if (proofUnsat)
                 return;
 
@@ -180,7 +186,12 @@ namespace SATInterface
                 for (; ; )
                 {
                     if (LogOutput)
-                        Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
+                    {
+                        if (_minimization)
+                            Console.WriteLine($"Minimizing objective, range {_obj.UB - ub} - {_obj.UB - lb}");
+                        else
+                            Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
+                    }
 
                     int cur = _strategy switch
                     {
@@ -219,8 +230,7 @@ namespace SATInterface
 
                         proofSat = true;
 
-                        if (_obj.X < cur)
-                            throw new Exception($"Unreliable solver (SAT & Obj<Cur: {_obj.X}<{cur})");
+                        Debug.Assert(_obj.X >= cur);
 
                         _solutionCallback?.Invoke();
 
