@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace Tests
 {
     [TestClass]
-    public class MagicSquareTest
+    public class MagicSquareTests
     {
         [TestMethod]
         public void Size3()

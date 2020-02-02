@@ -35,6 +35,8 @@ namespace SATInterface
             }
         }
 
+        public static LinExpr operator *(int _a, BoolExpr _b) => (LinExpr)_b * _a;
+        public static LinExpr operator *(BoolExpr _b, int _a) => (LinExpr)_b * _a;
 
         public virtual BoolExpr Flatten()
         {

@@ -19,31 +19,25 @@ namespace MagicSquare
             var MAGIC_CONST = NUMBERS.Sum() / N;
 
             var m = new Model();
-            var v = new BoolVar[N, N, NUMBERS.Length];
-            for (var y = 0; y < N; y++)
-                for (var x = 0; x < N; x++)
-                    for (var n = 0; n < NUMBERS.Length; n++)
-                        v[x, y, n] = new BoolVar(m, $"{x},{y},{n}");
+            var v = m.AddVars(N, N, NUMBERS.Length);
 
             var num = new UIntVar[N, N];
             for (var y = 0; y < N; y++)
                 for (var x = 0; x < N; x++)
                 {
-                    num[x, y] = UIntVar.Const(m, NUMBERS[0]) * v[x, y, 0];
-                    for (var n = 1; n < NUMBERS.Length; n++)
-                        num[x, y] |= UIntVar.Const(m, NUMBERS[n]) * v[x, y, n];
-
-                    num[x, y] = num[x, y].Flatten();
+                    num[x, y] = UIntVar.Const(m, 0);
+                    for (var n = 0; n < NUMBERS.Length; n++)
+                        num[x, y] |= v[x, y, n] * UIntVar.Const(m, NUMBERS[n]);
                 }
 
             //assign one number to each cell
             for (var y = 0; y < N; y++)
                 for (var x = 0; x < N; x++)
-                    m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, NUMBERS.Length).Select(n => v[x, y, n])));
+                    m.AddConstr(m.Sum(Enumerable.Range(0, NUMBERS.Length).Select(n => v[x, y, n])) == 1);
 
             //use each number once
             for (var n = 0; n < NUMBERS.Length; n++)
-                m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, N).SelectMany(y => Enumerable.Range(0, N).Select(x => v[x, y, n]))));
+                m.AddConstr(m.Sum(Enumerable.Range(0, N).SelectMany(y => Enumerable.Range(0, N).Select(x => v[x, y, n]))) == 1);
 
             //columns must sum to MAGIC_CONST
             for (var y = 0; y < N; y++)

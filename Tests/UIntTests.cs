@@ -103,7 +103,7 @@ namespace Tests
                     for (var j = 0; j < n; j++)
                         m.AddConstr(v[j] == values[j]);
 
-                    var sum = m.Sum(v);
+                    var sum = m.SumUInt(v);
                     m.Solve();
                     Assert.IsTrue(m.IsSatisfiable);
                     Assert.AreEqual(values.Count(i => i), sum.X, $"{n} {i} {string.Join("",values)}");

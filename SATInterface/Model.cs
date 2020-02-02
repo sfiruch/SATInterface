@@ -131,7 +131,7 @@ namespace SATInterface
         }
 
 
-        public void Minimize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
+        public void Minimize(LinExpr _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
             => Maximize(_obj.UB - _obj, _solutionCallback,
                 _strategy switch
                 {
@@ -140,14 +140,11 @@ namespace SATInterface
                     _ => _strategy
                 }, _minimization: true);
 
-        public void Maximize(UIntVar _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
+        public void Maximize(LinExpr _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
             => Maximize(_obj, _solutionCallback, _strategy, _minimization: false);
 
-        private void Maximize(UIntVar _obj, Action? _solutionCallback, OptimizationStrategy _strategy, bool _minimization)
+        private void Maximize(LinExpr _obj, Action? _solutionCallback, OptimizationStrategy _strategy, bool _minimization)
         {
-            if (_obj.UB == UIntVar.Unbounded)
-                throw new ArgumentException($"Optimization supports optimization of bounded variables only.");
-
             if (proofUnsat)
                 return;
 
@@ -402,15 +399,21 @@ namespace SATInterface
             }
         }
 
+        public BoolExpr And(IEnumerable<BoolExpr> _elems) => AndExpr.Create(_elems);
+        public BoolExpr And(params BoolExpr[] _elems) => AndExpr.Create(_elems);
+        public BoolExpr Or(IEnumerable<BoolExpr> _elems) => OrExpr.Create(_elems);
+        public BoolExpr Or(params BoolExpr[] _elems) => OrExpr.Create(_elems);
+
         //code by Noldorin/Simon
         //- http://stackoverflow.com/a/812035/742404
         internal static uint RotateLeft(uint value, int count) => (value << count) | (value >> (32 - count));
         internal static uint RotateRight(uint value, int count) => (value >> count) | (value << (32 - count));
 
 
-        public UIntVar Sum(params BoolExpr[] _count) => Sum((IEnumerable<BoolExpr>)_count);
+        public LinExpr Sum(params BoolExpr[] _count) => Sum((IEnumerable<BoolExpr>)_count);
+        public UIntVar SumUInt(params BoolExpr[] _count) => SumUInt((IEnumerable<BoolExpr>)_count);
 
-        public UIntVar Sum(IEnumerable<BoolExpr> _count)
+        public UIntVar SumUInt(IEnumerable<BoolExpr> _count)
         {
             var simplified = _count.Where(b => !ReferenceEquals(b, BoolExpr.False)).ToArray();
             var trueCount = simplified.Count(b => ReferenceEquals(b, BoolExpr.True));
@@ -425,10 +428,17 @@ namespace SATInterface
                 default:
                     var firstHalf = simplified.Take(simplified.Length / 2);
                     var secondHalf = simplified.Skip(simplified.Length / 2);
-                    return (Sum(firstHalf) + Sum(secondHalf)) + trueCount;
+                    return (SumUInt(firstHalf) + SumUInt(secondHalf)) + trueCount;
             }
         }
 
+        public LinExpr Sum(IEnumerable<BoolExpr> _elems)
+        {
+            var le = new LinExpr();
+            foreach (var v in _elems)
+                le.AddTerm(v);
+            return le;
+        }
 
         public UIntVar Sum(IEnumerable<UIntVar> _elems)
         {
@@ -444,6 +454,13 @@ namespace SATInterface
             }
         }
 
+        public LinExpr Sum(IEnumerable<LinExpr> _elems)
+        {
+            var sum = new LinExpr();
+            foreach (var e in _elems)
+                sum += e;
+            return sum;
+        }
 
         public enum ExactlyOneOfMethod
         {
@@ -622,13 +639,35 @@ namespace SATInterface
 
         private BoolExpr AtMostOneOfOneHot(BoolExpr[] _expr)
         {
+            //TODO replace with general CSE
+            var cse = new BoolExpr[(_expr.Length + 3) / 4];
+            for (var i = 0; i < _expr.Length; i += 4)
+                cse[i / 4] = AndExpr.Create(_expr.Skip(i).Take(4).Select(v => !v)).Flatten();
+
             var ors = new List<BoolExpr>();
             for (var i = 0; i < _expr.Length; i++)
             {
                 var ands = new List<BoolExpr>();
-                for (var j = 0; j < _expr.Length; j++)
-                    if (i != j)
-                        ands.Add(!_expr[j]);
+                for (var j = 0; j < _expr.Length; j += 4)
+                    if (i != j && i != (j + 1) && i != (j + 2) && i != (j + 3))
+                        ands.Add(cse[j / 4]);
+                    else
+                    {
+                        if (i != j)
+                            ands.Add(!_expr[j]);
+                        if (i != j + 1 && j + 1 < _expr.Length)
+                            ands.Add(!_expr[j + 1]);
+                        if (i != j + 2 && j + 2 < _expr.Length)
+                            ands.Add(!_expr[j + 2]);
+                        if (i != j + 3 && j + 3 < _expr.Length)
+                            ands.Add(!_expr[j + 3]);
+                    }
+
+                //for (var j = 0; j < _expr.Length; j++)
+                //    if (i != j)
+                //        ands.Add(!_expr[j]);
+
+
                 ors.Add(AndExpr.Create(ands).Flatten());
             }
             return OrExpr.Create(ors);
@@ -716,12 +755,12 @@ namespace SATInterface
             switch (_method)
             {
                 case ExactlyKOfMethod.BinaryCount:
-                    return Sum(expr) == _k;
+                    return SumUInt(expr) == _k;
 
                 case ExactlyKOfMethod.UnaryCount:
                     var uc = UnaryCount(expr);
+                    //return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
                     return uc[_k - 1] & !uc[_k];
-                //return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
 
                 case ExactlyKOfMethod.Sequential:
                     var v = Enumerable.Repeat(BoolExpr.False, _k + 1).ToArray();

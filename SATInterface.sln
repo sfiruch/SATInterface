@@ -15,9 +15,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Maximize", "Maximize\Maximi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests", "Tests\Tests.csproj", "{9498A0F7-65E8-4984-8888-3A9135B881E3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaxMaze", "MaxMaze\MaxMaze.csproj", "{F8AA5189-E0C7-4086-B1DE-D89410AD4F71}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MaxMaze", "MaxMaze\MaxMaze.csproj", "{F8AA5189-E0C7-4086-B1DE-D89410AD4F71}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PCB", "PCB\PCB.csproj", "{D4DE7FCD-336D-45CE-8673-14D877508732}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PCB", "PCB\PCB.csproj", "{D4DE7FCD-336D-45CE-8673-14D877508732}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CornerTilePacking", "CornerTilePacking\CornerTilePacking.csproj", "{FEC7EC17-5378-4F92-887F-92B2AA187392}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,6 +55,10 @@ Global
 		{D4DE7FCD-336D-45CE-8673-14D877508732}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D4DE7FCD-336D-45CE-8673-14D877508732}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D4DE7FCD-336D-45CE-8673-14D877508732}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FEC7EC17-5378-4F92-887F-92B2AA187392}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEC7EC17-5378-4F92-887F-92B2AA187392}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEC7EC17-5378-4F92-887F-92B2AA187392}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEC7EC17-5378-4F92-887F-92B2AA187392}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

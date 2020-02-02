@@ -85,7 +85,7 @@ namespace MaxMaze
                     else if (x == W - 1 && y == H - 1)
                         model.AddConstr(a != c);
                     else if (!ReferenceEquals(free[x, y], BoolExpr.False))
-                        model.AddConstr(!free[x, y] | model.ExactlyKOf(new[] { a, b, c, d }, 2));
+                        model.AddConstr(!free[x, y] | model.Sum(new[] { a, b, c, d }) == 2);
                 }
 
             //cut: quad

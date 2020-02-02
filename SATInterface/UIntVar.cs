@@ -45,6 +45,17 @@ namespace SATInterface
             }
         }
 
+        public LinExpr ToLinExpr()
+        {
+            if (UB == UIntVar.Unbounded)
+                throw new ArgumentException($"Only bounded variables supported");
+
+            var le = new LinExpr();
+            for (var i = 0; i < Bits; i++)
+                le.AddTerm(bit[i], 1 << i);
+            return le;
+        }
+
         internal static int RequiredBitsForUB(long _ub) => Log2(_ub) + 1;
 
         public UIntVar(Model _model, int _ub, bool _enforceUB = true)
@@ -83,6 +94,7 @@ namespace SATInterface
 
         public static UIntVar Convert(Model _m, BoolExpr _v) => new UIntVar(_m, 1, new[] { _v });
         public static explicit operator UIntVar(BoolVar _v) => new UIntVar(_v.Model, 1, new[] { _v });
+        public static implicit operator LinExpr(UIntVar _v) => _v.ToLinExpr();
 
         public override bool Equals(object obj)
         {
@@ -96,6 +108,9 @@ namespace SATInterface
 
         public static UIntVar Const(Model _model, int _c)
         {
+            if (_c < 0)
+                throw new ArgumentException($"{nameof(_c)} may not be negative");
+
             var bits = new BoolExpr[RequiredBitsForUB(_c)];
             for (var i = 0; i < bits.Length; i++)
                 bits[i] = ((_c >> i) & 1) == 1;

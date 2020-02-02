@@ -21,7 +21,7 @@ namespace Tests
         public void EmptyMaximizeBinary()
         {
             var m = new Model();
-            m.Maximize(UIntVar.Const(m, 0), _strategy: Model.OptimizationStrategy.BinarySearch);
+            m.Maximize(UIntVar.Const(m, 0).ToLinExpr(), _strategy: Model.OptimizationStrategy.BinarySearch);
             Assert.IsTrue(m.IsSatisfiable);
         }
 
@@ -29,7 +29,7 @@ namespace Tests
         public void EmptyMaximizeIncreasing()
         {
             var m = new Model();
-            m.Maximize(UIntVar.Const(m, 0), _strategy: Model.OptimizationStrategy.Increasing);
+            m.Maximize(UIntVar.Const(m, 0).ToLinExpr(), _strategy: Model.OptimizationStrategy.Increasing);
             Assert.IsTrue(m.IsSatisfiable);
         }
 
@@ -37,7 +37,7 @@ namespace Tests
         public void EmptyMaximizeDecreasing()
         {
             var m = new Model();
-            m.Maximize(UIntVar.Const(m, 0), _strategy: Model.OptimizationStrategy.Decreasing);
+            m.Maximize(UIntVar.Const(m, 0).ToLinExpr(), _strategy: Model.OptimizationStrategy.Decreasing);
             Assert.IsTrue(m.IsSatisfiable);
         }
     }

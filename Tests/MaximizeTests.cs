@@ -10,7 +10,7 @@ using static SATInterface.Model;
 namespace Tests
 {
     [TestClass]
-    public class MaximizeTest
+    public class MaximizeTests
     {
         void RunTest(int xLB, int xUB, int yLB, int yUB, int xLimit, int yLimit, int xWeight, int yWeight, OptimizationStrategy _strategy)
         {
@@ -27,7 +27,7 @@ namespace Tests
             m.AddConstr((x < xLimit) | (y < yLimit));
             m.AddConstr(c == x * y);
 
-            m.Maximize(x * xWeight + yWeight * y);
+            m.Maximize(x.ToLinExpr() * xWeight + yWeight * y.ToLinExpr());
 
             var best = (Val: 0, X: 0, Y: 0);
             for (var xt = xLB; xt <= xUB; xt++)

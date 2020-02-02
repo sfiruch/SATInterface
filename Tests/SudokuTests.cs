@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Tests
 {
     [TestClass]
-    public class SudokuTest
+    public class SudokuTests
     {
         [TestMethod]
         public void WorldsHardestSudoku()
