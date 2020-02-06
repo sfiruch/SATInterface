@@ -32,7 +32,7 @@ namespace Tests
                         model.AddConstr(b != d);
                     else if (x == _n - 1 && y == _n - 1)
                         model.AddConstr(a != c);
-                    else if (!ReferenceEquals(free[x, y], BoolExpr.False))
+                    else if (!ReferenceEquals(free[x, y], Model.False))
                         model.AddConstr(!free[x, y] | model.ExactlyKOf(new[] { a, b, c, d }, 2));
                 }
 
@@ -41,7 +41,7 @@ namespace Tests
                 for (int x = 0; x < _n - 1; x++)
                     model.AddConstr(!free[x, y] | !free[x + 1, y] | !free[x, y + 1] | !free[x + 1, y + 1]);
 
-            var obj = model.Sum(free.Cast<BoolVar>());
+            var obj = model.Sum(free.Cast<BoolExpr>());
             model.Maximize(obj);
 
             Assert.IsTrue(model.IsSatisfiable);

@@ -17,7 +17,7 @@ namespace Tests
 
             for (var h = 0; h < _holes; h++)
                 m.AddConstr(
-                    !OrExpr.Create(Enumerable.Range(0, _pigeons).Select(p => assignment[h, p]))
+                    !m.Or(Enumerable.Range(0, _pigeons).Select(p => assignment[h, p]))
                     || m.ExactlyOneOf(Enumerable.Range(0, _pigeons).Select(p => assignment[h, p]), _method));
 
             for (var p = 0; p < _pigeons; p++)
@@ -200,7 +200,7 @@ namespace Tests
         [TestMethod]
         public void PigeonholeSymmetricUNSATOneHot()
         {
-            for (var size = 1; size < 12; size++)
+            for (var size = 1; size < 11; size++)
                 Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.OneHot);
         }
 
@@ -214,7 +214,7 @@ namespace Tests
         [TestMethod]
         public void PigeonholeSymmetricUNSATUnary()
         {
-            for (var size = 1; size < 12; size++)
+            for (var size = 1; size < 11; size++)
                 Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.UnaryCount);
         }
 

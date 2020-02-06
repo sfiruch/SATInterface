@@ -9,7 +9,7 @@ namespace Tests
     [TestClass]
     public class FlattenTests
     {
-        public void Test(int _vars, Func<IEnumerable<BoolExpr>,BoolExpr> _generator, Func<IEnumerable<bool>,bool> _expectedResult)
+        public void Test(int _vars, Func<Model, IEnumerable<BoolExpr>,BoolExpr> _generator, Func<IEnumerable<bool>,bool> _expectedResult)
         {
             for (var i = 0; i < 1 << _vars; i++)
             {
@@ -30,7 +30,7 @@ namespace Tests
                         bv[j] = false;
                     }
 
-                var res1 = _generator(v);
+                var res1 = _generator(m, v);
                 var res2 = res1.Flatten();
                 var expected = _expectedResult(bv);
 
@@ -45,19 +45,19 @@ namespace Tests
         [TestMethod]
         public void OrFlatten()
         {
-            Test(2, vars => OrExpr.Create(vars), vals => vals.Any(x => x));
-            Test(3, vars => OrExpr.Create(vars), vals => vals.Any(x => x));
-            Test(4, vars => OrExpr.Create(vars), vals => vals.Any(x => x));
-            Test(5, vars => OrExpr.Create(vars), vals => vals.Any(x => x));
+            Test(2, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
+            Test(3, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
+            Test(4, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
+            Test(5, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
         }
 
         [TestMethod]
         public void AndFlatten()
         {
-            Test(2, vars => AndExpr.Create(vars), vals => vals.All(x => x));
-            Test(3, vars => AndExpr.Create(vars), vals => vals.All(x => x));
-            Test(4, vars => AndExpr.Create(vars), vals => vals.All(x => x));
-            Test(5, vars => AndExpr.Create(vars), vals => vals.All(x => x));
+            Test(2, (m, vars) => m.And(vars), vals => vals.All(x => x));
+            Test(3, (m, vars) => m.And(vars), vals => vals.All(x => x));
+            Test(4, (m, vars) => m.And(vars), vals => vals.All(x => x));
+            Test(5, (m, vars) => m.And(vars), vals => vals.All(x => x));
         }
     }
 }

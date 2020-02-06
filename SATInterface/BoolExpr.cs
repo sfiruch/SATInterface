@@ -5,30 +5,30 @@ using System.Text;
 
 namespace SATInterface
 {
+    /// <summary>
+    /// A BoolExpr is an arbitrary boolean expression in CNF
+    /// </summary>
     public class BoolExpr
     {
-        public static readonly BoolExpr True = new BoolVar("true");
-        public static readonly BoolExpr False = new BoolVar("false");
-        
-        //TODO cache flattened expressions
-        //private BoolVar? flattened;
-
         internal BoolExpr()
         {
         }
 
-        public static bool operator true(BoolExpr _be) => ReferenceEquals(True, _be);
-        public static bool operator false(BoolExpr _be) => ReferenceEquals(False, _be);
+        public static bool operator true(BoolExpr _be) => ReferenceEquals(Model.True, _be);
+        public static bool operator false(BoolExpr _be) => ReferenceEquals(Model.False, _be);
 
-        public static implicit operator BoolExpr(bool _v) => _v ? True : False;
+        public static implicit operator BoolExpr(bool _v) => _v ? Model.True : Model.False;
 
+        /// <summary>
+        /// Returns the value of this expression. Only works in a SAT model.
+        /// </summary>
         public virtual bool X
         {
             get
             {
-                if (ReferenceEquals(this, True))
+                if (ReferenceEquals(this, Model.True))
                     return true;
-                if (ReferenceEquals(this, False))
+                if (ReferenceEquals(this, Model.False))
                     return false;
 
                 throw new InvalidOperationException("This expression could not be pre-solved to true or false.");
@@ -38,16 +38,24 @@ namespace SATInterface
         public static LinExpr operator *(int _a, BoolExpr _b) => (LinExpr)_b * _a;
         public static LinExpr operator *(BoolExpr _b, int _a) => (LinExpr)_b * _a;
 
+        /// <summary>
+        /// Returns the Teytsin-encoded equivalent expression
+        /// </summary>
+        /// <returns></returns>
         public virtual BoolExpr Flatten()
         {
-            if (ReferenceEquals(this, True) || ReferenceEquals(this, False))
+            if (ReferenceEquals(this, Model.True) || ReferenceEquals(this, Model.False))
                 return this;
+
+            if (!(flattened is null))
+                return flattened;
 
             var model = EnumVars().First().Model;
             var res = new BoolVar(model);
             model.AddConstr(res == this);
-            return res;
+            return flattened = res;
         }
+        private BoolVar? flattened;
 
         internal virtual IEnumerable<BoolVar> EnumVars()
         {
@@ -56,9 +64,9 @@ namespace SATInterface
 
         public override string ToString()
         {
-            if (ReferenceEquals(this, True))
+            if (ReferenceEquals(this, Model.True))
                 return "true";
-            if (ReferenceEquals(this, False))
+            if (ReferenceEquals(this, Model.False))
                 return "false";
 
             throw new InvalidOperationException("This expression could not be pre-solved to true or false.");
@@ -69,11 +77,11 @@ namespace SATInterface
             if (_v is null)
                 throw new ArgumentNullException();
 
-            if (ReferenceEquals(_v, False))
-                return True;
+            if (ReferenceEquals(_v, Model.False))
+                return Model.True;
 
-            if (ReferenceEquals(_v, True))
-                return False;
+            if (ReferenceEquals(_v, Model.True))
+                return Model.False;
 
             if (_v is NotExpr)
                 return ((NotExpr)_v).inner;
@@ -92,24 +100,24 @@ namespace SATInterface
         public static BoolExpr operator ==(BoolExpr lhsS, BoolExpr rhsS)
         {
             if (lhsS is null && rhsS is null)
-                return True;
+                return Model.True;
             if (lhsS is null)
-                return False;
+                return Model.False;
             if (rhsS is null)
-                return False;
+                return Model.False;
 
 
             if (ReferenceEquals(lhsS, rhsS))
-                return True;
+                return Model.True;
 
-            if (ReferenceEquals(lhsS, True))
+            if (ReferenceEquals(lhsS, Model.True))
                 return rhsS;
-            if (ReferenceEquals(lhsS, False))
+            if (ReferenceEquals(lhsS, Model.False))
                 return !rhsS;
 
-            if (ReferenceEquals(rhsS, True))
+            if (ReferenceEquals(rhsS, Model.True))
                 return lhsS;
-            if (ReferenceEquals(rhsS, False))
+            if (ReferenceEquals(rhsS, Model.False))
                 return !lhsS;
 
             if (rhsS is AndExpr andExpr && andExpr.elements.Length > 8)
@@ -148,28 +156,20 @@ namespace SATInterface
 
         public static BoolExpr operator ^(BoolExpr lhsS, BoolExpr rhsS) => !(lhsS == rhsS);
 
-        public static BoolExpr Xor(BoolExpr _lhs, BoolExpr _rhs) => _lhs ^ _rhs;
-
-        public static BoolExpr Max(BoolExpr _lhs, BoolExpr _rhs) => _lhs | _rhs;
-        public static BoolExpr Min(BoolExpr _lhs, BoolExpr _rhs) => _lhs & _rhs;
-
-        public static UIntVar operator +(BoolExpr _a, BoolVar _b) => _b + _a;
-
-        public static UIntVar operator +(BoolVar _a, BoolExpr _b)
-        {
-            if (ReferenceEquals(_b, BoolExpr.False))
-                return (UIntVar)_a;
-
-            return new UIntVar(_a.Model, 2, new[] { _a ^ _b, _a & _b });
-        }
-
-        public static BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => ((!_if | _then) & (_if | _else) & (_then | _else)) | (_then & _else);
+        /// <summary>
+        /// If-Then-Else to pick one of two values. If _if is TRUE, _then will be picked, _else otherwise.
+        /// </summary>
+        /// <param name="_if"></param>
+        /// <param name="_then"></param>
+        /// <param name="_else"></param>
+        /// <returns></returns>
+        internal static BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => ((!_if | _then) & (_if | _else) & (_then | _else)) | (_then & _else);
 
         public override int GetHashCode()
         {
-            if (ReferenceEquals(this, True))
+            if (ReferenceEquals(this, Model.True))
                 return -1830369473;
-            else if (ReferenceEquals(this, False))
+            else if (ReferenceEquals(this, Model.False))
                 return 43589799;
             else
                 return 0;

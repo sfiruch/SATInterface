@@ -6,6 +6,9 @@ using System.Runtime.InteropServices;
 
 namespace SATInterface
 {
+    /// <summary>
+    /// Managed-code facade of the native CaDiCaL solver
+    /// </summary>
     public class CaDiCaL : IDisposable
     {
         private IntPtr Handle;

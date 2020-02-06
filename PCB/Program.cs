@@ -66,11 +66,11 @@ namespace PCB
                         for (var l = 0; l < L; l++)
                         {
                             if (l == 0 && FIELD[y][x] == 'A' + c)
-                                vXYLC[x, y, l, c] = BoolExpr.True;
+                                vXYLC[x, y, l, c] = true;
                             else if (FIELD[y][x] == '.')
-                                vXYLC[x, y, l, c] = new BoolVar(m);
+                                vXYLC[x, y, l, c] = m.AddVar();
                             else
-                                vXYLC[x, y, l, c] = BoolExpr.False;
+                                vXYLC[x, y, l, c] = false;
                         }
 
 
@@ -99,9 +99,9 @@ namespace PCB
                                 sV.Add(vXYLC[x, y, l + 1, c]);
 
                             if (l == 0 && sourceXYC[x, y, c])
-                                    sV.Add(BoolVar.True);
+                                    sV.Add(true);
                                 if (l == 0 && sinkXYC[x, y, c])
-                                    sV.Add(BoolVar.True);
+                                    sV.Add(true);
 
                             m.AddConstr(!vXYLC[x, y, l, c] || m.ExactlyKOf(sV, 2));
                         }

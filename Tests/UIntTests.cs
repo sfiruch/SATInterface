@@ -18,7 +18,7 @@ namespace Tests
                     var m = new Model();
                     m.LogOutput = false;
 
-                    var v = new UIntVar(m, 100, true);
+                    var v = m.AddUIntVar(100, true);
                     m.AddConstr(v <= i);
 
                     m.Maximize(v, _strategy: strategy);
@@ -37,7 +37,7 @@ namespace Tests
                     var m = new Model();
                     m.LogOutput = false;
 
-                    var v = new UIntVar(m, 100, true);
+                    var v = m.AddUIntVar(100, true);
                     m.AddConstr(v >= i);
 
                     m.Minimize(v, _strategy: strategy);
@@ -61,7 +61,7 @@ namespace Tests
                     var m = new Model();
                     m.LogOutput = false;
 
-                    var v = UIntVar.Const(m, i);
+                    var v = m.AddUIntConst(i);
                     for (var k = 0; k < j; k++)
                         v += true;
                     m.Solve();
@@ -79,7 +79,7 @@ namespace Tests
                     var m = new Model();
                     m.LogOutput = false;
 
-                    var v = UIntVar.Const(m, 0);
+                    var v = m.AddUIntConst(0);
                     v += i;
                     v += j;
                     m.Solve();

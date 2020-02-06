@@ -6,7 +6,7 @@ using System.Text;
 
 namespace SATInterface
 {
-    public class NotExpr:BoolExpr
+    internal class NotExpr:BoolExpr
     {
         public BoolVar inner;
 
@@ -15,14 +15,14 @@ namespace SATInterface
             inner = _inner;
         }
 
-        public static BoolExpr Create(BoolExpr _inner)
+        internal static BoolExpr Create(BoolExpr _inner)
         {
             if (_inner is NotExpr)
                 return ((NotExpr)_inner).inner;
-            else if (ReferenceEquals(_inner, True))
-                return False;
-            else if (ReferenceEquals(_inner, False))
-                return True;
+            else if (ReferenceEquals(_inner, Model.True))
+                return Model.False;
+            else if (ReferenceEquals(_inner, Model.False))
+                return Model.True;
             else if (_inner is BoolVar)
                 return ((BoolVar)_inner).Negated;
             else if (_inner is AndExpr)

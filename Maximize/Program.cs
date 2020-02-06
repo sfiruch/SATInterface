@@ -13,9 +13,9 @@ namespace Maximize
         {
             var m = new Model();
 
-            var x = new UIntVar(m, 1000);
-            var y = new UIntVar(m, 200);
-            var c = new UIntVar(m, 1000 * 200);
+            var x = m.AddUIntVar(1000);
+            var y = m.AddUIntVar(200);
+            var c = m.AddUIntVar(1000 * 200);
 
             m.AddConstr((x < 512) | (y < 100));
             m.AddConstr(c == x * y);

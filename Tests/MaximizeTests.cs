@@ -17,9 +17,9 @@ namespace Tests
             var m = new Model();
             m.LogOutput = false;
 
-            var x = new UIntVar(m, xUB);
-            var y = new UIntVar(m, yUB);
-            var c = new UIntVar(m, checked(xUB * yUB));
+            var x = m.AddUIntVar(xUB);
+            var y = m.AddUIntVar(yUB);
+            var c = m.AddUIntVar(checked(xUB * yUB));
 
             m.AddConstr(x >= xLB);
             m.AddConstr(y >= yLB);
@@ -99,7 +99,7 @@ namespace Tests
             m.AddConstr(!b);
             m.AddConstr(a==b);
 
-            var v = new UIntVar(m, 10, true);
+            var v = m.AddUIntVar(10, true);
             m.Maximize(v);
 
             Assert.IsFalse(m.IsSatisfiable);
@@ -112,7 +112,7 @@ namespace Tests
             var m = new Model();
             m.LogOutput = false;
 
-            var v = new UIntVar(m, 10, true);
+            var v = m.AddUIntVar(10, true);
             m.Maximize(v);
 
             Assert.IsTrue(m.IsSatisfiable);

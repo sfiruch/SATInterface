@@ -6,7 +6,7 @@ using System.Text;
 
 namespace SATInterface
 {
-    public class AndExpr : BoolExpr
+    internal class AndExpr : BoolExpr
     {
         internal readonly BoolExpr[] elements;
 
@@ -15,19 +15,19 @@ namespace SATInterface
             elements = _elems;
         }
 
-        public static BoolExpr Create(params BoolExpr[] _elems) => Create(_elems.AsEnumerable());
+        internal static BoolExpr Create(params BoolExpr[] _elems) => Create(_elems.AsEnumerable());
 
-        public static BoolExpr Create(IEnumerable<BoolExpr> _elems)
+        internal static BoolExpr Create(IEnumerable<BoolExpr> _elems)
         {
             var res = new List<BoolExpr>();
             foreach (var es in _elems)
                 if (ReferenceEquals(es, null))
                     throw new ArgumentNullException();
-                else if (ReferenceEquals(es, False))
-                    return False;
+                else if (ReferenceEquals(es, Model.False))
+                    return Model.False;
                 else if (es is AndExpr)
                     res.AddRange(((AndExpr)es).elements);
-                else if (!ReferenceEquals(es, True))
+                else if (!ReferenceEquals(es, Model.True))
                     res.Add(es);
 
             //remove duplicates
@@ -41,7 +41,7 @@ namespace SATInterface
                     }*/
 
             if (!res.Any())
-                return True;
+                return Model.True;
             else if (res.Count == 1)
                 return res.Single();
             else

@@ -8,16 +8,50 @@ namespace SATInterface
 {
     public class UIntVar
     {
+        public class UIntVarBits
+        {
+            private readonly UIntVar Parent;
+
+            internal UIntVarBits(UIntVar _parent)
+            {
+                Parent = _parent;
+            }
+
+            /// <summary>
+            /// The number of bits making up this number. Bits at higher indices are always false.
+            /// </summary>
+            public int Length => Parent.bit.Length;
+
+            public BoolExpr this[int _bitIndex]
+            {
+                get
+                {
+                    if (_bitIndex >= Parent.bit.Length)
+                        return Model.False;
+
+                    return Parent.bit[_bitIndex];
+                }
+            }
+        }
+
         private Model Model;
         internal BoolExpr[] bit;
         internal int UB;
 
+        /// <summary>
+        /// Upper bound of variables with more than 30 bits
+        /// </summary>
         public const int Unbounded = -1;
+
         private const int MaxBitsWithUB = 30;
 
-        public int Bits => bit.Length;
+        /// <summary>
+        /// Direct access to the bits making up this number. Index 0 is the LSB.
+        /// </summary>
+        public UIntVarBits Bits => BitsCache ?? (BitsCache = new UIntVarBits(this));
+        private UIntVarBits? BitsCache;
 
-        public UIntVar(Model _model, int _ub, BoolExpr[] _bits, bool _enforceUB = false)
+        internal UIntVar(Model _model, int _ub, BoolExpr[] _bits, bool _enforceUB = false)
         {
             Model = _model;
             UB = _ub;
@@ -45,20 +79,31 @@ namespace SATInterface
             }
         }
 
+        /// <summary>
+        /// Converts this number to an equivalent LinExpr. Only supported for variables
+        /// with upper bound less than 2^30.
+        /// </summary>
+        /// <returns></returns>
         public LinExpr ToLinExpr()
         {
             if (UB == UIntVar.Unbounded)
                 throw new ArgumentException($"Only bounded variables supported");
 
             var le = new LinExpr();
-            for (var i = 0; i < Bits; i++)
+            for (var i = 0; i < Bits.Length; i++)
                 le.AddTerm(bit[i], 1 << i);
             return le;
         }
 
         internal static int RequiredBitsForUB(long _ub) => Log2(_ub) + 1;
 
-        public UIntVar(Model _model, int _ub, bool _enforceUB = true)
+        /// <summary>
+        /// Creates a new unsigned integer variable
+        /// </summary>
+        /// <param name="_model">The model containing this variable</param>
+        /// <param name="_ub">Upper bound of this variable or UIntVar.Unbounded when >2^30</param>
+        /// <param name="_enforceUB">If TRUE, additional constraints enforcing the upper bound will be added to the model</param>
+        internal UIntVar(Model _model, int _ub, bool _enforceUB = true)
         {
             if (_ub < 0 && _ub != Unbounded)
                 throw new ArgumentException(nameof(_ub));
@@ -84,16 +129,22 @@ namespace SATInterface
             }
         }
 
-        public static UIntVar ITE(BoolExpr _if, UIntVar _then, UIntVar _else)
+        /// <summary>
+        /// If-Then-Else to pick one of two values. If _if is TRUE, _then will be picked, _else otherwise.
+        /// </summary>
+        /// <param name="_if"></param>
+        /// <param name="_then"></param>
+        /// <param name="_else"></param>
+        /// <returns></returns>
+        internal static UIntVar ITE(BoolExpr _if, UIntVar _then, UIntVar _else)
         {
-            var bits = new BoolExpr[Math.Max(_then.Bits, _else.Bits)];
+            var bits = new BoolExpr[Math.Max(_then.Bits.Length, _else.Bits.Length)];
             for (var i = 0; i < bits.Length; i++)
-                bits[i] = BoolExpr.ITE(_if, _then[i], _else[i]).Flatten();
+                bits[i] = BoolExpr.ITE(_if, _then.Bits[i], _else.Bits[i]).Flatten();
             return new UIntVar(_then.Model, (_then.UB == Unbounded || _else.UB == Unbounded) ? Unbounded : Math.Max(_then.UB, _else.UB), bits);
         }
 
-        public static UIntVar Convert(Model _m, BoolExpr _v) => new UIntVar(_m, 1, new[] { _v });
-        public static explicit operator UIntVar(BoolVar _v) => new UIntVar(_v.Model, 1, new[] { _v });
+        internal static UIntVar Convert(Model _m, BoolExpr _v) => new UIntVar(_m, 1, new[] { _v });
         public static implicit operator LinExpr(UIntVar _v) => _v.ToLinExpr();
 
         public override bool Equals(object obj)
@@ -104,9 +155,17 @@ namespace SATInterface
 
             return other.UB == UB && ReferenceEquals(other.Model, Model) && other.bit.SequenceEqual(bit);
         }
+
         public override int GetHashCode() => bit.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b) ^ (1 << 26) ^ UB;
 
-        public static UIntVar Const(Model _model, int _c)
+        /// <summary>
+        /// Allocates a unsigned integer constant. Most operations with such a constant will be short-
+        /// circuited by the framework.
+        /// </summary>
+        /// <param name="_model">The model containing this variable</param>
+        /// <param name="_c">The constant value</param>
+        /// <returns></returns>
+        internal static UIntVar Const(Model _model, int _c)
         {
             if (_c < 0)
                 throw new ArgumentException($"{nameof(_c)} may not be negative");
@@ -117,37 +176,26 @@ namespace SATInterface
             return new UIntVar(_model, _c, bits);
         }
 
-        private BoolExpr this[int _bitIndex]
-        {
-            get
-            {
-                if (_bitIndex >= bit.Length)
-                    return BoolExpr.False;
-
-                return bit[_bitIndex];
-            }
-        }
-
         public static UIntVar operator >>(UIntVar _a, int _shift)
         {
-            if (_a.Bits <= _shift)
+            if (_a.Bits.Length <= _shift)
                 return Const(_a.Model, 0);
 
-            var bits = new BoolExpr[_a.UB == Unbounded ? (_a.Bits - _shift) : RequiredBitsForUB(_a.UB >> _shift)];
+            var bits = new BoolExpr[_a.UB == Unbounded ? (_a.Bits.Length - _shift) : RequiredBitsForUB(_a.UB >> _shift)];
             for (var i = 0; i < bits.Length; i++)
-                bits[i] = _a[i + _shift];
+                bits[i] = _a.Bits[i + _shift];
             return new UIntVar(_a.Model, _a.UB == Unbounded ? Unbounded : (_a.UB >> _shift), bits);
         }
 
         public static UIntVar operator &(int _mask, UIntVar _v) => (_v & _mask);
         public static UIntVar operator &(UIntVar _v, int _mask)
         {
-            var bits = new BoolExpr[(_v.UB == Unbounded) ? _v.Bits : RequiredBitsForUB(Math.Min(_v.UB, _mask))];
+            var bits = new BoolExpr[(_v.UB == Unbounded) ? _v.Bits.Length : RequiredBitsForUB(Math.Min(_v.UB, _mask))];
             for (var i = 0; i < bits.Length; i++)
                 if (((_mask >> i) & 1) != 0)
-                    bits[i] = _v[i];
+                    bits[i] = _v.Bits[i];
                 else
-                    bits[i] = BoolExpr.False;
+                    bits[i] = Model.False;
             return new UIntVar(_v.Model, (_v.UB == Unbounded) ? _mask : Math.Min(_v.UB, _mask), bits);
         }
 
@@ -167,9 +215,9 @@ namespace SATInterface
 
         public static UIntVar operator <<(UIntVar _a, int _shift)
         {
-            var bits = new BoolExpr[_a.Bits + _shift];
+            var bits = new BoolExpr[_a.Bits.Length + _shift];
             for (var i = 0; i < bits.Length; i++)
-                bits[i] = i >= _shift ? _a[i - _shift] : false;
+                bits[i] = i >= _shift ? _a.Bits[i - _shift] : false;
             return new UIntVar(_a.Model, (_a.UB == Unbounded || RequiredBitsForUB(_a.UB) + _shift >= MaxBitsWithUB) ? Unbounded : _a.UB << _shift, bits);
         }
 
@@ -209,6 +257,10 @@ namespace SATInterface
             return res;
         }
 
+        /// <summary>
+        /// Returns the value of this variable in a SAT instance. Can throw OverflowException
+        /// if the value is >2^30 or InvalidOperationException if the model is not SAT.
+        /// </summary>
         public int X
         {
             get
@@ -235,7 +287,7 @@ namespace SATInterface
 
             var res = new BoolExpr[_a.bit.Length];
             for (var i = 0; i < res.Length; i++)
-                res[i] = (((_v >> i) & 1) == 1) ? _a[i] : !_a[i];
+                res[i] = (((_v >> i) & 1) == 1) ? _a.Bits[i] : !_a.Bits[i];
 
             return AndExpr.Create(res).Flatten();
         }
@@ -250,7 +302,7 @@ namespace SATInterface
 
             var res = new BoolExpr[_a.bit.Length];
             for (var i = 0; i < res.Length; i++)
-                res[i] = (((_v >> i) & 1) == 1) ? !_a[i] : _a[i];
+                res[i] = (((_v >> i) & 1) == 1) ? !_a.Bits[i] : _a.Bits[i];
 
             return OrExpr.Create(res).Flatten();
         }
@@ -259,7 +311,7 @@ namespace SATInterface
         {
             var res = new BoolExpr[Math.Max(_a.bit.Length, _b.bit.Length)];
             for (var i = 0; i < res.Length; i++)
-                res[i] = (_a[i] == _b[i]).Flatten();
+                res[i] = (_a.Bits[i] == _b.Bits[i]).Flatten();
 
             return AndExpr.Create(res).Flatten();
         }
@@ -268,7 +320,7 @@ namespace SATInterface
         {
             var res = new BoolExpr[Math.Max(_a.bit.Length, _b.bit.Length)];
             for (var i = 0; i < res.Length; i++)
-                res[i] = (_a[i] != _b[i]).Flatten();
+                res[i] = (_a.Bits[i] != _b.Bits[i]).Flatten();
 
             return OrExpr.Create(res).Flatten();
         }
@@ -287,8 +339,8 @@ namespace SATInterface
             Debug.Assert(nonZeroes <= _a.bit.Length);
 
             var resAny = new BoolExpr[_a.bit.Length - nonZeroes];
-            for (var i = nonZeroes; i < _a.bit.Length; i++)
-                resAny[i - nonZeroes] = _a[i];
+            for (var i = nonZeroes; i < _a.Bits.Length; i++)
+                resAny[i - nonZeroes] = _a.Bits[i];
             var leadingZeroes = (resAny.Length != 0) ? OrExpr.Create(resAny) : false;
 
             var resOr = new List<BoolExpr>();
@@ -297,8 +349,8 @@ namespace SATInterface
                 {
                     var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i)
                         .Where(j => ((_v >> j) & 1) == 1)
-                        .Select(j => _a[j]));
-                    resOr.Add((_a[i] & allesDavorEq).Flatten());
+                        .Select(j => _a.Bits[j]));
+                    resOr.Add((_a.Bits[i] & allesDavorEq).Flatten());
                 }
             var orExpr = (resOr.Count != 0) ? OrExpr.Create(resOr) : false;
 
@@ -319,8 +371,8 @@ namespace SATInterface
             Debug.Assert(nonZeroes <= _a.bit.Length);
 
             var resAnd = new BoolExpr[_a.bit.Length - nonZeroes];
-            for (var i = nonZeroes; i < _a.bit.Length; i++)
-                resAnd[i - nonZeroes] = !_a[i];
+            for (var i = nonZeroes; i < _a.Bits.Length; i++)
+                resAnd[i - nonZeroes] = !_a.Bits[i];
             var leadingZeroes = (resAnd.Length != 0) ? AndExpr.Create(resAnd).Flatten() : true;
 
             var resOr = new List<BoolExpr>();
@@ -329,8 +381,8 @@ namespace SATInterface
                 {
                     var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i - 1)
                         .Where(j => ((_v >> j) & 1) == 0)
-                        .Select(j => !_a[j]));
-                    resOr.Add((!_a[i] & allesDavorEq).Flatten());
+                        .Select(j => !_a.Bits[j]));
+                    resOr.Add((!_a.Bits[i] & allesDavorEq).Flatten());
                 }
             var orExpr = (resOr.Count != 0) ? OrExpr.Create(resOr).Flatten() : true;
 
@@ -344,8 +396,8 @@ namespace SATInterface
             var res = new BoolExpr[Math.Max(_a.bit.Length, _b.bit.Length)];
             for (var i = 0; i < _a.bit.Length || i < _b.bit.Length; i++)
             {
-                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => _a[j] == _b[j])).Flatten();
-                res[i] = ((_a[i] < _b[i]) & allesDavorEq).Flatten();
+                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => _a.Bits[j] == _b.Bits[j])).Flatten();
+                res[i] = ((_a.Bits[i] < _b.Bits[i]) & allesDavorEq).Flatten();
             }
 
             return OrExpr.Create(res).Flatten();
@@ -364,14 +416,14 @@ namespace SATInterface
         public static UIntVar operator *(BoolExpr _b, UIntVar _a) => _a * _b;
         public static UIntVar operator *(UIntVar _a, BoolExpr _b)
         {
-            if (ReferenceEquals(_b, BoolExpr.False))
+            if (ReferenceEquals(_b, Model.False))
                 return Const(_a.Model, 0);
-            if (ReferenceEquals(_b, BoolExpr.True))
+            if (ReferenceEquals(_b, Model.True))
                 return _a;
 
-            var bits = new BoolExpr[_a.Bits];
+            var bits = new BoolExpr[_a.Bits.Length];
             for (var i = 0; i < bits.Length; i++)
-                bits[i] = (_a[i] & _b).Flatten();
+                bits[i] = (_a.Bits[i] & _b).Flatten();
             return new UIntVar(_a.Model, _a.UB, bits);
         }
 
@@ -398,12 +450,12 @@ namespace SATInterface
             if (_a.UB == 0 || _b.UB == 0)
                 return Const(_a.Model, 0);
 
-            if (_a.Bits > _b.Bits)
+            if (_a.Bits.Length > _b.Bits.Length)
                 return _b * _a;
 
             var sum = new List<UIntVar>();
             for (var b = 0; b < _a.bit.Length; b++)
-                sum.Add((_b << b) * _a[b]);
+                sum.Add((_b << b) * _a.Bits[b]);
 
             var res = _a.Model.Sum(sum);
             res.UB = (_a.UB == Unbounded || _b.UB == Unbounded) ? Unbounded : (_a.UB * _b.UB);
@@ -413,22 +465,22 @@ namespace SATInterface
         public static UIntVar operator +(BoolExpr _b, UIntVar _a) => _a + _b;
         public static UIntVar operator +(UIntVar _a, BoolExpr _b)
         {
-            if (ReferenceEquals(_b, BoolExpr.False))
+            if (ReferenceEquals(_b, Model.False))
                 return _a;
 
-            var bits = new BoolExpr[(_a.UB == Unbounded) ? _a.Bits + 1 : RequiredBitsForUB(_a.UB + 1)];
+            var bits = new BoolExpr[(_a.UB == Unbounded) ? _a.Bits.Length + 1 : RequiredBitsForUB(_a.UB + 1)];
 
             var carry = _b;
             for (var i = 0; i < bits.Length; i++)
             {
-                bits[i] = (_a[i] ^ carry).Flatten();
+                bits[i] = (_a.Bits[i] ^ carry).Flatten();
 
                 if (i < bits.Length - 1)
                 {
-                    carry = (_a[i] & carry).Flatten();
+                    carry = (_a.Bits[i] & carry).Flatten();
 
                     //unitprop
-                    _a.Model.AddConstr(OrExpr.Create(bits[i], carry, !_a[i]));
+                    _a.Model.AddConstr(OrExpr.Create(bits[i], carry, !_a.Bits[i]));
                 }
             }
 
@@ -438,39 +490,47 @@ namespace SATInterface
 
         public static UIntVar operator ^(UIntVar _a, UIntVar _b)
         {
-            var bits = new BoolExpr[Math.Max(_a.Bits, _b.Bits)];
+            var bits = new BoolExpr[Math.Max(_a.Bits.Length, _b.Bits.Length)];
             for (var i = 0; i < bits.Length; i++)
-                bits[i] = (_a[i] ^ _b[i]).Flatten();
+                bits[i] = (_a.Bits[i] ^ _b.Bits[i]).Flatten();
             return new UIntVar(_a.Model, Unbounded, bits);
         }
 
         public static UIntVar operator |(UIntVar _a, UIntVar _b)
         {
-            var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? Math.Max(_a.Bits, _b.Bits) : RequiredBitsForUB(_a.UB | _b.UB)];
+            var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? Math.Max(_a.Bits.Length, _b.Bits.Length) : RequiredBitsForUB(_a.UB | _b.UB)];
             for (var i = 0; i < bits.Length; i++)
-                bits[i] = (_a[i] | _b[i]).Flatten();
+                bits[i] = (_a.Bits[i] | _b.Bits[i]).Flatten();
             return new UIntVar(_a.Model, (_a.UB == Unbounded || _b.UB == Unbounded) ? Unbounded : (_a.UB | _b.UB), bits);
         }
 
         public static UIntVar operator &(UIntVar _a, UIntVar _b)
         {
             //TODO improve UB when only _a or _b are unbounded
-            var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? Math.Min(_a.Bits, _b.Bits) : RequiredBitsForUB(Math.Min(_a.UB, _b.UB))];
+            var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? Math.Min(_a.Bits.Length, _b.Bits.Length) : RequiredBitsForUB(Math.Min(_a.UB, _b.UB))];
             for (var i = 0; i < bits.Length; i++)
-                bits[i] = (_a[i] & _b[i]).Flatten();
+                bits[i] = (_a.Bits[i] & _b.Bits[i]).Flatten();
             return new UIntVar(_a.Model, (_a.UB == Unbounded || _b.UB == Unbounded) ? Unbounded : Math.Min(_a.UB, _b.UB), bits);
         }
 
+        /// <summary>
+        /// Returns an equivalent Tseytin-encoded variable
+        /// </summary>
+        /// <returns></returns>
         public UIntVar Flatten()
         {
             if (bit.OfType<BoolVar>().Count() == bit.Length)
                 return this;
 
+            if (!(flattened is null))
+                return flattened;
+
             var bits = new BoolExpr[RequiredBitsForUB(UB)];
             for (var i = 0; i < bits.Length; i++)
                 bits[i] = bit[i].Flatten();
-            return new UIntVar(Model, UB, bits);
+            return flattened = new UIntVar(Model, UB, bits);
         }
+        private UIntVar? flattened;
 
         public static UIntVar operator +(UIntVar _a, UIntVar _b)
         {
@@ -479,23 +539,23 @@ namespace SATInterface
             if (_b.UB == 0)
                 return _a;
 
-            var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? (Math.Max(_a.Bits, _b.Bits) + 1) : RequiredBitsForUB(_a.UB + _b.UB)];
+            var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? (Math.Max(_a.Bits.Length, _b.Bits.Length) + 1) : RequiredBitsForUB(_a.UB + _b.UB)];
 
-            var carry = BoolExpr.False;
+            var carry = Model.False;
             for (var i = 0; i < bits.Length; i++)
             {
-                bits[i] = (carry ^ _a[i] ^ _b[i]).Flatten();
+                bits[i] = (carry ^ _a.Bits[i] ^ _b.Bits[i]).Flatten();
 
                 if (i < bits.Length - 1)
                 {
-                    var aAndB = (_a[i] & _b[i]).Flatten();
-                    var aAndCarry = (_a[i] & carry).Flatten();
-                    var bAndCarry = (_b[i] & carry).Flatten();
+                    var aAndB = (_a.Bits[i] & _b.Bits[i]).Flatten();
+                    var aAndCarry = (_a.Bits[i] & carry).Flatten();
+                    var bAndCarry = (_b.Bits[i] & carry).Flatten();
 
                     carry = OrExpr.Create(aAndB, aAndCarry, bAndCarry).Flatten();
 
                     //unitprop
-                    _a.Model.AddConstr(OrExpr.Create(bits[i], carry, (!_a[i] & !_b[i])));
+                    _a.Model.AddConstr(OrExpr.Create(bits[i], carry, (!_a.Bits[i] & !_b.Bits[i])));
                 }
             }
 

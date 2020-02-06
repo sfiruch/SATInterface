@@ -25,9 +25,9 @@ namespace MagicSquare
             for (var y = 0; y < N; y++)
                 for (var x = 0; x < N; x++)
                 {
-                    num[x, y] = UIntVar.Const(m, 0);
+                    num[x, y] = m.AddUIntConst(0);
                     for (var n = 0; n < NUMBERS.Length; n++)
-                        num[x, y] |= v[x, y, n] * UIntVar.Const(m, NUMBERS[n]);
+                        num[x, y] |= v[x, y, n] * m.AddUIntConst(NUMBERS[n]);
                 }
 
             //assign one number to each cell

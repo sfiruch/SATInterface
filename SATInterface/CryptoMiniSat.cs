@@ -6,6 +6,9 @@ using System.Runtime.InteropServices;
 
 namespace SATInterface
 {
+    /// <summary>
+    /// Managed-code facade of the native CryptoMiniSat solver
+    /// </summary>
     public class CryptoMiniSat : IDisposable
     {
         private IntPtr Handle;

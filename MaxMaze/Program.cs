@@ -54,7 +54,7 @@ namespace MaxMaze
                     {
                         case '.':
                             //case ' ':
-                            free[x, y] = new BoolVar(model, $"f{x},{y}");
+                            free[x, y] = model.AddVar($"f{x},{y}");
                             break;
                         case ' ':
                             free[x, y] = true;
@@ -84,7 +84,7 @@ namespace MaxMaze
                         model.AddConstr(b != d);
                     else if (x == W - 1 && y == H - 1)
                         model.AddConstr(a != c);
-                    else if (!ReferenceEquals(free[x, y], BoolExpr.False))
+                    else if (!ReferenceEquals(free[x, y], Model.False))
                         model.AddConstr(!free[x, y] | model.Sum(new[] { a, b, c, d }) == 2);
                 }
 
@@ -93,12 +93,12 @@ namespace MaxMaze
                 for (int x = 0; x < W - 1; x++)
                     model.AddConstr(!free[x, y] | !free[x + 1, y] | !free[x, y + 1] | !free[x + 1, y + 1]);
 
-            model.Maximize(model.Sum(free.Cast<BoolVar>()), () =>
+            model.Maximize(model.Sum(free.Cast<BoolExpr>()), () =>
             {
                 for (int y = 0; y < H; y++)
                 {
                     for (int x = 0; x < W; x++)
-                        Console.Write(free[x, y].X ? "." : ReferenceEquals(free[x, y], BoolExpr.False) ? "█" : "▒");
+                        Console.Write(free[x, y].X ? "." : ReferenceEquals(free[x, y], Model.False) ? "█" : "▒");
                     Console.WriteLine();
                 }
             }, Model.OptimizationStrategy.Increasing);

@@ -51,19 +51,15 @@ namespace Tests
             var MAGIC_CONST = NUMBERS.Sum() / N;
 
             var m = new Model();
-            var v = new BoolVar[N, N, NUMBERS.Length];
-            for (var y = 0; y < N; y++)
-                for (var x = 0; x < N; x++)
-                    for (var n = 0; n < NUMBERS.Length; n++)
-                        v[x, y, n] = new BoolVar(m, $"{x},{y},{n}");
+            var v = m.AddVars(N, N, NUMBERS.Length);
 
             var num = new UIntVar[N, N];
             for (var y = 0; y < N; y++)
                 for (var x = 0; x < N; x++)
                 {
-                    num[x, y] = UIntVar.Const(m, NUMBERS[0]) * v[x, y, 0];
+                    num[x, y] = m.AddUIntConst(NUMBERS[0]) * v[x, y, 0];
                     for (var n = 1; n < NUMBERS.Length; n++)
-                        num[x, y] |= UIntVar.Const(m, NUMBERS[n]) * v[x, y, n];
+                        num[x, y] |= m.AddUIntConst(NUMBERS[n]) * v[x, y, n];
 
                     num[x, y] = num[x, y].Flatten();
                 }

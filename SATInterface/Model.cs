@@ -8,10 +8,14 @@ using System.Threading;
 
 namespace SATInterface
 {
+    /// <summary>
+    /// Builds an enviroment plus associated model, containing variables and
+    /// constraints, as well as solver configuration and state.
+    /// </summary>
     public class Model
     {
-        //TODO add support for linear combinations as data type
-        //TODO add support for encoding of PBE constraints
+        public static readonly BoolExpr True = new BoolVar("true");
+        public static readonly BoolExpr False = new BoolVar("false");
 
         internal int VarCount = 0;
         private List<int[]> clauses = new List<int[]>();
@@ -19,9 +23,37 @@ namespace SATInterface
         internal bool proofSat = false;
         internal bool proofUnsat = false;
 
-        public bool IsSatisfiable => proofSat;
-        public bool IsUnsatisfiable => proofUnsat;
+        /// <summary>
+        /// Is True iff an assigment was found.
+        /// </summary>
+        public bool IsSatisfiable
+        {
+            get
+            {
+                if (!proofSat && !proofUnsat)
+                    throw new InvalidOperationException("Solve the model first");
 
+                return proofSat;
+            }
+        }
+
+        /// <summary>
+        /// Is True iff the instance was proven unsatisfiable.
+        /// </summary>
+        public bool IsUnsatisfiable
+        {
+            get
+            {
+                if (!proofSat && !proofUnsat)
+                    throw new InvalidOperationException("Solve the model first");
+
+                return proofUnsat;
+            }
+        }
+
+        /// <summary>
+        /// Allocate a new model.
+        /// </summary>
         public Model()
         {
         }
@@ -29,7 +61,7 @@ namespace SATInterface
         //TODO common subexpression elimination
         private void AddConstrInternal(BoolExpr _c)
         {
-            if (ReferenceEquals(_c, BoolExpr.False))
+            if (ReferenceEquals(_c, False))
                 proofUnsat = true;
             else if (_c is BoolVar boolVar)
                 clauses.Add(new[] { boolVar.Id });
@@ -65,6 +97,10 @@ namespace SATInterface
                 throw new Exception(_c.GetType().ToString());
         }
 
+        /// <summary>
+        /// Adds the supplied constraint to the model.
+        /// </summary>
+        /// <param name="_clause"></param>
         public void AddConstr(BoolExpr _clause)
         {
             if (proofUnsat)
@@ -73,14 +109,47 @@ namespace SATInterface
             if (_clause is AndExpr andExpr)
                 foreach (var e in andExpr.elements)
                     AddConstrInternal(e);
-            else if (!ReferenceEquals(_clause, BoolExpr.True))
+            else if (!ReferenceEquals(_clause, True))
                 AddConstrInternal(_clause);
 
             proofSat = false;
         }
 
-        public BoolExpr AddVar() => new BoolVar(this);
+        /// <summary>
+        /// Creates a unsigned integer constant. Most operations with such a constant will be short-
+        /// circuited by the framework.
+        /// </summary>
+        /// <param name="_c">The constant value</param>
+        /// <returns></returns>
+        public UIntVar AddUIntConst(int _c) => UIntVar.Const(this, _c);
 
+        /// <summary>
+        /// Creates a new unsigned integer variable from the supplied bits
+        /// </summary>
+        /// <param name="_ub">Upper bound of this variable or UIntVar.Unbounded when >2^30</param>
+        /// <param name="_bits">The bits making up this variable</param>
+        /// <param name="_enforceUB">If TRUE, additional constraints enforcing the upper bound will be added to the model</param>
+        public UIntVar AddUIntVar(int _ub, BoolExpr[] _bits, bool _enforceUB = false) => new UIntVar(this, _ub, _bits, _enforceUB);
+
+        /// <summary>
+        /// Creates a new unsigned integer variable with the specified upper bound.
+        /// </summary>
+        /// <param name="_ub">Upper bound of this variable or UIntVar.Unbounded when >2^30</param>
+        /// <param name="_enforceUB">If TRUE, additional constraints enforcing the upper bound will be added to the model</param>
+        public UIntVar AddUIntVar(int _ub, bool _enforceUB = true) => new UIntVar(this, _ub, _enforceUB);
+
+        /// <summary>
+        /// Allocate a new boolean variable. This variable takes the value True or False in a SAT model.
+        /// </summary>
+        /// <param name="_name"></param>
+        /// <returns></returns>
+        public BoolExpr AddVar(string? _name = null) => new BoolVar(this, _name);
+
+        /// <summary>
+        /// Allocate a new one-dimensional array of boolean variables.
+        /// </summary>
+        /// <param name="_name"></param>
+        /// <returns></returns>
         public BoolExpr[] AddVars(int _n1)
         {
             var res = new BoolVar[_n1];
@@ -89,6 +158,11 @@ namespace SATInterface
             return res;
         }
 
+        /// <summary>
+        /// Allocate a new two-dimensional array of boolean variables.
+        /// </summary>
+        /// <param name="_name"></param>
+        /// <returns></returns>
         public BoolExpr[,] AddVars(int _n1, int _n2)
         {
             var res = new BoolVar[_n1, _n2];
@@ -98,6 +172,11 @@ namespace SATInterface
             return res;
         }
 
+        /// <summary>
+        /// Allocate a new three-dimensional array of boolean variables.
+        /// </summary>
+        /// <param name="_name"></param>
+        /// <returns></returns>
         public BoolExpr[,,] AddVars(int _n1, int _n2, int _n3)
         {
             var res = new BoolVar[_n1, _n2, _n3];
@@ -108,6 +187,11 @@ namespace SATInterface
             return res;
         }
 
+        /// <summary>
+        /// Allocate a new four-dimensional array of boolean variables.
+        /// </summary>
+        /// <param name="_name"></param>
+        /// <returns></returns>
         public BoolExpr[,,,] AddVars(int _n1, int _n2, int _n3, int _n4)
         {
             var res = new BoolVar[_n1, _n2, _n3, _n4];
@@ -130,7 +214,12 @@ namespace SATInterface
             Decreasing
         }
 
-
+        /// <summary>
+        /// Minimizes the supplied LinExpr by solving multiple models sequentially.
+        /// </summary>
+        /// <param name="_obj"></param>
+        /// <param name="_solutionCallback">Invoked for every incumbent solution.</param>
+        /// <param name="_strategy"></param>
         public void Minimize(LinExpr _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
             => Maximize(_obj.UB - _obj, _solutionCallback,
                 _strategy switch
@@ -140,6 +229,12 @@ namespace SATInterface
                     _ => _strategy
                 }, _minimization: true);
 
+        /// <summary>
+        /// Maximizes the supplied LinExpr by solving multiple models sequentially.
+        /// </summary>
+        /// <param name="_obj"></param>
+        /// <param name="_solutionCallback">Invoked for every incumbent solution.</param>
+        /// <param name="_strategy"></param>
         public void Maximize(LinExpr _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
             => Maximize(_obj, _solutionCallback, _strategy, _minimization: false);
 
@@ -254,6 +349,10 @@ namespace SATInterface
             }
         }
 
+        /// <summary>
+        /// Finds an satisfying assignment (SAT) or proves the model
+        /// is not satisfiable (UNSAT) with the built-in solver.
+        /// </summary>
         public void Solve()
         {
             if (proofUnsat)
@@ -284,6 +383,10 @@ namespace SATInterface
             }
         }
 
+        /// <summary>
+        /// Finds an satisfying assignment (SAT) or proves the model
+        /// is not satisfiable (UNSAT) with an external solver.
+        /// </summary>
         public void SolveWithExternalSolver(string _executable, string? _arguments = null, string? _newLine = null, string? _tmpInputFilename = null, string? _tmpOutputFilename = null)
         {
             if (proofUnsat)
@@ -379,12 +482,20 @@ namespace SATInterface
             }
         }
 
+        /// <summary>
+        /// Writes the model as DIMACS file
+        /// </summary>
+        /// <param name="_out"></param>
         public void Write(string _path)
         {
             using (var fo = File.CreateText(_path))
                 Write(fo);
         }
 
+        /// <summary>
+        /// Serializes the model in DIMACS format into a stream
+        /// </summary>
+        /// <param name="_out"></param>
         public void Write(StreamWriter _out)
         {
             _out.WriteLine("c Created by SATInterface");
@@ -399,9 +510,36 @@ namespace SATInterface
             }
         }
 
+        /// <summary>
+        /// Returns an expression equivalent to a conjunction of the supplied
+        /// expressions.
+        /// </summary>
+        /// <param name="_elems"></param>
+        /// <returns></returns>
         public BoolExpr And(IEnumerable<BoolExpr> _elems) => AndExpr.Create(_elems);
+
+        /// <summary>
+        /// Returns an expression equivalent to a conjunction of the supplied
+        /// expressions.
+        /// </summary>
+        /// <param name="_elems"></param>
+        /// <returns></returns>
         public BoolExpr And(params BoolExpr[] _elems) => AndExpr.Create(_elems);
+
+        /// <summary>
+        /// Returns an expression equivalent to a disjunction of the supplied
+        /// expressions.
+        /// </summary>
+        /// <param name="_elems"></param>
+        /// <returns></returns>
         public BoolExpr Or(IEnumerable<BoolExpr> _elems) => OrExpr.Create(_elems);
+
+        /// <summary>
+        /// Returns an expression equivalent to a disjunction of the supplied
+        /// expressions.
+        /// </summary>
+        /// <param name="_elems"></param>
+        /// <returns></returns>
         public BoolExpr Or(params BoolExpr[] _elems) => OrExpr.Create(_elems);
 
         //code by Noldorin/Simon
@@ -409,15 +547,30 @@ namespace SATInterface
         internal static uint RotateLeft(uint value, int count) => (value << count) | (value >> (32 - count));
         internal static uint RotateRight(uint value, int count) => (value >> count) | (value << (32 - count));
 
-
+        /// <summary>
+        /// Returns the sum of the supplied expressions.
+        /// </summary>
+        /// <param name="_count"></param>
+        /// <returns></returns>
         public LinExpr Sum(params BoolExpr[] _count) => Sum((IEnumerable<BoolExpr>)_count);
+
+        /// <summary>
+        /// Returns the sum of the supplied expressions as UIntVar.
+        /// </summary>
+        /// <param name="_count"></param>
+        /// <returns></returns>
         public UIntVar SumUInt(params BoolExpr[] _count) => SumUInt((IEnumerable<BoolExpr>)_count);
 
+        /// <summary>
+        /// Returns the sum of the supplied expressions as UIntVar.
+        /// </summary>
+        /// <param name="_count"></param>
+        /// <returns></returns>
         public UIntVar SumUInt(IEnumerable<BoolExpr> _count)
         {
-            var simplified = _count.Where(b => !ReferenceEquals(b, BoolExpr.False)).ToArray();
-            var trueCount = simplified.Count(b => ReferenceEquals(b, BoolExpr.True));
-            simplified = simplified.Where(b => !ReferenceEquals(b, BoolExpr.True)).ToArray();
+            var simplified = _count.Where(b => !ReferenceEquals(b, False)).ToArray();
+            var trueCount = simplified.Count(b => ReferenceEquals(b, True));
+            simplified = simplified.Where(b => !ReferenceEquals(b, True)).ToArray();
 
             switch (simplified.Length)
             {
@@ -432,6 +585,11 @@ namespace SATInterface
             }
         }
 
+        /// <summary>
+        /// Returns the sum of the supplied expressions.
+        /// </summary>
+        /// <param name="_count"></param>
+        /// <returns></returns>
         public LinExpr Sum(IEnumerable<BoolExpr> _elems)
         {
             var le = new LinExpr();
@@ -440,6 +598,11 @@ namespace SATInterface
             return le;
         }
 
+        /// <summary>
+        /// Returns the sum of the supplied UIntVars.
+        /// </summary>
+        /// <param name="_count"></param>
+        /// <returns></returns>
         public UIntVar Sum(IEnumerable<UIntVar> _elems)
         {
             var cnt = _elems.Count();
@@ -454,6 +617,29 @@ namespace SATInterface
             }
         }
 
+        /// <summary>
+        /// If-Then-Else to pick one of two values. If _if is TRUE, _then will be picked, _else otherwise.
+        /// </summary>
+        /// <param name="_if"></param>
+        /// <param name="_then"></param>
+        /// <param name="_else"></param>
+        /// <returns></returns>
+        public UIntVar ITE(BoolExpr _if, UIntVar _then, UIntVar _else) => UIntVar.ITE(_if, _then, _else);
+
+        /// <summary>
+        /// If-Then-Else to pick one of two values. If _if is TRUE, _then will be picked, _else otherwise.
+        /// </summary>
+        /// <param name="_if"></param>
+        /// <param name="_then"></param>
+        /// <param name="_else"></param>
+        /// <returns></returns>
+        public BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => BoolExpr.ITE(_if, _then, _else);
+
+        /// <summary>
+        /// Returns the sum of the supplied LinExprs.
+        /// </summary>
+        /// <param name="_count"></param>
+        /// <returns></returns>
         public LinExpr Sum(IEnumerable<LinExpr> _elems)
         {
             var sum = new LinExpr();
@@ -489,19 +675,32 @@ namespace SATInterface
             Sequential
         }
 
-
+        /// <summary>
+        /// Expression is True iff at most one of the supplied expressions is True.
+        /// 
+        /// Consider using LinExpr-based constraints instead.
+        /// </summary>
+        /// <param name="_expr"></param>
+        /// <returns></returns>
         public BoolExpr AtMostOneOf(params BoolExpr[] _expr) => AtMostOneOf(_expr.AsEnumerable());
 
+        /// <summary>
+        /// Expression is True iff at most one of the supplied expressions is True.
+        /// 
+        /// Consider using LinExpr-based constraints instead.
+        /// </summary>
+        /// <param name="_expr"></param>
+        /// <returns></returns>
         public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod _method = AtMostOneOfMethod.Sequential)
         {
-            var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.False)).ToArray();
+            var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
-            var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.True));
+            var trueCount = expr.Count(e => ReferenceEquals(e, True));
             if (trueCount > 1)
-                return BoolExpr.False;
+                return False;
 
             if (trueCount == 1)
-                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, BoolExpr.True))).Flatten();
+                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, True))).Flatten();
 
             Debug.Assert(trueCount == 0);
 
@@ -509,7 +708,7 @@ namespace SATInterface
             {
                 case 0:
                 case 1:
-                    return BoolExpr.True;
+                    return True;
                 case 2:
                     return !expr[0] | !expr[1];
                 case 3:
@@ -533,8 +732,8 @@ namespace SATInterface
 
         private BoolExpr AtMostOneOfSequential(IEnumerable<BoolExpr> _expr)
         {
-            var v0 = BoolExpr.False;
-            var v1 = BoolExpr.False;
+            var v0 = False;
+            var v1 = False;
             foreach (var e in _expr)
             {
                 v1 = ((v0 & e) | v1).Flatten();
@@ -576,25 +775,39 @@ namespace SATInterface
             return AndExpr.Create(valid);
         }
 
+        /// <summary>
+        /// Expression is True iff exactly one of the supplied expressions is True.
+        /// 
+        /// Consider using LinExpr-based constraints instead.
+        /// </summary>
+        /// <param name="_expr"></param>
+        /// <returns></returns>
         public BoolExpr ExactlyOneOf(params BoolExpr[] _expr) => ExactlyOneOf(_expr.AsEnumerable());
 
+        /// <summary>
+        /// Expression is True iff exactly one of the supplied expressions is True.
+        /// 
+        /// Consider using LinExpr-based constraints instead.
+        /// </summary>
+        /// <param name="_expr"></param>
+        /// <returns></returns>
         public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod _method = ExactlyOneOfMethod.Commander)
         {
-            var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.False)).ToArray();
+            var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
-            var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.True));
+            var trueCount = expr.Count(e => ReferenceEquals(e, True));
             if (trueCount > 1)
-                return BoolExpr.False;
+                return False;
 
             if (trueCount == 1)
-                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, BoolExpr.True))).Flatten();
+                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, True))).Flatten();
 
             Debug.Assert(trueCount == 0);
 
             switch (expr.Length)
             {
                 case 0:
-                    return BoolExpr.False;
+                    return False;
                 case 1:
                     return expr[0];
                 case 2:
@@ -731,20 +944,27 @@ namespace SATInterface
                 ExactlyOneOfTwoFactor(cols);
         }
 
-
+        /// <summary>
+        /// Expression is True iff exactly K one of the supplied expressions are True.
+        /// 
+        /// Consider using LinExpr-based constraints instead.
+        /// </summary>
+        /// <param name="_expr"></param>
+        /// <param name="_k"></param>
+        /// <returns></returns>
         public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method = ExactlyKOfMethod.Sequential)
         {
-            var expr = _expr.Where(e => !ReferenceEquals(e, BoolExpr.False)).ToArray();
+            var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
-            var trueCount = expr.Count(e => ReferenceEquals(e, BoolExpr.True));
+            var trueCount = expr.Count(e => ReferenceEquals(e, True));
             if (trueCount > 0)
             {
                 _k -= trueCount;
-                expr = expr.Where(e => !ReferenceEquals(e, BoolExpr.True)).ToArray();
+                expr = expr.Where(e => !ReferenceEquals(e, True)).ToArray();
             }
 
             if (_k < 0 || _k > expr.Length)
-                return BoolExpr.False;
+                return False;
             else if (_k == 0)
                 return !OrExpr.Create(expr).Flatten();
             else if (_k == expr.Length)
@@ -758,12 +978,12 @@ namespace SATInterface
                     return SumUInt(expr) == _k;
 
                 case ExactlyKOfMethod.UnaryCount:
-                    var uc = UnaryCount(expr);
+                    var uc = Sort(expr);
                     //return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
                     return uc[_k - 1] & !uc[_k];
 
                 case ExactlyKOfMethod.Sequential:
-                    var v = Enumerable.Repeat(BoolExpr.False, _k + 1).ToArray();
+                    var v = Enumerable.Repeat(False, _k + 1).ToArray();
                     foreach (var e in expr)
                     {
                         var vnext = new BoolExpr[_k + 1];
@@ -848,10 +1068,15 @@ namespace SATInterface
             return AndExpr.Create(valid);
         }
 
+        /// <summary>
+        /// Sorts the given expressions. True will be returned first, False last.
+        /// </summary>
+        /// <param name="_e"></param>
+        /// <returns></returns>
 
         //Formulation by Bailleux & Boufkhad
         //- https://pdfs.semanticscholar.org/a948/1bf4ce2b5c20d2e282dd69dcb92bddcc36c9.pdf
-        public BoolExpr[] UnaryCount(IEnumerable<BoolExpr> _e)
+        public BoolExpr[] Sort(IEnumerable<BoolExpr> _e)
         {
             var len = _e.Count();
             switch (len)
@@ -860,15 +1085,17 @@ namespace SATInterface
                     return new BoolExpr[0];
                 case 1:
                     return new BoolExpr[] { _e.Single() };
+                case 2:
+                    return new BoolExpr[] { Or(_e).Flatten(), And(_e).Flatten() };
                 default:
                     var R = new BoolExpr[len + 2];
-                    R[0] = BoolExpr.True;
+                    R[0] = True;
                     for (var i = 1; i < R.Length - 1; i++)
                         R[i] = new BoolVar(this);
-                    R[R.Length - 1] = BoolExpr.False;
+                    R[R.Length - 1] = False;
 
-                    var A = new BoolExpr[] { BoolExpr.True }.Concat(UnaryCount(_e.Take(len / 2))).Concat(new BoolExpr[] { BoolExpr.False }).ToArray();
-                    var B = new BoolExpr[] { BoolExpr.True }.Concat(UnaryCount(_e.Skip(len / 2))).Concat(new BoolExpr[] { BoolExpr.False }).ToArray();
+                    var A = new BoolExpr[] { True }.Concat(Sort(_e.Take(len / 2))).Concat(new BoolExpr[] { False }).ToArray();
+                    var B = new BoolExpr[] { True }.Concat(Sort(_e.Skip(len / 2))).Concat(new BoolExpr[] { False }).ToArray();
                     for (var a = 0; a < A.Length - 1; a++)
                         for (var b = 0; b < B.Length - 1; b++)
                         {

@@ -7,6 +7,10 @@ namespace SATInterface
 {
 #pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
 #pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
+
+    /// <summary>
+    /// A LinExpr is a linear combination of BoolVars with integer weights.
+    /// </summary>
     public class LinExpr
     {
         //TODO: tune this threshold
@@ -19,32 +23,45 @@ namespace SATInterface
         private List<BoolExpr[]>? SequentialCache;
         private UIntVar? UIntCache;
 
-        public LinExpr()
+        public LinExpr(int _c = 0)
         {
             Weights = new Dictionary<BoolVar, int>();
+            Offset = _c;
         }
 
+        /// <summary>
+        /// Returns the upper bound of this expression.
+        /// </summary>
         public int UB
         {
             get
             {
-                var res = Offset;
-                foreach (var e in Weights)
-                    if (e.Value > 0)
-                        res += e.Value;
-                return res;
+                checked
+                {
+                    var res = Offset;
+                    foreach (var e in Weights)
+                        if (e.Value > 0)
+                            res += e.Value;
+                    return res;
+                }
             }
         }
 
+        /// <summary>
+        /// Returns the value of this expression in a SAT model.
+        /// </summary>
         public int X
         {
             get
             {
-                var res = Offset;
-                foreach (var e in Weights)
-                    if (e.Key.X)
-                        res += e.Value;
-                return res;
+                checked
+                {
+                    var res = Offset;
+                    foreach (var e in Weights)
+                        if (e.Key.X)
+                            res += e.Value;
+                    return res;
+                }
             }
         }
 
@@ -173,20 +190,20 @@ namespace SATInterface
                     if (posVar.Any())
                     {
                         var vars = new BoolExpr[posVar.Count];
-                        vars[0] = j < posVar[0].Weight ? posVar[0].be : BoolExpr.False;
+                        vars[0] = j < posVar[0].Weight ? posVar[0].be : Model.False;
                         for (var i = 1; i < posVar.Count; i++)
                             vars[i] = ((j >= posVar[i].Weight ? (SequentialCache[j - posVar[i].Weight][i - 1] & posVar[i].be) : posVar[i].be) | vars[i - 1]).Flatten();
                         SequentialCache.Add(vars);
                     }
                     else
-                        SequentialCache.Add(new[] { BoolExpr.False });
+                        SequentialCache.Add(new[] { Model.False });
                 }
             }
 
             return Enumerable.Range(0, _limit).Select(i => SequentialCache[i].Last());
         }
 
-        private UIntVar ComputeUInt()
+        private UIntVar ToUInt()
         {
             if (!(UIntCache is null))
                 return UIntCache;
@@ -202,7 +219,7 @@ namespace SATInterface
                     singleVar.Add(e.Key);
                 }
                 else if (e.Value > 0)
-                    posVar.Add((UIntVar)e.Key * e.Value);
+                    posVar.Add(UIntVar.ITE(e.Key, UIntVar.Const(model, e.Value), UIntVar.Const(model, 0)));
                 else
                 {
                     posVar.Add(UIntVar.ITE(!e.Key, UIntVar.Const(model, -e.Value), UIntVar.Const(model, 0)));
@@ -238,12 +255,12 @@ namespace SATInterface
                     rhs -= e.Value;
 
             if (rhs < 0)
-                return BoolExpr.False;
+                return Model.False;
             if (rhs >= _a.Weights.Sum(x => Math.Abs(x.Value)))
-                return BoolExpr.True;
+                return Model.True;
 
             if (rhs > BinaryComparisonThreshold)
-                return _a.ComputeUInt() <= rhs;
+                return _a.ToUInt() <= rhs;
 
             return !_a.ComputeSequential(rhs + 1).Last();
         }
@@ -256,12 +273,12 @@ namespace SATInterface
                     rhs -= e.Value;
 
             if (rhs < 0)
-                return BoolExpr.False;
+                return Model.False;
             if (rhs > _a.Weights.Sum(x => Math.Abs(x.Value)))
-                return BoolExpr.False;
+                return Model.False;
 
             if (rhs > BinaryComparisonThreshold)
-                return _a.ComputeUInt() == rhs;
+                return _a.ToUInt() == rhs;
 
             var v = _a.ComputeSequential(rhs + 1).ToArray();
 
@@ -332,9 +349,9 @@ namespace SATInterface
             ClearCached();
 
             var be = _be.Flatten();
-            if (ReferenceEquals(be, BoolExpr.True))
+            if (ReferenceEquals(be, Model.True))
                 Offset += _weight;
-            else if (ReferenceEquals(be, BoolExpr.False))
+            else if (ReferenceEquals(be, Model.False))
             {
                 //do nothing
             }

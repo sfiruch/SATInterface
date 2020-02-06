@@ -5,12 +5,15 @@ using System.Text;
 
 namespace SATInterface
 {
-    public class BoolVar:BoolExpr
+    /// <summary>
+    /// A BoolVar is either True or False in a SAT model.
+    /// </summary>
+    internal class BoolVar : BoolExpr
     {
         internal readonly int Id;
         internal bool Value;
         internal readonly Model Model;
-        private readonly string Name;
+        private readonly string? Name;
         private BoolExpr? negated;
 
         internal BoolExpr Negated
@@ -23,13 +26,9 @@ namespace SATInterface
             }
         }
 
-        public BoolVar(Model _model):this(_model,"b"+(_model.VarCount+1))
-        {
-        }
-
         public override BoolExpr Flatten() => this;
 
-        public BoolVar(Model _model,string _name)
+        internal BoolVar(Model _model, string? _name = null)
         {
             Model = _model;
             Name = _name;
@@ -37,21 +36,26 @@ namespace SATInterface
             Model.RegisterVariable(this);
         }
 
+        /// <summary>
+        /// This is only used for the global True and False constants which should be
+        /// short-circuited away anyway before hitting the solver.
+        /// </summary>
+        /// <param name="_name"></param>
         internal BoolVar(string _name)
         {
             Name = _name;
             Model = null!;
         }
 
-        public override string ToString() => Name;
+        public override string ToString() => Name ?? $"b{Id}";
 
         public override bool X
         {
             get
             {
-                if (ReferenceEquals(this, True))
+                if (ReferenceEquals(this, Model.True))
                     return true;
-                if (ReferenceEquals(this, False))
+                if (ReferenceEquals(this, Model.False))
                     return false;
 
                 if (!Model.IsSatisfiable)
