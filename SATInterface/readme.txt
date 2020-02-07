@@ -1,16 +1,21 @@
 ﻿// SATInterface is a library to formulate SAT problems in .NET 
 // - https://github.com/deiruch/SATInterface
 //
-//
-// By default the bundeled excellent CryptoMiniSAT solver is used as backend, but any solver
-// that supports DIMACS can be used (e.g. Lingeling, Clasp, RISS, MiniSAT, ...). CryptoMiniSAT
-// is MIT licensed and available from https://github.com/msoos/cryptominisat
+// By default the bundeled excellent CaDiCaL solver is used as backend, but any solver
+// that supports DIMACS can be used (e.g. CryptoMiniSat, Lingeling, Clasp, RISS, MiniSAT, ...).
+// CaDiCaL is MIT-licensed and available from https://github.com/arminbiere/cadical
 //
 //
 // Here's a usage example: Sudoku
 
 var m = new Model();
 var v = m.AddVars(9, 9, 9);
+
+//fix the first number to 1
+v[0, 0, 0] = true;
+
+//here's alternative way to set the second number
+m.AddConstr(v[1, 0, 1]);
 
 //assign one number to each cell
 for (var y = 0; y < 9; y++)
