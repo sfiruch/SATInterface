@@ -19,8 +19,8 @@ namespace SATInterface
         //- allow additional clauses and variables
         //- prevent config changes after first invocation.
 
-        public static readonly BoolExpr True = new BoolVar("true");
-        public static readonly BoolExpr False = new BoolVar("false");
+        public static readonly BoolExpr True = new BoolVar("true", -1);
+        public static readonly BoolExpr False = new BoolVar("false", -2);
 
         internal int VarCount = 0;
         private List<int[]> clauses = new List<int[]>();

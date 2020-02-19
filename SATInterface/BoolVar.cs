@@ -41,10 +41,11 @@ namespace SATInterface
         /// short-circuited away anyway before hitting the solver.
         /// </summary>
         /// <param name="_name"></param>
-        internal BoolVar(string _name)
+        internal BoolVar(string _name, int _id)
         {
             Name = _name;
             Model = null!;
+            Id = _id;
         }
 
         public override string ToString() => Name ?? $"b{Id}";

@@ -32,13 +32,6 @@ namespace SATInterface
 
             //remove duplicates
             res = res.Distinct().ToList();
-            /*for (var i = 0; i < res.Count; i++)
-                for (var j = i + 1; j < res.Count; j++)
-                    if (ReferenceEquals(res[i], res[j]))
-                    {
-                        res.RemoveAt(j);
-                        j--;
-                    }*/
 
             if (res.Count == 0)
                 return Model.False;

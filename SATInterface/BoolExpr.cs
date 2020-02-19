@@ -8,7 +8,7 @@ namespace SATInterface
     /// <summary>
     /// A BoolExpr is an arbitrary boolean expression in CNF
     /// </summary>
-    public class BoolExpr
+    public abstract class BoolExpr
     {
         internal BoolExpr()
         {
@@ -106,7 +106,6 @@ namespace SATInterface
             if (rhsS is null)
                 return Model.False;
 
-
             if (ReferenceEquals(lhsS, rhsS))
                 return Model.True;
 
@@ -164,16 +163,6 @@ namespace SATInterface
         /// <param name="_else"></param>
         /// <returns></returns>
         internal static BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => ((!_if | _then) & (_if | _else) & (_then | _else)) | (_then & _else);
-
-        public override int GetHashCode()
-        {
-            if (ReferenceEquals(this, Model.True))
-                return -1830369473;
-            else if (ReferenceEquals(this, Model.False))
-                return 43589799;
-            else
-                return 0;
-        }
 
         public override bool Equals(object obj) => ReferenceEquals(this, obj);
     }
