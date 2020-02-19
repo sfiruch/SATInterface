@@ -50,6 +50,7 @@ namespace SATInterface
         private BoolVar? flattenCache;
         public override BoolExpr Flatten()
         {
+            //TODO: track equality for CSE
             if (!(flattenCache is null))
                 return flattenCache;
 

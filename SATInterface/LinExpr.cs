@@ -14,7 +14,7 @@ namespace SATInterface
     public class LinExpr
     {
         //TODO: tune this threshold
-        private const int BinaryComparisonThreshold = 8;
+        private const int BinaryComparisonThreshold = 10;
 
         private Dictionary<BoolVar, int> Weights;
         private int Offset;

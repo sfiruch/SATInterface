@@ -75,7 +75,6 @@ namespace SATInterface
         {
         }
 
-        //TODO common subexpression elimination
         private void AddConstrInternal(BoolExpr _c)
         {
             if (ReferenceEquals(_c, False))
@@ -86,27 +85,12 @@ namespace SATInterface
                 clauses.Add(new[] { -notExpr.inner.Id });
             else if (_c is OrExpr orExpr)
             {
-                //TODO splitting might lead to more CSE matches?
-                //if(orExpr.elements.Length>4)
-                //{
-                //    var ors = new List<BoolExpr>();
-                //    for(var i=0;i<orExpr.elements.Length;i+=3)
-                //        ors.Add(OrExpr.Create(orExpr.elements.Skip(i).Take(3)).Flatten());
-                //    AddConstr(OrExpr.Create(ors));
-                //    return;
-                //}
-
-                var sb = new int[orExpr.elements.Length];
-                for (var i = 0; i < orExpr.elements.Length; i++)
-                    if (orExpr.elements[i] is BoolVar bv)
-                        sb[i] = bv.Id;
-                    else if (orExpr.elements[i] is NotExpr ne)
-                        sb[i] = -ne.inner.Id;
-                    else
-                        throw new Exception(orExpr.elements[i].GetType().ToString());
-
-                //TODO perform CSE
-                //Array.Sort(sb);
+                var sb = orExpr.elements.Select(e => e switch
+                    {
+                        BoolVar bv => bv.Id,
+                        NotExpr ne => -ne.inner.Id,
+                        _ => throw new Exception(e.GetType().ToString())
+                    }).ToArray();
 
                 clauses.Add(sb);
             }
@@ -912,7 +896,6 @@ namespace SATInterface
 
         private BoolExpr AtMostOneOfOneHot(BoolExpr[] _expr)
         {
-            //TODO replace with general CSE
             var cse = new BoolExpr[(_expr.Length + 3) / 4];
             for (var i = 0; i < _expr.Length; i += 4)
                 cse[i / 4] = AndExpr.Create(_expr.Skip(i).Take(4).Select(v => !v)).Flatten();
@@ -935,11 +918,6 @@ namespace SATInterface
                         if (i != j + 3 && j + 3 < _expr.Length)
                             ands.Add(!_expr[j + 3]);
                     }
-
-                //for (var j = 0; j < _expr.Length; j++)
-                //    if (i != j)
-                //        ands.Add(!_expr[j]);
-
 
                 ors.Add(AndExpr.Create(ands).Flatten());
             }

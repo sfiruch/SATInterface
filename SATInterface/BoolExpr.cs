@@ -44,6 +44,7 @@ namespace SATInterface
         /// <returns></returns>
         public virtual BoolExpr Flatten()
         {
+            //TODO: track equality for CSE
             if (ReferenceEquals(this, Model.True) || ReferenceEquals(this, Model.False))
                 return this;
 

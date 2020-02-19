@@ -506,11 +506,20 @@ namespace SATInterface
 
         public static UIntVar operator &(UIntVar _a, UIntVar _b)
         {
-            //TODO improve UB when only _a or _b are unbounded
-            var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? Math.Min(_a.Bits.Length, _b.Bits.Length) : RequiredBitsForUB(Math.Min(_a.UB, _b.UB))];
+            int ub;
+            if (_a.UB == Unbounded && _b.UB == Unbounded)
+                ub = Unbounded;
+            else if (_a.UB == Unbounded)
+                ub = _b.UB;
+            else if (_b.UB == Unbounded)
+                ub = _a.UB;
+            else
+                ub = Math.Min(_a.UB, _b.UB);
+
+            var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? Math.Min(_a.Bits.Length, _b.Bits.Length) : RequiredBitsForUB(ub)];
             for (var i = 0; i < bits.Length; i++)
                 bits[i] = (_a.Bits[i] & _b.Bits[i]).Flatten();
-            return new UIntVar(_a.Model, (_a.UB == Unbounded || _b.UB == Unbounded) ? Unbounded : Math.Min(_a.UB, _b.UB), bits);
+            return new UIntVar(_a.Model, ub, bits);
         }
 
         /// <summary>
