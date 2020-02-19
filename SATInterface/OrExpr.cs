@@ -79,17 +79,19 @@ namespace SATInterface
 
         public override string ToString() => "(" + string.Join(" | ", elements.Select(e => e.ToString()).ToArray()) + ")";
 
+        private BoolVar? flattenCache;
         public override BoolExpr Flatten()
         {
+            if (!(flattenCache is null))
+                return flattenCache;
+
             var model = EnumVars().First().Model;
-            var res = new BoolVar(model);
-            model.AddConstr(OrExpr.Create(elements.Append(!res)));
+            flattenCache = new BoolVar(model);
+            model.AddConstr(OrExpr.Create(elements.Append(!flattenCache)));
             foreach (var e in elements)
-                model.AddConstr(!e | res);
+                model.AddConstr(!e | flattenCache);
 
-            //model.AddConstr(!res || this);
-
-            return res;
+            return flattenCache;
         }
 
         internal override IEnumerable<BoolVar> EnumVars()
@@ -124,7 +126,11 @@ namespace SATInterface
         {
             if (hashCode == 0)
             {
-                hashCode = (int)Model.RotateLeft((uint)elements.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b), 4) ^ (1 << 29);
+                var hc = new HashCode();
+                foreach (var e in elements)
+                    hc.Add(e);
+
+                hashCode = hc.ToHashCode();
                 if (hashCode == 0)
                     hashCode++;
             }

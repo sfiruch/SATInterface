@@ -14,7 +14,10 @@ namespace SATInterface
     /// </summary>
     public class Model : IDisposable
     {
-        //TODO: keep learnt clauses
+        //TODO: keep learnt clauses/model open
+        //- keep solver instance in memory
+        //- allow additional clauses and variables
+        //- prevent config changes after first invocation.
 
         public static readonly BoolExpr True = new BoolVar("true");
         public static readonly BoolExpr False = new BoolVar("false");
@@ -603,11 +606,6 @@ namespace SATInterface
         /// <param name="_elems"></param>
         /// <returns></returns>
         public BoolExpr Or(params BoolExpr[] _elems) => OrExpr.Create(_elems);
-
-        //code by Noldorin/Simon
-        //- http://stackoverflow.com/a/812035/742404
-        internal static uint RotateLeft(uint value, int count) => (value << count) | (value >> (32 - count));
-        internal static uint RotateRight(uint value, int count) => (value >> count) | (value << (32 - count));
 
         /// <summary>
         /// Returns the sum of the supplied expressions.
