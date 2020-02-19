@@ -45,7 +45,7 @@ namespace MaxMaze
 
         static void Main(string[] args)
         {
-            var model = new Model();
+            using var m = new Model();
             var free = new BoolExpr[W, H];
             for (int y = 0; y < H; y++)
                 for (int x = 0; x < W; x++)
@@ -54,7 +54,7 @@ namespace MaxMaze
                     {
                         case '.':
                             //case ' ':
-                            free[x, y] = model.AddVar($"f{x},{y}");
+                            free[x, y] = m.AddVar($"f{x},{y}");
                             break;
                         case ' ':
                             free[x, y] = true;
@@ -81,19 +81,21 @@ namespace MaxMaze
                     BoolExpr d = y < H - 1 ? free[x, y + 1] : false;
 
                     if (x == 0 && y == 0)
-                        model.AddConstr(b != d);
+                        m.AddConstr(b != d);
                     else if (x == W - 1 && y == H - 1)
-                        model.AddConstr(a != c);
+                        m.AddConstr(a != c);
                     else if (!ReferenceEquals(free[x, y], Model.False))
-                        model.AddConstr(!free[x, y] | model.Sum(new[] { a, b, c, d }) == 2);
+                        m.AddConstr(!free[x, y] | m.Sum(new[] { a, b, c, d }) == 2);
                 }
 
             //cut: quad
             for (int y = 0; y < H - 1; y++)
                 for (int x = 0; x < W - 1; x++)
-                    model.AddConstr(!free[x, y] | !free[x + 1, y] | !free[x, y + 1] | !free[x + 1, y + 1]);
+                    m.AddConstr(!free[x, y] | !free[x + 1, y] | !free[x, y + 1] | !free[x + 1, y + 1]);
 
-            model.Maximize(model.Sum(free.Cast<BoolExpr>()), () =>
+            m.Configuration.OptimizationStrategy = OptimizationStrategy.Increasing;
+
+            m.Maximize(m.Sum(free.Cast<BoolExpr>()), () =>
             {
                 for (int y = 0; y < H; y++)
                 {
@@ -101,7 +103,7 @@ namespace MaxMaze
                         Console.Write(free[x, y].X ? "." : ReferenceEquals(free[x, y], Model.False) ? "█" : "▒");
                     Console.WriteLine();
                 }
-            }, Model.OptimizationStrategy.Increasing);
+            });
 
             Console.ReadLine();
             Console.ReadLine();

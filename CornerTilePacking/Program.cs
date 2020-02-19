@@ -17,7 +17,7 @@ namespace CornerTilePacking
             const int W = C * C;
             const int H = C * C;
 
-            var m = new Model();
+            using var m = new Model();
             var vXYC = m.AddVars(W, H, C);
 
             //symmetry breaking
@@ -56,9 +56,6 @@ namespace CornerTilePacking
                 Console.WriteLine();
             }
 
-            Console.ReadLine();
-            Console.ReadLine();
-            Console.ReadLine();
             Console.ReadLine();
             Console.ReadLine();
         }

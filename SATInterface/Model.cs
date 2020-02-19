@@ -12,8 +12,10 @@ namespace SATInterface
     /// Builds an enviroment plus associated model, containing variables and
     /// constraints, as well as solver configuration and state.
     /// </summary>
-    public class Model
+    public class Model : IDisposable
     {
+        //TODO: keep learnt clauses
+
         public static readonly BoolExpr True = new BoolVar("true");
         public static readonly BoolExpr False = new BoolVar("false");
 
@@ -22,6 +24,18 @@ namespace SATInterface
         private Dictionary<int, BoolVar> vars = new Dictionary<int, BoolVar>();
         internal bool proofSat = false;
         internal bool proofUnsat = false;
+
+        public readonly Configuration Configuration = new Configuration();
+
+        /// <summary>
+        /// Number of variables in this model.
+        /// </summary>
+        public int VariableCount => VarCount;
+
+        /// <summary>
+        /// Number of clauses in this model.
+        /// </summary>
+        public int ClauseCount => clauses.Count;
 
         /// <summary>
         /// Is True iff an assigment was found.
@@ -205,29 +219,14 @@ namespace SATInterface
 
         internal void RegisterVariable(BoolVar boolVar) => vars[boolVar.Id] = boolVar;
 
-        public bool LogOutput = true;
-
-        public enum OptimizationStrategy
-        {
-            BinarySearch,
-            Increasing,
-            Decreasing
-        }
-
         /// <summary>
         /// Minimizes the supplied LinExpr by solving multiple models sequentially.
         /// </summary>
         /// <param name="_obj"></param>
         /// <param name="_solutionCallback">Invoked for every incumbent solution.</param>
         /// <param name="_strategy"></param>
-        public void Minimize(LinExpr _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
-            => Maximize(_obj.UB - _obj, _solutionCallback,
-                _strategy switch
-                {
-                    OptimizationStrategy.Increasing => OptimizationStrategy.Decreasing,
-                    OptimizationStrategy.Decreasing => OptimizationStrategy.Increasing,
-                    _ => _strategy
-                }, _minimization: true);
+        public void Minimize(LinExpr _obj, Action? _solutionCallback = null)
+            => Maximize(-_obj, _solutionCallback, _minimization: true);
 
         /// <summary>
         /// Maximizes the supplied LinExpr by solving multiple models sequentially.
@@ -235,26 +234,91 @@ namespace SATInterface
         /// <param name="_obj"></param>
         /// <param name="_solutionCallback">Invoked for every incumbent solution.</param>
         /// <param name="_strategy"></param>
-        public void Maximize(LinExpr _obj, Action? _solutionCallback = null, OptimizationStrategy _strategy = OptimizationStrategy.BinarySearch)
-            => Maximize(_obj, _solutionCallback, _strategy, _minimization: false);
+        public void Maximize(LinExpr _obj, Action? _solutionCallback = null)
+            => Maximize(_obj, _solutionCallback, _minimization: false);
 
-        private void Maximize(LinExpr _obj, Action? _solutionCallback, OptimizationStrategy _strategy, bool _minimization)
+        private ISolver InstantiateSolver()
         {
+            var solver = Configuration.Solver switch
+            {
+                InternalSolver.CryptoMiniSat => (ISolver)new CryptoMiniSat(),
+                InternalSolver.CaDiCaL => (ISolver)new CaDiCaL(),
+                _ => throw new ArgumentException("Invalid solver configured", nameof(Configuration.Solver))
+            };
+            solver.ApplyConfiguration(Configuration);
+            return solver;
+        }
+
+        public void EnumerateSolutions(IEnumerable<BoolExpr> _modelVariables, Action _solutionCallback)
+        {
+            //TODO: support lazy constraints from callback
+            //TODO: support abort from callback
+
             if (proofUnsat)
                 return;
 
-            using (var cms = new CaDiCaL())
+            proofSat = false;
+            proofUnsat = true;
+
+            var originalVars = new Dictionary<int, BoolVar>(vars);
+            var originalClauses = clauses.ToList();
+
+            using (var solver = InstantiateSolver())
             {
-                cms.Verbosity = (LogOutput ? 1 : 0);
+                var modelVariables = _modelVariables.Select(v => v.Flatten()).ToArray();
 
                 var mVars = vars.Count;
                 var mClauses = clauses.Count;
-
-                cms.AddVars(vars.Count);
+                solver.AddVars(vars.Count);
                 foreach (var line in clauses)
-                    cms.AddClause(line);
+                    solver.AddClause(line);
 
-                var bestAssignment = cms.Solve();
+                for (; ; )
+                {
+                    var assignment = solver.Solve();
+                    if (assignment == null)
+                        break;
+
+                    for (var i = 0; i < vars.Count; i++)
+                        vars[i + 1].Value = assignment[i];
+
+                    proofSat = true;
+                    proofUnsat = false;
+                    _solutionCallback.Invoke();
+
+                    AddConstr(Or(modelVariables.Select(v => v != v.X)));
+
+                    solver.AddVars(vars.Count - mVars);
+                    mVars = vars.Count;
+
+                    for (var i = mClauses; i < clauses.Count; i++)
+                        solver.AddClause(clauses[i]);
+                    mClauses = clauses.Count;
+                }
+
+                vars = originalVars;
+                clauses = originalClauses;
+            }
+        }
+
+        private void Maximize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
+        {
+            //TODO: support lazy constraints from callback
+            //TODO: support abort from callback
+
+            if (proofUnsat)
+                return;
+
+            using (var solver = InstantiateSolver())
+            {
+                var mVars = vars.Count;
+                var mClauses = clauses.Count;
+
+                solver.AddVars(vars.Count);
+                foreach (var line in clauses)
+                    solver.AddClause(line);
+
+                var bestAssignment = solver.Solve();
                 if (bestAssignment == null)
                 {
                     proofUnsat = true;
@@ -277,25 +341,25 @@ namespace SATInterface
                 var originalClauses = clauses.ToList();
                 for (; ; )
                 {
-                    if (LogOutput)
+                    if (Configuration.Verbosity > 0)
                     {
                         if (_minimization)
-                            Console.WriteLine($"Minimizing objective, range {_obj.UB - ub} - {_obj.UB - lb}");
+                            Console.WriteLine($"Minimizing objective, range {-ub} - {-lb}");
                         else
                             Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
                     }
 
-                    int cur = _strategy switch
+                    int cur = Configuration.OptimizationStrategy switch
                     {
                         OptimizationStrategy.BinarySearch => (lb + 1 + ub) / 2,
-                        OptimizationStrategy.Decreasing => ub,
-                        OptimizationStrategy.Increasing => lb + 1,
-                        _ => throw new ArgumentException(nameof(_strategy))
+                        OptimizationStrategy.Decreasing => _minimization ? lb + 1 : ub,
+                        OptimizationStrategy.Increasing => _minimization ? ub : lb + 1,
+                        _ => throw new NotImplementedException()
                     };
 
                     //add additional clauses
                     int[]? assumptions;
-                    if (_strategy == OptimizationStrategy.Increasing)
+                    if (cur == lb + 1)
                     {
                         AddConstr(_obj >= cur);
                         assumptions = null;
@@ -307,14 +371,14 @@ namespace SATInterface
                         assumptions = new int[] { objGE.Id };
                     }
 
-                    cms.AddVars(vars.Count - mVars);
+                    solver.AddVars(vars.Count - mVars);
                     mVars = vars.Count;
 
                     for (var i = mClauses; i < clauses.Count; i++)
-                        cms.AddClause(clauses[i]);
+                        solver.AddClause(clauses[i]);
                     mClauses = clauses.Count;
 
-                    var assignment = proofUnsat ? null : cms.Solve(assumptions);
+                    var assignment = proofUnsat ? null : solver.Solve(assumptions);
                     if (assignment != null)
                     {
                         for (var i = 0; i < vars.Count; i++)
@@ -361,15 +425,13 @@ namespace SATInterface
             proofSat = false;
 
             //set up model
-            using (var cms = new CaDiCaL())
+            using (var solver = InstantiateSolver())
             {
-                cms.Verbosity = (LogOutput ? 1 : 0);
-
-                cms.AddVars(vars.Count);
+                solver.AddVars(vars.Count);
                 foreach (var line in clauses)
-                    cms.AddClause(line);
+                    solver.AddClause(line);
 
-                var res = cms.Solve();
+                var res = solver.Solve();
                 if (res != null)
                 {
                     proofSat = true;
@@ -439,12 +501,12 @@ namespace SATInterface
                         }
                         if (tk.Length > 1 && tk[0] == "c" && _tmpOutputFilename == null)
                         {
-                            if (LogOutput)
+                            if (Configuration.Verbosity > 0)
                                 Console.WriteLine(line);
                         }
                         if (tk.Length == 2 && tk[0] == "s")
                         {
-                            if (LogOutput && _tmpOutputFilename == null)
+                            if (Configuration.Verbosity > 0 && _tmpOutputFilename == null)
                                 Console.WriteLine(line);
                             if (tk[1] == "SATISFIABLE")
                                 proofSat = true;
@@ -1027,7 +1089,7 @@ namespace SATInterface
                     }
 
                 default:
-                    throw new ArgumentException(nameof(_method));
+                    throw new ArgumentException("Invalid method", nameof(_method));
             }
         }
 
@@ -1110,6 +1172,10 @@ namespace SATInterface
 
                     return R.Skip(1).Take(R.Length - 2).ToArray();
             }
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

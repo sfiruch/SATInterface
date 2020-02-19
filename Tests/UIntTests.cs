@@ -12,16 +12,15 @@ namespace Tests
         [TestMethod]
         public void UIntLessEqual()
         {
-            foreach (var strategy in Enum.GetValues(typeof(Model.OptimizationStrategy)).Cast<Model.OptimizationStrategy>())
+            foreach (var strategy in Enum.GetValues(typeof(OptimizationStrategy)).Cast<OptimizationStrategy>())
                 for (var i = 0; i < 140; i++)
                 {
-                    var m = new Model();
-                    m.LogOutput = false;
-
+                    using var m = new Model();
                     var v = m.AddUIntVar(100, true);
                     m.AddConstr(v <= i);
 
-                    m.Maximize(v, _strategy: strategy);
+                    m.Configuration.OptimizationStrategy = strategy;
+                    m.Maximize(v);
 
                     Assert.IsTrue(m.IsSatisfiable);
                     Assert.AreEqual(Math.Min(i, 100), v.X);
@@ -31,16 +30,15 @@ namespace Tests
         [TestMethod]
         public void UIntGreaterEqual()
         {
-            foreach (var strategy in Enum.GetValues(typeof(Model.OptimizationStrategy)).Cast<Model.OptimizationStrategy>())
+            foreach (var strategy in Enum.GetValues(typeof(OptimizationStrategy)).Cast<OptimizationStrategy>())
                 for (var i = 0; i < 140; i++)
                 {
-                    var m = new Model();
-                    m.LogOutput = false;
-
+                    using var m = new Model();
                     var v = m.AddUIntVar(100, true);
                     m.AddConstr(v >= i);
 
-                    m.Minimize(v, _strategy: strategy);
+                    m.Configuration.OptimizationStrategy = strategy;
+                    m.Minimize(v);
 
                     if (i <= 100)
                     {
@@ -58,9 +56,7 @@ namespace Tests
             for (var i = 0; i < 100; i++)
                 for (var j = 0; j < 10; j++)
                 {
-                    var m = new Model();
-                    m.LogOutput = false;
-
+                    using var m = new Model();
                     var v = m.AddUIntConst(i);
                     for (var k = 0; k < j; k++)
                         v += true;
@@ -76,8 +72,8 @@ namespace Tests
             for (var i = 0; i < 20; i++)
                 for (var j = 0; j < 20; j++)
                 {
-                    var m = new Model();
-                    m.LogOutput = false;
+                    using var m = new Model();
+                    m.Configuration.Verbosity = 0;
 
                     var v = m.AddUIntConst(0);
                     v += i;
@@ -95,9 +91,7 @@ namespace Tests
             for (var n = 0; n < 100; n++)
                 for (var i = 0; i < 5; i++)
                 {
-                    var m = new Model();
-                    m.LogOutput = false;
-
+                    using var m = new Model();
                     var v = m.AddVars(n);
                     var values = Enumerable.Range(0, n).Select(i => RNG.Next(2) == 0).ToArray();
                     for (var j = 0; j < n; j++)
@@ -106,7 +100,7 @@ namespace Tests
                     var sum = m.SumUInt(v);
                     m.Solve();
                     Assert.IsTrue(m.IsSatisfiable);
-                    Assert.AreEqual(values.Count(i => i), sum.X, $"{n} {i} {string.Join("",values)}");
+                    Assert.AreEqual(values.Count(i => i), sum.X, $"{n} {i} {string.Join("", values)}");
                 }
         }
     }

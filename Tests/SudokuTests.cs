@@ -15,9 +15,7 @@ namespace Tests
         [TestMethod]
         public void WorldsHardestSudoku()
         {
-            var m = new Model();
-            m.LogOutput = false;
-
+            using var m = new Model();
             var v = m.AddVars(9, 9, 9);
 
             //According to http://www.telegraph.co.uk/news/science/science-news/9359579/Worlds-hardest-sudoku-can-you-crack-it.html

@@ -9,24 +9,11 @@ namespace SATInterface
     /// <summary>
     /// Managed-code facade of the native CaDiCaL solver
     /// </summary>
-    public class CaDiCaL : IDisposable
+    public class CaDiCaL : ISolver
     {
         private IntPtr Handle;
-        private int verbosity;
+        private int Verbosity;
         int varCount = 0;
-
-        public int Verbosity
-        {
-            get => verbosity;
-            set
-            {
-                verbosity = value;
-
-                CaDiCaLNative.ccadical_set_option(Handle, "quiet", verbosity == 0 ? 1 : 0);
-                CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
-                CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
-            }
-        }
 
         public CaDiCaL()
         {
@@ -114,6 +101,23 @@ namespace SATInterface
         }
 
         #endregion
+
+        public void ApplyConfiguration(Configuration _config)
+        {
+            Verbosity = _config.Verbosity;
+            CaDiCaLNative.ccadical_set_option(Handle, "quiet", Verbosity == 0 ? 1 : 0);
+            CaDiCaLNative.ccadical_set_option(Handle, "report", Verbosity > 0 ? 1 : 0);
+            CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, Verbosity - 1));
+
+            if (_config.Threads.HasValue)
+                throw new NotImplementedException("CaDiCaL only supports single-threaded operation.");
+
+            if (_config.RandomSeed.HasValue)
+                CaDiCaLNative.ccadical_set_option(Handle, "seed", _config.RandomSeed.Value);
+
+            if (_config.InitialPhase.HasValue)
+                CaDiCaLNative.ccadical_set_option(Handle, "phase", _config.InitialPhase.Value ? 1 : 0);
+        }
     }
 
     public static class CaDiCaLNative

@@ -11,7 +11,7 @@ namespace Maximize
     {
         static void Main(string[] args)
         {
-            var m = new Model();
+            using var m = new Model();
 
             var x = m.AddUIntVar(1000);
             var y = m.AddUIntVar(200);
@@ -20,8 +20,8 @@ namespace Maximize
             m.AddConstr((x < 512) | (y < 100));
             m.AddConstr(c == x * y);
 
-            m.LogOutput = false;
-            m.Maximize(x + 7 * y, () => Console.WriteLine($"Intermediate result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}, x*y = {c.X}"), Model.OptimizationStrategy.BinarySearch);
+            m.Configuration.Verbosity = 0;
+            m.Maximize(x + 7 * y, () => Console.WriteLine($"Intermediate result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}, x*y = {c.X}"));
 
             Console.WriteLine($"Final result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}, x*y = {c.X}");
 
@@ -35,7 +35,7 @@ namespace Maximize
                             best = (Val: val, X: xt, Y: yt);
                     }
 
-            Console.WriteLine($"Exhaustive search found: {best.X} + 7*{best.Y} = {best.X + 7 * best.Y}, x*y = {best.X*best.Y}");
+            Console.WriteLine($"Exhaustive search found: {best.X} + 7*{best.Y} = {best.X + 7 * best.Y}, x*y = {best.X * best.Y}");
             Console.ReadLine();
         }
     }

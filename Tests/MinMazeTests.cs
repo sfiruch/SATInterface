@@ -8,9 +8,9 @@ using System.Text;
 namespace Tests
 {
     [TestClass]
-    public class MaxMazeTests
+    public class MinMazeTests
     {
-        public static void MaxMaze(int _n, int _expected)
+        public static void MinMaze(int _n, int _expected)
         {
             using var model = new Model();
             var free = model.AddVars(_n, _n);
@@ -18,7 +18,8 @@ namespace Tests
             free[0, 0] = true;
             free[_n - 1, _n - 1] = true;
 
-            free[_n / 2, _n / 2] = false;
+            for (var y = 0; y < _n - 1; y++)
+                free[1, y] = free[_n - 2, y + 1] = false;
 
             for (int y = 0; y < _n; y++)
                 for (int x = 0; x < _n; x++)
@@ -42,7 +43,7 @@ namespace Tests
                     model.AddConstr(!free[x, y] | !free[x + 1, y] | !free[x, y + 1] | !free[x + 1, y + 1]);
 
             var obj = model.Sum(free.Cast<BoolExpr>());
-            model.Maximize(obj);
+            model.Minimize(obj);
 
             Assert.IsTrue(model.IsSatisfiable);
             Assert.AreEqual(_expected, obj.X);
@@ -51,19 +52,19 @@ namespace Tests
         [TestMethod]
         public void Size10()
         {
-            MaxMaze(10, 63);
+            MinMaze(10, 37);
         }
 
         [TestMethod]
         public void Size9()
         {
-            MaxMaze(9, 51);
+            MinMaze(9, 33);
         }
 
         [TestMethod]
         public void Size8()
         {
-            MaxMaze(8, 39);
+            MinMaze(8, 29);
         }
     }
 }

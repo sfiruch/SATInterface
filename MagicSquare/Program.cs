@@ -18,7 +18,7 @@ namespace MagicSquare
             var N = (int)Math.Sqrt(NUMBERS.Length);
             var MAGIC_CONST = NUMBERS.Sum() / N;
 
-            var m = new Model();
+            using var m = new Model();
             var v = m.AddVars(N, N, NUMBERS.Length);
 
             var num = new UIntVar[N, N];

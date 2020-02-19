@@ -14,9 +14,7 @@ namespace Tests
     {
         void RunTest(int xLB, int xUB, int yLB, int yUB, int xLimit, int yLimit, int xWeight, int yWeight, OptimizationStrategy _strategy)
         {
-            var m = new Model();
-            m.LogOutput = false;
-
+            using var m = new Model();
             var x = m.AddUIntVar(xUB);
             var y = m.AddUIntVar(yUB);
             var c = m.AddUIntVar(checked(xUB * yUB));
@@ -90,9 +88,7 @@ namespace Tests
         [TestMethod]
         public void UnsatAtEnd()
         {
-            var m = new Model();
-            m.LogOutput = false;
-
+            using var m = new Model();
             var a = m.AddVar();
             var b = m.AddVar();
             m.AddConstr(a);
@@ -109,9 +105,7 @@ namespace Tests
         [TestMethod]
         public void SatAtEnd()
         {
-            var m = new Model();
-            m.LogOutput = false;
-
+            using var m = new Model();
             var v = m.AddUIntVar(10, true);
             m.Maximize(v);
 

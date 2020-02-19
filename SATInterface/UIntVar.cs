@@ -106,7 +106,7 @@ namespace SATInterface
         internal UIntVar(Model _model, int _ub, bool _enforceUB = true)
         {
             if (_ub < 0 && _ub != Unbounded)
-                throw new ArgumentException(nameof(_ub));
+                throw new ArgumentException("Invalid upper bound", nameof(_ub));
 
             Model = _model;
             UB = _ub;
@@ -168,7 +168,7 @@ namespace SATInterface
         internal static UIntVar Const(Model _model, int _c)
         {
             if (_c < 0)
-                throw new ArgumentException($"{nameof(_c)} may not be negative");
+                throw new ArgumentException($"Value may not be negative", nameof(_c));
 
             var bits = new BoolExpr[RequiredBitsForUB(_c)];
             for (var i = 0; i < bits.Length; i++)

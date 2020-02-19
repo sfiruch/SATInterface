@@ -12,7 +12,7 @@ namespace Tests
         [TestMethod]
         public void EmptySolve()
         {
-            var m = new Model();
+            using var m = new Model();
             m.Solve();
             Assert.IsTrue(m.IsSatisfiable);
         }
@@ -20,24 +20,27 @@ namespace Tests
         [TestMethod]
         public void EmptyMaximizeBinary()
         {
-            var m = new Model();
-            m.Maximize((LinExpr)0, _strategy: Model.OptimizationStrategy.BinarySearch);
+            using var m = new Model();
+            m.Configuration.OptimizationStrategy = OptimizationStrategy.BinarySearch;
+            m.Maximize((LinExpr)0);
             Assert.IsTrue(m.IsSatisfiable);
         }
 
         [TestMethod]
         public void EmptyMaximizeIncreasing()
         {
-            var m = new Model();
-            m.Maximize((LinExpr)0, _strategy: Model.OptimizationStrategy.Increasing);
+            using var m = new Model();
+            m.Configuration.OptimizationStrategy = OptimizationStrategy.Increasing;
+            m.Maximize((LinExpr)0);
             Assert.IsTrue(m.IsSatisfiable);
         }
 
         [TestMethod]
         public void EmptyMaximizeDecreasing()
         {
-            var m = new Model();
-            m.Maximize((LinExpr)0, _strategy: Model.OptimizationStrategy.Decreasing);
+            using var m = new Model();
+            m.Configuration.OptimizationStrategy = OptimizationStrategy.Decreasing;
+            m.Maximize((LinExpr)0);
             Assert.IsTrue(m.IsSatisfiable);
         }
     }

@@ -12,7 +12,7 @@ namespace Tests
     {
         void Pigeonhole(int _holes, int _pigeons, Model.AtMostOneOfMethod _method)
         {
-            var m = new Model();
+            using var m = new Model();
             var assignment = m.AddVars(_holes, _pigeons);
 
             for (var h = 0; h < _holes; h++)

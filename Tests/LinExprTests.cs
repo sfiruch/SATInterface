@@ -15,7 +15,7 @@ namespace Tests
             for (var j = 0; j < 50; j++)
                 for (var i = 0; i < 50; i++)
                 {
-                    var m = new Model();
+                    using var m = new Model();
                     var v = m.AddVars(i);
                     m.AddConstr(m.Sum(v) == j);
 
@@ -35,7 +35,7 @@ namespace Tests
             for (var j = 0; j < 25; j++)
                 for (var i = 0; i < 25; i++)
                 {
-                    var m = new Model();
+                    using var m = new Model();
                     var v = m.AddVars(i);
                     m.AddConstr(m.Sum(v) >= j);
 
@@ -55,7 +55,7 @@ namespace Tests
             for (var j = 0; j < 20; j++)
                 for (var i = 0; i < 20; i++)
                 {
-                    var m = new Model();
+                    using var m = new Model();
                     var v = m.AddVars(i);
                     m.AddConstr(m.Sum(v) <= j);
 

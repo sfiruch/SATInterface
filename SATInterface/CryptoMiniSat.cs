@@ -9,33 +9,17 @@ namespace SATInterface
     /// <summary>
     /// Managed-code facade of the native CryptoMiniSat solver
     /// </summary>
-    public class CryptoMiniSat : IDisposable
+    public class CryptoMiniSat : ISolver
     {
         private IntPtr Handle;
-        private int verbosity;
+        private int Verbosity;
 
-        public int Verbosity
-        {
-            get => verbosity;
-            set
-            {
-                verbosity = value;
-                CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)value);
-            }
-        }
-
-        public CryptoMiniSat(int _threads = -1)
+        public CryptoMiniSat()
         {
             if (!Environment.Is64BitProcess)
                 throw new Exception("This library only supports x64 when using the bundled CryptoMiniSat solver.");
 
             Handle = CryptoMiniSatNative.cmsat_new();
-
-            if (_threads == -1)
-                _threads = 1; // Math.Max(1, Environment.ProcessorCount / 2);
-
-            if (_threads != 1)
-                CryptoMiniSatNative.cmsat_set_num_threads(Handle, (uint)_threads);
         }
 
         public bool[]? Solve(int[]? _assumptions = null)
@@ -65,12 +49,9 @@ namespace SATInterface
 
         public void AddVars(int _number) => CryptoMiniSatNative.cmsat_new_vars(Handle, (IntPtr)_number);
 
-        public bool AddClause(int[] _clause)
-        {
-            return CryptoMiniSatNative.cmsat_add_clause(Handle,
+        public bool AddClause(int[] _clause) => CryptoMiniSatNative.cmsat_add_clause(Handle,
                 _clause.Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
                 (IntPtr)_clause.Length);
-        }
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -103,6 +84,21 @@ namespace SATInterface
         }
 
         #endregion
+
+        public void ApplyConfiguration(Configuration _config)
+        {
+            Verbosity = _config.Verbosity;
+            CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)_config.Verbosity);
+
+            if(_config.Threads.HasValue)
+                CryptoMiniSatNative.cmsat_set_num_threads(Handle, (uint)_config.Threads.Value);
+
+            if (_config.RandomSeed.HasValue)
+                throw new NotImplementedException("CryptoMiniSat does not allow the configuration of RandomSeed.");
+
+            if(_config.InitialPhase.HasValue)
+                throw new NotImplementedException("CryptoMiniSat does not allow the configuration of InitialPhase.");
+        }
     }
 
     public static class CryptoMiniSatNative

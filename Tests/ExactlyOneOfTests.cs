@@ -12,7 +12,7 @@ namespace Tests
     {
         void Pigeonhole(int _holes, int _pigeons, Model.ExactlyOneOfMethod _method)
         {
-            var m = new Model();
+            using var m = new Model();
             var assignment = m.AddVars(_holes, _pigeons);
 
             for (var h = 0; h < _holes; h++)
@@ -234,7 +234,7 @@ namespace Tests
             const int W = C * C;
             const int H = C * C;
 
-            var m = new Model();
+            using var m = new Model();
             var vXYC = m.AddVars(W, H, C);
             for (var y = 0; y < H; y++)
                 for (var x = 0; x < W; x++)
@@ -262,7 +262,7 @@ namespace Tests
         [TestMethod]
         public void SimpleBinary()
         {
-            var m = new Model();
+            using var m = new Model();
             var v = m.AddVars(4);
             m.AddConstr(m.ExactlyOneOf(v, Model.ExactlyOneOfMethod.BinaryCount));
 
@@ -279,7 +279,7 @@ namespace Tests
         {
             const int N = 4;
 
-            var m = new Model();
+            using var m = new Model();
             var v = m.AddVars(N);
             m.AddConstr(m.ExactlyOneOf(v,Model.ExactlyOneOfMethod.BinaryCount));
 

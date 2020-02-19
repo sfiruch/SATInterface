@@ -1,14 +1,15 @@
 ﻿// SATInterface is a library to formulate SAT problems in .NET 
 // - https://github.com/deiruch/SATInterface
 //
-// By default the bundeled excellent CaDiCaL solver is used as backend, but any solver
-// that supports DIMACS can be used (e.g. CryptoMiniSat, Lingeling, Clasp, RISS, MiniSAT, ...).
-// CaDiCaL is MIT-licensed and available from https://github.com/arminbiere/cadical
+// The interface includes these excellent SAT solvers, but any solver
+// that supports DIMACS can be used (e.g. Lingeling, Clasp, RISS, MiniSAT, ...).
 //
+// * CaDiCaL is MIT-licensed and available from https://github.com/arminbiere/cadical
+// * CryptoMiniSat is MIT-licensed and available from https://github.com/msoos/cryptominisat
 //
 // Here's a usage example: Sudoku
 
-var m = new Model();
+using var m = new Model();
 var v = m.AddVars(9, 9, 9);
 
 //fix the first number to 1
@@ -39,12 +40,6 @@ for (var n = 0; n < 9; n++)
             m.AddConstr(m.Sum(v[x + 0, y + 0, n], v[x + 1, y + 0, n], v[x + 2, y + 0, n],
                 v[x + 0, y + 1, n], v[x + 1, y + 1, n], v[x + 2, y + 1, n],
                 v[x + 0, y + 2, n], v[x + 1, y + 2, n], v[x + 2, y + 2, n]) == 1);
-
-/* perhaps you'd like to use another solver via WSL?
-m.UseTmpOutputFile = "tmp.sol";
-m.SolverExecutable = $@"{(Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "sysnative") : Environment.GetFolderPath(Environment.SpecialFolder.System))}\wsl.exe";
-m.SolverArguments = $"./plingeling | tee {m.UseTmpOutputFile} | sed '/^v / d'";
-*/
 
 m.Solve();
 

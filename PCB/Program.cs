@@ -37,7 +37,7 @@ namespace PCB
 
         static void Main(string[] args)
         {
-            var m = new Model();
+            using var m = new Model();
 
             var vXYLC = new BoolExpr[W, H, L, C];
             var sourceXYC = new bool[W, H, C];
@@ -121,6 +121,7 @@ namespace PCB
 
             var vObj = m.Sum(obj1) + m.Sum(obj3) * 3;
 
+            m.Configuration.OptimizationStrategy = OptimizationStrategy.Decreasing;
             m.Minimize(vObj, () =>
             {
                 Console.WriteLine();
@@ -143,7 +144,7 @@ namespace PCB
                     Console.WriteLine();
                 }
                 Console.WriteLine();
-            }, Model.OptimizationStrategy.Decreasing);
+            });
         }
     }
 }

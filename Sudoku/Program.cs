@@ -12,7 +12,7 @@ namespace Sudoku
     {
         static void Main(string[] args)
         {
-            var m = new Model();
+            using var m = new Model();
             var v = m.AddVars(9, 9, 9);
 
             //According to http://www.telegraph.co.uk/news/science/science-news/9359579/Worlds-hardest-sudoku-can-you-crack-it.html
@@ -55,17 +55,20 @@ namespace Sudoku
                             v[x + 0, y + 1, n], v[x + 1, y + 1, n], v[x + 2, y + 1, n],
                             v[x + 0, y + 2, n], v[x + 1, y + 2, n], v[x + 2, y + 2, n]) == 1);
 
-            m.Solve();
-
-            if (m.IsSatisfiable)
-                for (var y = 0; y < 9; y++)
+            m.Configuration.Verbosity = 0;
+            m.EnumerateSolutions(v.Cast<BoolExpr>(),
+                () =>
                 {
-                    for (var x = 0; x < 9; x++)
-                        for (var n = 0; n < 9; n++)
-                            if (v[x, y, n].X)
-                                Console.Write($" {n + 1}");
+                    for (var y = 0; y < 9; y++)
+                    {
+                        for (var x = 0; x < 9; x++)
+                            for (var n = 0; n < 9; n++)
+                                if (v[x, y, n].X)
+                                    Console.Write($" {n + 1}");
+                        Console.WriteLine();
+                    }
                     Console.WriteLine();
-                }
+                });
 
             Console.WriteLine("Done");
             Console.ReadLine();

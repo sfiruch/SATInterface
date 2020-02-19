@@ -13,9 +13,7 @@ namespace Tests
         {
             for (var i = 0; i < 1 << _vars; i++)
             {
-                var m = new Model();
-                m.LogOutput = false;
-
+                using var m = new Model();
                 var v = m.AddVars(_vars);
                 var bv = new bool[_vars];
                 for (var j = 0; j < _vars; j++)
