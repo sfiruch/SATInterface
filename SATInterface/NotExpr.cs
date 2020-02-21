@@ -6,7 +6,7 @@ using System.Text;
 
 namespace SATInterface
 {
-    internal class NotExpr:BoolExpr
+    internal class NotExpr : BoolExpr
     {
         public BoolVar inner;
 
@@ -44,14 +44,9 @@ namespace SATInterface
 
         public override bool X => !inner.X;
 
-        public override bool Equals(object _obj)
-        {
-            var other = _obj as NotExpr;
-            if (ReferenceEquals(other, null))
-                return false;
+        public override int VarCount => 1;
 
-            return inner.Equals(other.inner);
-        }
+        public override bool Equals(object _obj) => (_obj is NotExpr ne) && inner.Equals(ne.inner);
 
         public override int GetHashCode() => ~inner.GetHashCode();
     }

@@ -68,6 +68,8 @@ namespace SATInterface
             }
         }
 
+        internal Dictionary<BoolExpr, BoolExpr> ExprCache = new Dictionary<BoolExpr, BoolExpr>();
+
         /// <summary>
         /// Allocate a new model.
         /// </summary>
@@ -85,11 +87,19 @@ namespace SATInterface
                 clauses.Add(new[] { -notExpr.inner.Id });
             else if (_c is OrExpr orExpr)
             {
+                //if (orExpr.elements.Length >= 8)
+                //{
+                //    AddConstrInternal(
+                //        Or(orExpr.elements.Take(orExpr.elements.Length/2)).Flatten()
+                //        | Or(orExpr.elements.Skip(orExpr.elements.Length / 2)).Flatten());
+                //    return;
+                //}
+
                 var sb = orExpr.elements.Select(e => e switch
                     {
                         BoolVar bv => bv.Id,
                         NotExpr ne => -ne.inner.Id,
-                        _ => throw new Exception(e.GetType().ToString())
+                        _ => throw new NotImplementedException(e.GetType().ToString())
                     }).ToArray();
 
                 clauses.Add(sb);

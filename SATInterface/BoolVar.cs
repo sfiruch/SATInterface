@@ -66,6 +66,8 @@ namespace SATInterface
             }
         }
 
+        public override int VarCount => 1;
+
         internal override IEnumerable<BoolVar> EnumVars()
         {
             yield return this;

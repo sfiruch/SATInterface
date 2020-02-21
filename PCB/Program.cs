@@ -39,6 +39,8 @@ namespace PCB
         {
             using var m = new Model();
 
+            m.Configuration.CommonSubexpressionElimination = true;
+
             var vXYLC = new BoolExpr[W, H, L, C];
             var sourceXYC = new bool[W, H, C];
             var sinkXYC = new bool[W, H, C];
@@ -103,7 +105,7 @@ namespace PCB
                                 if (l == 0 && sinkXYC[x, y, c])
                                     sV.Add(true);
 
-                            m.AddConstr(!vXYLC[x, y, l, c] || m.ExactlyKOf(sV, 2));
+                            m.AddConstr(!vXYLC[x, y, l, c] | m.ExactlyKOf(sV, 2));
                         }
 
                         m.AddConstr(m.AtMostOneOf(sum));

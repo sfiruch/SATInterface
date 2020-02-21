@@ -42,7 +42,8 @@ namespace CornerTilePacking
                     for (var x = 0; x < W; x++)
                         l.Add((vXYC[x, y, c1] & vXYC[(x + 1) % W, y, c2] & vXYC[x, (y + 1) % H, c3] & vXYC[(x + 1) % W, (y + 1) % H, c4]).Flatten());
 
-                m.AddConstr(m.Sum(l) == 1);
+                m.AddConstr(m.ExactlyOneOf(l));
+                //m.AddConstr(m.Sum(l) == 1);
             }
 
             m.Solve();

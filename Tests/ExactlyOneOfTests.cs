@@ -18,7 +18,7 @@ namespace Tests
             for (var h = 0; h < _holes; h++)
                 m.AddConstr(
                     !m.Or(Enumerable.Range(0, _pigeons).Select(p => assignment[h, p]))
-                    || m.ExactlyOneOf(Enumerable.Range(0, _pigeons).Select(p => assignment[h, p]), _method));
+                    | m.ExactlyOneOf(Enumerable.Range(0, _pigeons).Select(p => assignment[h, p]), _method));
 
             for (var p = 0; p < _pigeons; p++)
                 m.AddConstr(
@@ -42,7 +42,7 @@ namespace Tests
         {
             var RNG = new Random(1);
             for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.Pairwise);
+                Pigeonhole(RNG.Next(0, 11), RNG.Next(0, 11), Model.ExactlyOneOfMethod.Pairwise);
         }
 
         [TestMethod]
@@ -58,7 +58,7 @@ namespace Tests
         {
             var RNG = new Random(1);
             for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.OneHot);
+                Pigeonhole(RNG.Next(0, 11), RNG.Next(0, 11), Model.ExactlyOneOfMethod.OneHot);
         }
 
         [TestMethod]
@@ -193,14 +193,14 @@ namespace Tests
         [TestMethod]
         public void PigeonholeSymmetricUNSATPairwise()
         {
-            for (var size = 1; size < 11; size++)
+            for (var size = 1; size < 10; size++)
                 Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.Pairwise);
         }
 
         [TestMethod]
         public void PigeonholeSymmetricUNSATOneHot()
         {
-            for (var size = 1; size < 11; size++)
+            for (var size = 1; size < 10; size++)
                 Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.OneHot);
         }
 

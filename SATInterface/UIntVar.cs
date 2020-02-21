@@ -354,7 +354,7 @@ namespace SATInterface
                 }
             var orExpr = (resOr.Count != 0) ? OrExpr.Create(resOr) : false;
 
-            return leadingZeroes | orExpr;
+            return (leadingZeroes | orExpr).Flatten();
         }
 
         public static BoolExpr operator <(int _v, UIntVar _a) => _a > _v;

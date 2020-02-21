@@ -187,7 +187,7 @@ namespace SATInterface
 
                 for (var j = SequentialCache.Count; j < _limit; j++)
                 {
-                    if (posVar.Any())
+                    if (posVar.Count != 0)
                     {
                         var vars = new BoolExpr[posVar.Count];
                         vars[0] = j < posVar[0].Weight ? posVar[0].be : Model.False;
@@ -226,13 +226,13 @@ namespace SATInterface
                     offset += e.Value;
                 }
 
-            if (singleVar.Any() && posVar.Any())
+            if (singleVar.Count != 0 && posVar.Count != 0)
                 UIntCache = model.SumUInt(singleVar) + model.Sum(posVar);
-            else if (singleVar.Any() && !posVar.Any())
+            else if (singleVar.Count != 0 && posVar.Count == 0)
                 UIntCache = model.SumUInt(singleVar);
-            else if (!singleVar.Any() && posVar.Any())
+            else if (singleVar.Count == 0 && posVar.Count != 0)
                 UIntCache = model.Sum(posVar);
-            else if (!singleVar.Any() && !posVar.Any())
+            else if (singleVar.Count == 0 && posVar.Count == 0)
                 UIntCache = UIntVar.Const(model, 0);
             else
                 throw new Exception();

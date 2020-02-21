@@ -21,7 +21,7 @@ namespace Tests
             for (var p = 0; p < _pigeons; p++)
                 m.AddConstr(
                     m.Or(Enumerable.Range(0, _holes).Select(h => assignment[h, p]))
-                    && m.AtMostOneOf(Enumerable.Range(0, _holes).Select(h => assignment[h, p]), _method));
+                    & m.AtMostOneOf(Enumerable.Range(0, _holes).Select(h => assignment[h, p]), _method));
 
             m.Solve();
 

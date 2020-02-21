@@ -49,6 +49,12 @@ namespace SATInterface
         /// </summary>
         public bool? InitialPhase;
 
+        /// <summary>
+        /// Eliminating duplicate subexpressions makes setting up models
+        /// more resource intensive, but solving potentially faster.
+        /// </summary>
+        public bool CommonSubexpressionElimination = false;
+
         //TODO: Time limit
     }
 }

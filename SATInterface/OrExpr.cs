@@ -19,70 +19,106 @@ namespace SATInterface
 
         internal static BoolExpr Create(IEnumerable<BoolExpr> _elems)
         {
-            var res = new List<BoolExpr>();
+            var res = new HashSet<BoolExpr>();
             foreach (var es in _elems)
                 if (ReferenceEquals(es, null))
                     throw new ArgumentNullException();
                 else if (ReferenceEquals(es, Model.True))
                     return Model.True;
-                else if (es is OrExpr)
-                    res.AddRange(((OrExpr)es).elements);
+                else if (es is OrExpr oe)
+                    foreach (var e in oe.elements)
+                        res.Add(e);
+                else if (es is AndExpr ae)
+                    res.Add(ae.Flatten());
                 else if (!ReferenceEquals(es, Model.False))
                     res.Add(es);
 
-            //remove duplicates
-            res = res.Distinct().ToList();
+            //if (!(largestAnd is null))
+            //{
+            //    var orExprs = new BoolExpr[largestAnd.elements.Length];
+            //    for (var j = 0; j < orExprs.Length; j++)
+            //        orExprs[j] = OrExpr.Create(res.Append(largestAnd.elements[j]));
+            //    return AndExpr.Create(orExprs);
+            //}
+
+            //TODO find fast way to solve set cover approximately for CSE
+            //if (res.Count == 0)
+            //    return Model.False;
+            //if (res.Count == 1)
+            //    return res.Single();
+            //var model = res.First().EnumVars().First().Model;
+            //for (var i = 0; i < res.Count; i++)
+            //    for (var j = i + 1; j < res.Count; j++)
+            //        for (var k = j + 1; k < res.Count; k++)
+            //        {
+            //            var ei = res.ElementAt(i);
+            //            var ej = res.ElementAt(j);
+            //            var ek = res.ElementAt(k);
+            //            if (model.ExprCache.TryGetValue(new OrExpr(new[] { ei, ej, ek }), out var lu) && lu.VarCount <= 1)
+            //            {
+            //                res.Remove(ei);
+            //                res.Remove(ej);
+            //                res.Remove(ek);
+            //                res.Add(lu);
+            //                Console.Write("3");
+            //            }
+            //        }
+            //for (var i = 0; i < res.Count; i++)
+            //    for (var j = i + 1; j < res.Count; j++)
+            //    {
+            //        var ei = res.ElementAt(i);
+            //        var ej = res.ElementAt(j);
+            //        if (model.ExprCache.TryGetValue(new OrExpr(new[] { ei, ej }), out var lu) && lu.VarCount <= 1)
+            //        {
+            //            res.Remove(ei);
+            //            res.Remove(ej);
+            //            res.Add(lu);
+            //            Console.Write("2");
+            //        }
+            //    }
 
             if (res.Count == 0)
                 return Model.False;
-            else if (res.Count == 1)
+            if (res.Count == 1)
                 return res.Single();
-            else
+            if (res.OfType<NotExpr>().Any(ne => res.Contains(ne.inner)))
+                return Model.True;
+
+            var ret = new OrExpr(res.ToArray());
+            var model = ret.EnumVars().First().Model;
+            if (model.Configuration.CommonSubexpressionElimination)
             {
-                /*foreach (var subE in res)
-                    if (subE is NotExpr && res.Contains(((NotExpr)subE).inner))
-                        return TRUE;*/
-
-                if (res.Any(e => e is AndExpr a && a.elements.Length >= 8))
-                    for (var i = 0; i < res.Count; i++)
-                        if (res[i] is AndExpr andExpr)
-                        {
-                            var orExprs = new BoolExpr[andExpr.elements.Length];
-                            for (var j = 0; j < orExprs.Length; j++)
-                            {
-                                res[i] = andExpr.elements[j];
-                                orExprs[j] = OrExpr.Create(res);
-                            }
-
-                            return AndExpr.Create(orExprs);
-                        }
-
-                for (var i = 0; i < res.Count; i++)
-                    if (res[i] is AndExpr andExpr)
-                        res[i] = andExpr.Flatten();
-
-                //find v !a
-                foreach (var e in res)
-                    if (e is NotExpr && res.Contains(((NotExpr)e).inner))
-                        return Model.True;
-
-                return new OrExpr(res.ToArray());
+                if (model.ExprCache.TryGetValue(ret, out var lu))
+                    return lu;
+                model.ExprCache[ret] = ret;
             }
+            return ret;
         }
 
         public override string ToString() => "(" + string.Join(" | ", elements.Select(e => e.ToString()).ToArray()) + ")";
 
-        private BoolVar? flattenCache;
+        private BoolExpr? flattenCache;
         public override BoolExpr Flatten()
         {
             if (!(flattenCache is null))
                 return flattenCache;
 
             var model = EnumVars().First().Model;
+
+            if (model.Configuration.CommonSubexpressionElimination
+                && model.ExprCache.TryGetValue(this, out var lu) && lu.VarCount <= 1)
+                return flattenCache = lu;
+
             flattenCache = new BoolVar(model);
             model.AddConstr(OrExpr.Create(elements.Append(!flattenCache)));
             foreach (var e in elements)
                 model.AddConstr(!e | flattenCache);
+
+            if (model.Configuration.CommonSubexpressionElimination)
+            {
+                model.ExprCache[this] = flattenCache;
+                model.ExprCache[!this] = !flattenCache;
+            }
 
             return flattenCache;
         }
@@ -95,6 +131,8 @@ namespace SATInterface
         }
 
         public override bool X => elements.Any(e => e.X);
+
+        public override int VarCount => elements.Length;
 
         public override bool Equals(object _obj)
         {
@@ -119,11 +157,13 @@ namespace SATInterface
         {
             if (hashCode == 0)
             {
-                var hc = new HashCode();
-                foreach (var e in elements)
-                    hc.Add(e);
+                hashCode = GetType().GetHashCode();
 
-                hashCode = hc.ToHashCode();
+                //deliberatly stupid implementation to produce
+                //order-independent hashcodes
+                foreach (var e in elements)
+                    hashCode += HashCode.Combine(e);
+
                 if (hashCode == 0)
                     hashCode++;
             }
