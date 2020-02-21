@@ -160,5 +160,9 @@ namespace SATInterface
 
         [DllImport("cryptominisat5win.dll")]
         public static extern c_lbool cmsat_solve_with_assumptions(IntPtr self, [In, MarshalAs(UnmanagedType.LPArray)] Int32[] assumptions, IntPtr num_assumptions);
+
+        [DllImport("cryptominisat5win.dll")]
+        public static extern void cmsat_set_max_time(IntPtr self, double max_time);
+
     }
 }
