@@ -90,12 +90,8 @@ namespace SATInterface
 
         public static BoolExpr operator ==(BoolExpr lhsS, BoolExpr rhsS)
         {
-            if (lhsS is null && rhsS is null)
-                return Model.True;
-            if (lhsS is null)
-                return Model.False;
-            if (rhsS is null)
-                return Model.False;
+            if (lhsS is null || rhsS is null)
+                throw new NullReferenceException();
 
             if (ReferenceEquals(lhsS, rhsS))
                 return Model.True;
@@ -110,20 +106,20 @@ namespace SATInterface
             if (ReferenceEquals(rhsS, Model.False))
                 return !lhsS;
 
-            if (rhsS is AndExpr andExpr) // && andExpr.elements.Length >= 3)
+            if (rhsS is AndExpr andExpr)
             {
-                var other = (lhsS.VarCount>2) ? lhsS.Flatten() : lhsS;
+                var other = lhsS.Flatten();
                 var ands = new List<BoolExpr>();
-                ands.Add(OrExpr.Create(andExpr.elements.Select(e => !e).Append(other)));
+                ands.Add(OrExpr.Create(andExpr.elements.Select(e => !e).Append(other)).Flatten());
                 foreach (var e in andExpr.elements)
                     ands.Add(e | !other);
                 return AndExpr.Create(ands);
             }
-            if (rhsS is OrExpr orExpr) // && orExpr.elements.Length >= 3)
+            if (rhsS is OrExpr orExpr)
             {
-                var other = (lhsS.VarCount>2) ? lhsS.Flatten() : lhsS;
+                var other = lhsS.Flatten();
                 var ands = new List<BoolExpr>();
-                ands.Add(OrExpr.Create(orExpr.elements.Append(!other)));
+                ands.Add(OrExpr.Create(orExpr.elements.Append(!other)).Flatten());
                 foreach (var e in orExpr.elements)
                     ands.Add(!e | other);
                 return AndExpr.Create(ands);
@@ -134,10 +130,13 @@ namespace SATInterface
             if (!(rhsS is OrExpr) && lhsS is OrExpr)
                 return (rhsS == lhsS);
 
-            lhsS = (lhsS.VarCount > 2) ? lhsS.Flatten() : lhsS;
-            rhsS = (rhsS.VarCount > 2) ? rhsS.Flatten() : rhsS;
+            lhsS = lhsS.Flatten();
+            rhsS = rhsS.Flatten();
+            return lhsS.EnumVars().First().Model.ITE(lhsS, rhsS, !rhsS);
 
-            return (lhsS | !rhsS) & (rhsS | !lhsS);
+            //lhsS = (lhsS.VarCount > 2) ? lhsS.Flatten() : lhsS;
+            //rhsS = (rhsS.VarCount > 2) ? rhsS.Flatten() : rhsS;
+            //return ((lhsS | !rhsS) & (rhsS | !lhsS)).Flatten();
         }
 
         public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);
@@ -148,14 +147,5 @@ namespace SATInterface
         public static BoolExpr operator <=(BoolExpr lhs, BoolExpr rhs) => !lhs | rhs;
 
         public static BoolExpr operator ^(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);
-
-        /// <summary>
-        /// If-Then-Else to pick one of two values. If _if is TRUE, _then will be picked, _else otherwise.
-        /// </summary>
-        /// <param name="_if"></param>
-        /// <param name="_then"></param>
-        /// <param name="_else"></param>
-        /// <returns></returns>
-        internal static BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => ((!_if | _then) & (_if | _else) & (_then | _else)) | (_then & _else);
     }
 }

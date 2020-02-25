@@ -140,7 +140,7 @@ namespace SATInterface
         {
             var bits = new BoolExpr[Math.Max(_then.Bits.Length, _else.Bits.Length)];
             for (var i = 0; i < bits.Length; i++)
-                bits[i] = BoolExpr.ITE(_if, _then.Bits[i], _else.Bits[i]).Flatten();
+                bits[i] = _then.Model.ITE(_if, _then.Bits[i], _else.Bits[i]).Flatten();
             return new UIntVar(_then.Model, (_then.UB == Unbounded || _else.UB == Unbounded) ? Unbounded : Math.Max(_then.UB, _else.UB), bits);
         }
 

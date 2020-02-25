@@ -82,11 +82,22 @@ namespace SATInterface
             if (ReferenceEquals(_c, False))
                 proofUnsat = true;
             else if (_c is BoolVar boolVar)
+            {
+                if (!ReferenceEquals(boolVar.Model, this))
+                    throw new ArgumentException("Mixing variables from different models is not supported.");
                 clauses.Add(new[] { boolVar.Id });
+            }
             else if (_c is NotExpr notExpr)
+            {
+                if (!ReferenceEquals(notExpr.inner.Model, this))
+                    throw new ArgumentException("Mixing variables from different models is not supported.");
                 clauses.Add(new[] { -notExpr.inner.Id });
+            }
             else if (_c is OrExpr orExpr)
             {
+                if (orExpr.EnumVars().Any(v => !ReferenceEquals(v.Model, this)))
+                    throw new ArgumentException("Mixing variables from different models is not supported.");
+
                 //if (orExpr.elements.Length >= 8)
                 //{
                 //    AddConstrInternal(
@@ -105,7 +116,7 @@ namespace SATInterface
                 clauses.Add(sb);
             }
             else
-                throw new Exception(_c.GetType().ToString());
+                throw new NotImplementedException(_c.GetType().ToString());
         }
 
         /// <summary>
@@ -687,7 +698,26 @@ namespace SATInterface
         /// <param name="_then"></param>
         /// <param name="_else"></param>
         /// <returns></returns>
-        public BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else) => BoolExpr.ITE(_if, _then, _else);
+        public BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else)
+        {
+            if (_then.Equals(_else))
+                return _then;
+
+            if (ReferenceEquals(_if, True))
+                return _then;
+
+            if (ReferenceEquals(_if, False))
+                return _else;
+
+            var x = AddVar();
+            AddConstr(!(_if & _then) | x);
+            AddConstr(!(_if & !_then) | !x);
+            AddConstr(!(!_if & _else) | x);
+            AddConstr(!(!_if & !_else) | !x);
+            AddConstr(!(_then & _else) | x);
+            AddConstr(!(!_then & !_else) | !x);
+            return x;
+        }
 
         /// <summary>
         /// Returns the sum of the supplied LinExprs.
