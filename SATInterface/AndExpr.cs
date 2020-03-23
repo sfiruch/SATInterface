@@ -99,7 +99,7 @@ namespace SATInterface
                 && model.ExprCache.TryGetValue(this, out var lu) && lu.VarCount <= 1)
                 return flattenCache = lu;
 
-            flattenCache = new BoolVar(model);
+            flattenCache = model.AddVar();
             model.AddConstr(OrExpr.Create(elements.Select(e => !e).Append(flattenCache)));
             foreach (var e in elements)
                 model.AddConstr(e | !flattenCache);

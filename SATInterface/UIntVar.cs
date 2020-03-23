@@ -117,7 +117,7 @@ namespace SATInterface
             {
                 bit = new BoolExpr[RequiredBitsForUB(UB)];
                 for (var i = 0; i < bit.Length; i++)
-                    bit[i] = new BoolVar(_model);
+                    bit[i] = _model.AddVar();
 
                 if (UB != Unbounded && _enforceUB && (UB & (UB + 1)) != 0)
                 {

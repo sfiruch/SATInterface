@@ -43,6 +43,22 @@ namespace BrentEquations
             var g = m.AddVars(BRows, BCols, NoOfProducts);
             var d = m.AddVars(CRows, CCols, NoOfProducts);
 
+            //symmetry breaking: permutations of k
+            for (var k = 1; k < NoOfProducts; k++)
+            {
+                var akm1 = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => f[r, c, k - 1])).ToArray());
+                var ak = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => f[r, c, k])).ToArray());
+                m.AddConstr(akm1 >= ak);
+            }
+
+            ////symmetry breaking: transpose
+            //if (ARows == ACols)
+            //{
+            //    var original = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => f[r, c, 0])).ToArray());
+            //    var transpose = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => f[c, r, 0])).ToArray());
+            //    m.AddConstr(original >= transpose);
+            //}
+
             for (var ra = 0; ra < ARows; ra++)
                 for (var ca = 0; ca < ACols; ca++)
                     for (var rb = 0; rb < BRows; rb++)

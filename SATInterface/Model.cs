@@ -27,6 +27,7 @@ namespace SATInterface
         private Dictionary<int, BoolVar> vars = new Dictionary<int, BoolVar>();
         internal bool proofSat = false;
         internal bool proofUnsat = false;
+        internal bool InOptimization = false;
 
         public readonly Configuration Configuration = new Configuration();
 
@@ -81,6 +82,15 @@ namespace SATInterface
         {
             if (ReferenceEquals(_c, False))
                 proofUnsat = true;
+            else if(ReferenceEquals(_c, True))
+            {
+                //ignore
+            }
+            else if(_c is AndExpr andExpr)
+            {
+                foreach (var e in andExpr.elements)
+                    AddConstrInternal(e);
+            }
             else if (_c is BoolVar boolVar)
             {
                 if (!ReferenceEquals(boolVar.Model, this))
@@ -128,13 +138,10 @@ namespace SATInterface
             if (proofUnsat)
                 return;
 
-            if (_clause is AndExpr andExpr)
-                foreach (var e in andExpr.elements)
-                    AddConstrInternal(e);
-            else if (!ReferenceEquals(_clause, True))
-                AddConstrInternal(_clause);
+            AddConstrInternal(_clause);
 
-            proofSat = false;
+            if(!InOptimization)
+                proofSat = false;
         }
 
         /// <summary>
@@ -174,9 +181,9 @@ namespace SATInterface
         /// <returns></returns>
         public BoolExpr[] AddVars(int _n1)
         {
-            var res = new BoolVar[_n1];
+            var res = new BoolExpr[_n1];
             for (var i1 = 0; i1 < _n1; i1++)
-                res[i1] = new BoolVar(this);
+                res[i1] = AddVar();
             return res;
         }
 
@@ -187,10 +194,10 @@ namespace SATInterface
         /// <returns></returns>
         public BoolExpr[,] AddVars(int _n1, int _n2)
         {
-            var res = new BoolVar[_n1, _n2];
+            var res = new BoolExpr[_n1, _n2];
             for (var i1 = 0; i1 < _n1; i1++)
                 for (var i2 = 0; i2 < _n2; i2++)
-                    res[i1, i2] = new BoolVar(this);
+                    res[i1, i2] = AddVar();
             return res;
         }
 
@@ -201,11 +208,11 @@ namespace SATInterface
         /// <returns></returns>
         public BoolExpr[,,] AddVars(int _n1, int _n2, int _n3)
         {
-            var res = new BoolVar[_n1, _n2, _n3];
+            var res = new BoolExpr[_n1, _n2, _n3];
             for (var i1 = 0; i1 < _n1; i1++)
                 for (var i2 = 0; i2 < _n2; i2++)
                     for (var i3 = 0; i3 < _n3; i3++)
-                        res[i1, i2, i3] = new BoolVar(this);
+                        res[i1, i2, i3] = AddVar();
             return res;
         }
 
@@ -216,12 +223,12 @@ namespace SATInterface
         /// <returns></returns>
         public BoolExpr[,,,] AddVars(int _n1, int _n2, int _n3, int _n4)
         {
-            var res = new BoolVar[_n1, _n2, _n3, _n4];
+            var res = new BoolExpr[_n1, _n2, _n3, _n4];
             for (var i1 = 0; i1 < _n1; i1++)
                 for (var i2 = 0; i2 < _n2; i2++)
                     for (var i3 = 0; i3 < _n3; i3++)
                         for (var i4 = 0; i4 < _n4; i4++)
-                            res[i1, i2, i3, i4] = new BoolVar(this);
+                            res[i1, i2, i3, i4] = AddVar();
             return res;
         }
 
@@ -257,22 +264,40 @@ namespace SATInterface
             return solver;
         }
 
+        /// <summary>
+        /// This method can be called from a callback during optimization or enumeration to abort
+        /// the optimization/enumeration early. The last solution or best-known solution will be retained.
+        /// </summary>
+        private void Abort()
+        {
+            if (!InOptimization)
+                throw new InvalidOperationException("Optimization/enumeration can only be aborted from a callback.");
+
+            //TODO implement
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Enumerates all valid assignment, with differing assignments for _modelVariables
+        /// </summary>
+        /// <param name="_modelVariables"></param>
+        /// <param name="_solutionCallback">Invoked for every valid assignment</param>
         public void EnumerateSolutions(IEnumerable<BoolExpr> _modelVariables, Action _solutionCallback)
         {
-            //TODO: support lazy constraints from callback
-            //TODO: support abort from callback
-
             if (proofUnsat)
                 return;
 
-            proofSat = false;
-            proofUnsat = true;
-
-            var originalVars = new Dictionary<int, BoolVar>(vars);
-            var originalClauses = clauses.ToList();
-
-            using (var solver = InstantiateSolver())
+            try
             {
+                InOptimization = true;
+
+                proofSat = false;
+                proofUnsat = true;
+
+                var originalVars = new Dictionary<int, BoolVar>(vars);
+                var originalClauses = clauses.ToList();
+
+                using var solver = InstantiateSolver();
                 var modelVariables = _modelVariables.Select(v => v.Flatten()).ToArray();
 
                 var mVars = vars.Count;
@@ -292,13 +317,21 @@ namespace SATInterface
 
                     proofSat = true;
                     proofUnsat = false;
+
                     _solutionCallback.Invoke();
 
-                    AddConstr(Or(modelVariables.Select(v => v != v.X)));
+                    if (mVars == vars.Count && mClauses == clauses.Count)
+                    {
+                        AddConstrInternal(Or(modelVariables.Select(v => v != v.X)));
+                    }
+                    else
+                    {
+                        //maybe there's another way to find this assignment?
+                    }
 
+                    //add lazy variables & constraints
                     solver.AddVars(vars.Count - mVars);
                     mVars = vars.Count;
-
                     for (var i = mClauses; i < clauses.Count; i++)
                         solver.AddClause(clauses[i]);
                     mClauses = clauses.Count;
@@ -307,46 +340,70 @@ namespace SATInterface
                 vars = originalVars;
                 clauses = originalClauses;
             }
+            finally
+            {
+                InOptimization = false;
+            }
         }
 
         private void Maximize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
         {
-            //TODO: support lazy constraints from callback
-            //TODO: support abort from callback
-
             if (proofUnsat)
                 return;
 
-            using (var solver = InstantiateSolver())
+            try
             {
+                InOptimization = true;
+
+                var solver = InstantiateSolver();
+
                 var mVars = vars.Count;
                 var mClauses = clauses.Count;
+
+                var originalVars = new Dictionary<int, BoolVar>(vars);
+                var originalClauses = clauses.ToList();
 
                 solver.AddVars(vars.Count);
                 foreach (var line in clauses)
                     solver.AddClause(line);
 
-                var bestAssignment = solver.Solve();
-                if (bestAssignment == null)
+                bool[]? bestAssignment;
+                for (; ; )
                 {
-                    proofUnsat = true;
-                    return;
+                    bestAssignment = solver.Solve();
+                    if (bestAssignment == null)
+                    {
+                        proofUnsat = true;
+                        return;
+                    }
+
+                    //found initial, potentially feasible solution
+                    Debug.Assert(bestAssignment.Length == vars.Count);
+                    for (var i = 0; i < vars.Count; i++)
+                        vars[i + 1].Value = bestAssignment[i];
+                    proofSat = true;
+
+                    //callback might add lazy constraints
+                    _solutionCallback?.Invoke();
+
+                    //if it didn't, we have a feasible solution
+                    if (vars.Count == mVars && mClauses == clauses.Count)
+                        break;
+
+                    //add lazy variables & constraints and re-solve
+                    solver.AddVars(vars.Count - mVars);
+                    mVars = vars.Count;
+                    for (var i = mClauses; i < clauses.Count; i++)
+                        solver.AddClause(clauses[i]);
+                    mClauses = clauses.Count;
                 }
-
-                //found initial, feasible solution
-                Debug.Assert(bestAssignment.Length == vars.Count);
-                for (var i = 0; i < vars.Count; i++)
-                    vars[i + 1].Value = bestAssignment[i];
-                proofSat = true;
-
-                _solutionCallback?.Invoke();
 
                 //start search
                 var lb = _obj.X;
                 var ub = _obj.UB;
-
-                var originalVars = new Dictionary<int, BoolVar>(vars);
-                var originalClauses = clauses.ToList();
+                int objGELB = 0;
+                int hardConstr = int.MinValue;
+                BoolVar objGE = null;
                 for (; ; )
                 {
                     if (Configuration.Verbosity > 0)
@@ -369,13 +426,23 @@ namespace SATInterface
                     int[]? assumptions;
                     if (cur == lb + 1)
                     {
-                        AddConstr(_obj >= cur);
+                        if (hardConstr < cur)
+                        {
+                            AddConstrInternal(_obj >= cur);
+                            hardConstr = cur;
+                        }
                         assumptions = null;
                     }
                     else
                     {
-                        var objGE = new BoolVar(this);
-                        AddConstr(objGE == (_obj >= cur));
+                        //prehaps we already added this GE var, and the current
+                        //round is only a repetition with additional lazy constraints?
+                        if (objGE is null || objGELB != cur)
+                        {
+                            objGELB = cur;
+                            objGE = new BoolVar(this);
+                            AddConstrInternal(objGE == (_obj >= cur));
+                        }
                         assumptions = new int[] { objGE.Id };
                     }
 
@@ -398,8 +465,20 @@ namespace SATInterface
 
                         _solutionCallback?.Invoke();
 
-                        lb = _obj.X;
-                        bestAssignment = assignment;
+                        if (vars.Count == mVars && clauses.Count == mClauses)
+                        {
+                            lb = _obj.X;
+                            bestAssignment = assignment;
+                        }
+                        else
+                        {
+                            //add lazy variables & constraints
+                            solver.AddVars(vars.Count - mVars);
+                            mVars = vars.Count;
+                            for (var i = mClauses; i < clauses.Count; i++)
+                                solver.AddClause(clauses[i]);
+                            mClauses = clauses.Count;
+                        }
                     }
                     else
                     {
@@ -418,6 +497,10 @@ namespace SATInterface
                 clauses = originalClauses;
                 for (var i = 0; i < vars.Count; i++)
                     vars[i + 1].Value = bestAssignment[i];
+            }
+            finally
+            {
+                InOptimization = false;
             }
         }
 
@@ -844,7 +927,7 @@ namespace SATInterface
                     commanders[i] = groups[i].Single();
                 else
                 {
-                    commanders[i] = new BoolVar(this);
+                    commanders[i] = AddVar();
 
                     //1
                     for (var j = 0; j < groups[i].Length; j++)
@@ -1130,7 +1213,7 @@ namespace SATInterface
                     commanders[i] = groups[i].Single();
                 else
                 {
-                    commanders[i] = new BoolVar(this);
+                    commanders[i] = AddVar();
 
                     //1
                     for (var j = 0; j < groups[i].Length; j++)
@@ -1169,7 +1252,7 @@ namespace SATInterface
                     var R = new BoolExpr[len + 2];
                     R[0] = True;
                     for (var i = 1; i < R.Length - 1; i++)
-                        R[i] = new BoolVar(this);
+                        R[i] = AddVar();
                     R[R.Length - 1] = False;
 
                     var A = new BoolExpr[] { True }.Concat(Sort(_e.Take(len / 2))).Concat(new BoolExpr[] { False }).ToArray();

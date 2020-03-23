@@ -56,5 +56,6 @@ namespace SATInterface
         public bool CommonSubexpressionElimination = false;
 
         //TODO: Time limit
+        public TimeSpan TimeLimit = TimeSpan.Zero;
     }
 }

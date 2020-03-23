@@ -54,12 +54,10 @@ namespace MaxMaze
                     switch (input[30 * y + x])
                     {
                         case '.':
-                            //case ' ':
                             free[x, y] = m.AddVar($"f{x},{y}");
                             break;
                         case ' ':
                             free[x, y] = true;
-                            //free[x, y] = new BoolVar(model, $"f{x},{y}");
                             break;
                         case '#':
                         case 'X':
@@ -89,13 +87,6 @@ namespace MaxMaze
                         m.AddConstr(!free[x, y] | m.Sum(new[] { a, b, c, d }) == 2);
                 }
 
-            //cut: quad
-            for (int y = 0; y < H - 1; y++)
-                for (int x = 0; x < W - 1; x++)
-                    m.AddConstr(!free[x, y] | !free[x + 1, y] | !free[x, y + 1] | !free[x + 1, y + 1]);
-
-            m.Configuration.OptimizationStrategy = OptimizationStrategy.Increasing;
-
             m.Maximize(m.Sum(free.Cast<BoolExpr>()), () =>
             {
                 for (int y = 0; y < H; y++)
@@ -104,6 +95,53 @@ namespace MaxMaze
                         Console.Write(free[x, y].X ? "." : ReferenceEquals(free[x, y], Model.False) ? "█" : "▒");
                     Console.WriteLine();
                 }
+
+                var notVisited = new bool[W, H];
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                        notVisited[x, y] = free[x, y].X;
+
+                var elimLoops = 0;
+                void Visit(int _x, int _y, Stack<(int X, int Y)> _visited)
+                {
+                    if (_x < 0 || _y < 0 || _x >= W || _y >= H)
+                        return;
+
+                    if (_x == W - 1 && _y == H - 1)
+                        return;
+
+                    if (_visited.Count>2)
+                    {
+                        var start = _visited.Last();
+                        if (_x == start.X && _y == start.Y)
+                        {
+                            m.AddConstr(m.Or(_visited.Select(c => !free[c.X, c.Y])));
+                            elimLoops++;
+                            return;
+                        }
+                    }
+
+                    if (!notVisited[_x, _y])
+                        return;
+
+                    notVisited[_x, _y] = false;
+
+                    _visited.Push((_x, _y));
+
+                    Visit(_x - 1, _y, _visited);
+                    Visit(_x + 1, _y, _visited);
+                    Visit(_x, _y - 1, _visited);
+                    Visit(_x, _y + 1, _visited);
+
+                    _visited.Pop();
+                }
+
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                        if (notVisited[x, y])
+                            Visit(x, y, new Stack<(int X, int Y)>());
+
+                Console.WriteLine($"Eliminated {elimLoops} loops");
             });
 
             Console.ReadLine();

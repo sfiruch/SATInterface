@@ -62,7 +62,7 @@ namespace SATInterface
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects).
+                    //dispose managed state
                 }
 
                 CryptoMiniSatNative.cmsat_free(Handle);

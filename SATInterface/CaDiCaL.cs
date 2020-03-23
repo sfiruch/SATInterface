@@ -79,7 +79,7 @@ namespace SATInterface
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects).
+                    //dispose managed state
                 }
 
                 CaDiCaLNative.ccadical_release(Handle);

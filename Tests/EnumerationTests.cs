@@ -62,5 +62,27 @@ namespace Tests
             Assert.AreEqual(2 * 2, cnt);
             Assert.IsTrue(found.All(v => v));
         }
+
+        [TestMethod]
+        public void BinarySubsetLazy()
+        {
+            using var m = new Model();
+            var v = m.AddVars(8);
+
+            var cnt = 0;
+            m.EnumerateSolutions(v, () =>
+            {
+                for (var i = 0; i < 4; i++)
+                    if (v[i].X)
+                    {
+                        m.AddConstr(!v[i].X);
+                        return;
+                    }
+
+                cnt++;
+            });
+
+            Assert.AreEqual(16, cnt);
+        }
     }
 }
