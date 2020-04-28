@@ -106,29 +106,29 @@ namespace SATInterface
             if (ReferenceEquals(rhsS, Model.False))
                 return !lhsS;
 
-            if (rhsS is AndExpr andExpr)
-            {
-                var other = lhsS.Flatten();
-                var ands = new List<BoolExpr>();
-                ands.Add(OrExpr.Create(andExpr.elements.Select(e => !e).Append(other)).Flatten());
-                foreach (var e in andExpr.elements)
-                    ands.Add(e | !other);
-                return AndExpr.Create(ands);
-            }
-            if (rhsS is OrExpr orExpr)
-            {
-                var other = lhsS.Flatten();
-                var ands = new List<BoolExpr>();
-                ands.Add(OrExpr.Create(orExpr.elements.Append(!other)).Flatten());
-                foreach (var e in orExpr.elements)
-                    ands.Add(!e | other);
-                return AndExpr.Create(ands);
-            }
+            //if (rhsS is AndExpr andExpr)
+            //{
+            //    var other = lhsS.Flatten();
+            //    var ands = new List<BoolExpr>(andExpr.elements.Length + 1);
+            //    ands.Add(OrExpr.Create(andExpr.elements.Select(e => !e).Append(other)).Flatten());
+            //    foreach (var e in andExpr.elements)
+            //        ands.Add(e | !other);
+            //    return AndExpr.Create(ands);
+            //}
+            //if (rhsS is OrExpr orExpr)
+            //{
+            //    var other = lhsS.Flatten();
+            //    var ands = new List<BoolExpr>(orExpr.elements.Length+1);
+            //    ands.Add(OrExpr.Create(orExpr.elements.Append(!other)).Flatten());
+            //    foreach (var e in orExpr.elements)
+            //        ands.Add(!e | other);
+            //    return AndExpr.Create(ands);
+            //}
 
-            if (!(rhsS is AndExpr) && lhsS is AndExpr)
-                return (rhsS == lhsS);
-            if (!(rhsS is OrExpr) && lhsS is OrExpr)
-                return (rhsS == lhsS);
+            //if (!(rhsS is AndExpr) && lhsS is AndExpr)
+            //    return (rhsS == lhsS);
+            //if (!(rhsS is OrExpr) && lhsS is OrExpr)
+            //    return (rhsS == lhsS);
 
             lhsS = lhsS.Flatten();
             rhsS = rhsS.Flatten();
@@ -136,7 +136,7 @@ namespace SATInterface
 
             //lhsS = (lhsS.VarCount > 2) ? lhsS.Flatten() : lhsS;
             //rhsS = (rhsS.VarCount > 2) ? rhsS.Flatten() : rhsS;
-            //return ((lhsS | !rhsS) & (rhsS | !lhsS)).Flatten();
+            return ((lhsS & rhsS) | (!lhsS & !rhsS)).Flatten();
         }
 
         public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);

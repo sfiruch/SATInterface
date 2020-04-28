@@ -82,11 +82,11 @@ namespace SATInterface
         {
             if (ReferenceEquals(_c, False))
                 proofUnsat = true;
-            else if(ReferenceEquals(_c, True))
+            else if (ReferenceEquals(_c, True))
             {
                 //ignore
             }
-            else if(_c is AndExpr andExpr)
+            else if (_c is AndExpr andExpr)
             {
                 foreach (var e in andExpr.elements)
                     AddConstrInternal(e);
@@ -140,7 +140,7 @@ namespace SATInterface
 
             AddConstrInternal(_clause);
 
-            if(!InOptimization)
+            if (!InOptimization)
                 proofSat = false;
         }
 
@@ -686,6 +686,21 @@ namespace SATInterface
         /// <param name="_elems"></param>
         /// <returns></returns>
         public BoolExpr Or(IEnumerable<BoolExpr> _elems) => OrExpr.Create(_elems);
+
+
+        /// <summary>
+        /// Returns an expression equivalent to the exclusive-or of the
+        /// supplied expressions.
+        /// </summary>
+        /// <param name="_elems"></param>
+        /// <returns></returns>
+        public BoolExpr Xor(IEnumerable<BoolExpr> _elems)
+        {
+            var res = Model.False;
+            foreach (var v in _elems)
+                res ^= v;
+            return res;
+        }
 
         /// <summary>
         /// Returns an expression equivalent to a disjunction of the supplied
