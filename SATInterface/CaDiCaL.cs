@@ -29,7 +29,7 @@ namespace SATInterface
                 foreach (var a in _assumptions)
                     CaDiCaLNative.ccadical_assume(Handle, a);
 
-            if (Verbosity != 0)
+            if (Verbosity >= 1)
             {
                 //TODO: add banner to C API
                 Console.WriteLine("c " + Marshal.PtrToStringAnsi(CaDiCaLNative.ccadical_signature()));
@@ -37,7 +37,7 @@ namespace SATInterface
 
             var satisfiable = CaDiCaLNative.ccadical_solve(Handle);
 
-            if (Verbosity != 0)
+            if (Verbosity >= 1)
                 CaDiCaLNative.ccadical_print_statistics(Handle);
 
             switch (satisfiable)
@@ -104,12 +104,12 @@ namespace SATInterface
 
         public void ApplyConfiguration(Configuration _config)
         {
-            Verbosity = _config.Verbosity;
+            Verbosity = Math.Max(0, _config.Verbosity - 1);
             CaDiCaLNative.ccadical_set_option(Handle, "quiet", Verbosity == 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "report", Verbosity > 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, Verbosity - 1));
 
-            if (_config.Threads.HasValue)
+            if ((_config.Threads ?? 1) != 1)
                 throw new NotImplementedException("CaDiCaL only supports single-threaded operation.");
 
             if (_config.RandomSeed.HasValue)

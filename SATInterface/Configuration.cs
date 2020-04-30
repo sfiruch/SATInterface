@@ -4,11 +4,11 @@ using System.Text;
 
 namespace SATInterface
 {
-    public enum OptimizationStrategy
+    public enum OptimizationFocus
     {
-        BinarySearch,
-        Increasing,
-        Decreasing
+        Balanced,
+        Incumbent,
+        Bound
     }
 
     public enum InternalSolver
@@ -22,7 +22,7 @@ namespace SATInterface
         /// <summary>
         /// Strategy to solve minimization/maximization problems.
         /// </summary>
-        public OptimizationStrategy OptimizationStrategy = OptimizationStrategy.BinarySearch;
+        public OptimizationFocus OptimizationFocus = OptimizationFocus.Balanced;
         
         /// <summary>
         /// Verbosity of the solver logging. Set to 0 to disable logging.
@@ -56,6 +56,6 @@ namespace SATInterface
         public bool CommonSubexpressionElimination = false;
 
         //TODO: Time limit
-        public TimeSpan TimeLimit = TimeSpan.Zero;
+        //public TimeSpan TimeLimit = TimeSpan.Zero;
     }
 }

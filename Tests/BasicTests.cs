@@ -14,34 +14,34 @@ namespace Tests
         {
             using var m = new Model();
             m.Solve();
-            Assert.IsTrue(m.IsSatisfiable);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
 
         [TestMethod]
-        public void EmptyMaximizeBinary()
+        public void EmptyMaximizeBalanced()
         {
             using var m = new Model();
-            m.Configuration.OptimizationStrategy = OptimizationStrategy.BinarySearch;
+            m.Configuration.OptimizationFocus = OptimizationFocus.Balanced;
             m.Maximize((LinExpr)0);
-            Assert.IsTrue(m.IsSatisfiable);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
 
         [TestMethod]
-        public void EmptyMaximizeIncreasing()
+        public void EmptyMaximizeIncumbent()
         {
             using var m = new Model();
-            m.Configuration.OptimizationStrategy = OptimizationStrategy.Increasing;
+            m.Configuration.OptimizationFocus = OptimizationFocus.Incumbent;
             m.Maximize((LinExpr)0);
-            Assert.IsTrue(m.IsSatisfiable);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
 
         [TestMethod]
-        public void EmptyMaximizeDecreasing()
+        public void EmptyMaximizeBound()
         {
             using var m = new Model();
-            m.Configuration.OptimizationStrategy = OptimizationStrategy.Decreasing;
+            m.Configuration.OptimizationFocus = OptimizationFocus.Bound;
             m.Maximize((LinExpr)0);
-            Assert.IsTrue(m.IsSatisfiable);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
     }
 }

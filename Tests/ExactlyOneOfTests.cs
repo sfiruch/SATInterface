@@ -26,7 +26,7 @@ namespace Tests
 
             m.Solve();
 
-            Assert.AreEqual(_holes >= _pigeons, m.IsSatisfiable, $"{_holes} {_pigeons}");
+            Assert.AreEqual(_holes >= _pigeons ? State.Satisfiable : State.Unsatisfiable, m.State, $"{_holes} {_pigeons}");
         }
 
         [TestMethod]
@@ -256,7 +256,7 @@ namespace Tests
 
             m.Solve();
 
-            Assert.IsTrue(m.IsSatisfiable);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
 
         [TestMethod]
@@ -271,7 +271,7 @@ namespace Tests
             m.AddConstr(!v[3]);
             m.Solve();
 
-            Assert.IsTrue(m.IsSatisfiable);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
 
         [TestMethod]
@@ -287,7 +287,7 @@ namespace Tests
             {
                 m.Solve();
 
-                Assert.IsTrue(m.IsSatisfiable);
+                Assert.AreEqual(State.Satisfiable, m.State);
 
                 var idx = Enumerable.Range(0, N).Single(j => v[j].X);
 
@@ -296,7 +296,7 @@ namespace Tests
             }
 
             m.Solve();
-            Assert.IsTrue(m.IsUnsatisfiable);
+            Assert.AreEqual(State.Unsatisfiable, m.State);
         }
     }
 }

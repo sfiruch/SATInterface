@@ -60,7 +60,7 @@ namespace Tests
 
             m.Solve();
 
-            Assert.IsTrue(m.IsSatisfiable);
+            Assert.AreEqual(State.Satisfiable, m.State);
 
             var block = new bool[3, 3][];
             for (var y = 0; y < 3; y++)

@@ -25,7 +25,7 @@ namespace Tests
 
             m.Solve();
 
-            Assert.AreEqual(_holes >= _pigeons, m.IsSatisfiable, $"{_holes} {_pigeons}");
+            Assert.AreEqual(_holes >= _pigeons ? State.Satisfiable : State.Unsatisfiable, m.State, $"{_holes} {_pigeons}");
         }
 
         [TestMethod]

@@ -20,7 +20,7 @@ namespace Maximize
             m.AddConstr((x < 512) | (y < 100));
             m.AddConstr(c == x * y);
 
-            m.Configuration.Verbosity = 0;
+            m.Configuration.Verbosity = 1;
             m.Maximize(x + 7 * y, () => Console.WriteLine($"Intermediate result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}, x*y = {c.X}"));
 
             Console.WriteLine($"Final result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}, x*y = {c.X}");

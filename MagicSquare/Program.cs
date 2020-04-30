@@ -63,7 +63,7 @@ namespace MagicSquare
 
             m.Solve();
 
-            if (m.IsSatisfiable)
+            if (m.State==State.Satisfiable)
                 for (var y = 0; y < N; y++)
                 {
                     for (var x = 0; x < N; x++)

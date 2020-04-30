@@ -25,6 +25,24 @@ namespace Tests
 
             Assert.AreEqual(2 * 2 * 2, cnt);
             Assert.IsTrue(found.All(v => v));
+            Assert.AreEqual(State.Satisfiable, m.State);
+        }
+
+        [TestMethod]
+        public void RepeatedEnumeration()
+        {
+            using var m = new Model();
+            var v = m.AddVars(3);
+
+            var cnt = 0;
+            for(var i=0;i<3;i++)
+                m.EnumerateSolutions(v, () =>
+                {
+                    cnt++;
+                });
+
+            Assert.AreEqual(3 * 2 * 2 * 2, cnt);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
 
         [TestMethod]
@@ -43,6 +61,7 @@ namespace Tests
             });
 
             Assert.AreEqual(0, cnt);
+            Assert.AreEqual(State.Unsatisfiable, m.State);
         }
 
         [TestMethod]
@@ -61,10 +80,11 @@ namespace Tests
 
             Assert.AreEqual(2 * 2, cnt);
             Assert.IsTrue(found.All(v => v));
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
 
         [TestMethod]
-        public void BinarySubsetLazy()
+        public void BinarySubsetLazyCondition()
         {
             using var m = new Model();
             var v = m.AddVars(8);
@@ -75,7 +95,7 @@ namespace Tests
                 for (var i = 0; i < 4; i++)
                     if (v[i].X)
                     {
-                        m.AddConstr(!v[i].X);
+                        m.AddConstr(!v[i]);
                         return;
                     }
 
@@ -83,6 +103,24 @@ namespace Tests
             });
 
             Assert.AreEqual(16, cnt);
+            Assert.AreEqual(State.Satisfiable, m.State);
+        }
+
+        [TestMethod]
+        public void BinarySubsetLazyVars()
+        {
+            using var m = new Model();
+            var v = m.AddVars(4);
+
+            var cnt = 0;
+            m.EnumerateSolutions(v, () =>
+            {
+                m.AddVars(2);
+                cnt++;
+            });
+
+            Assert.AreEqual(16, cnt);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
     }
 }

@@ -32,7 +32,7 @@ namespace SATInterface
                     _assumptions.Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
                     (IntPtr)_assumptions.Length) == CryptoMiniSatNative.c_lbool.L_TRUE;
 
-            if (Verbosity != 0)
+            if (Verbosity >= 1)
                 CryptoMiniSatNative.cmsat_print_stats(Handle);
 
             if (satisfiable)
@@ -87,16 +87,16 @@ namespace SATInterface
 
         public void ApplyConfiguration(Configuration _config)
         {
-            Verbosity = _config.Verbosity;
-            CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)_config.Verbosity);
+            Verbosity = Math.Max(0, _config.Verbosity - 1);
+            CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)Verbosity);
 
-            if(_config.Threads.HasValue)
+            if (_config.Threads.HasValue)
                 CryptoMiniSatNative.cmsat_set_num_threads(Handle, (uint)_config.Threads.Value);
 
             if (_config.RandomSeed.HasValue)
                 throw new NotImplementedException("CryptoMiniSat does not allow the configuration of RandomSeed.");
 
-            if(_config.InitialPhase.HasValue)
+            if (_config.InitialPhase.HasValue)
                 throw new NotImplementedException("CryptoMiniSat does not allow the configuration of InitialPhase.");
         }
     }

@@ -25,9 +25,10 @@ namespace SATInterface
         internal int VarCount = 0;
         private List<int[]> clauses = new List<int[]>();
         private Dictionary<int, BoolVar> vars = new Dictionary<int, BoolVar>();
-        internal bool proofSat = false;
-        internal bool proofUnsat = false;
+        public State State { get; internal set; } = State.Undecided;
+
         internal bool InOptimization = false;
+        internal bool AbortOptimization = false;
 
         public readonly Configuration Configuration = new Configuration();
 
@@ -41,34 +42,6 @@ namespace SATInterface
         /// </summary>
         public int ClauseCount => clauses.Count;
 
-        /// <summary>
-        /// Is True iff an assigment was found.
-        /// </summary>
-        public bool IsSatisfiable
-        {
-            get
-            {
-                if (!proofSat && !proofUnsat)
-                    throw new InvalidOperationException("Solve the model first");
-
-                return proofSat;
-            }
-        }
-
-        /// <summary>
-        /// Is True iff the instance was proven unsatisfiable.
-        /// </summary>
-        public bool IsUnsatisfiable
-        {
-            get
-            {
-                if (!proofSat && !proofUnsat)
-                    throw new InvalidOperationException("Solve the model first");
-
-                return proofUnsat;
-            }
-        }
-
         internal Dictionary<BoolExpr, BoolExpr> ExprCache = new Dictionary<BoolExpr, BoolExpr>();
 
         /// <summary>
@@ -81,7 +54,7 @@ namespace SATInterface
         private void AddConstrInternal(BoolExpr _c)
         {
             if (ReferenceEquals(_c, False))
-                proofUnsat = true;
+                State = State.Unsatisfiable;
             else if (ReferenceEquals(_c, True))
             {
                 //ignore
@@ -135,13 +108,13 @@ namespace SATInterface
         /// <param name="_clause"></param>
         public void AddConstr(BoolExpr _clause)
         {
-            if (proofUnsat)
+            if (State == State.Unsatisfiable)
                 return;
 
             AddConstrInternal(_clause);
 
-            if (!InOptimization)
-                proofSat = false;
+            if (!InOptimization && State == State.Satisfiable)
+                State = State.Undecided;
         }
 
         /// <summary>
@@ -239,7 +212,6 @@ namespace SATInterface
         /// </summary>
         /// <param name="_obj"></param>
         /// <param name="_solutionCallback">Invoked for every incumbent solution.</param>
-        /// <param name="_strategy"></param>
         public void Minimize(LinExpr _obj, Action? _solutionCallback = null)
             => Maximize(-_obj, _solutionCallback, _minimization: true);
 
@@ -248,7 +220,6 @@ namespace SATInterface
         /// </summary>
         /// <param name="_obj"></param>
         /// <param name="_solutionCallback">Invoked for every incumbent solution.</param>
-        /// <param name="_strategy"></param>
         public void Maximize(LinExpr _obj, Action? _solutionCallback = null)
             => Maximize(_obj, _solutionCallback, _minimization: false);
 
@@ -268,13 +239,14 @@ namespace SATInterface
         /// This method can be called from a callback during optimization or enumeration to abort
         /// the optimization/enumeration early. The last solution or best-known solution will be retained.
         /// </summary>
-        private void Abort()
+        public void Abort()
         {
+            Debug.Assert(!AbortOptimization);
+
             if (!InOptimization)
                 throw new InvalidOperationException("Optimization/enumeration can only be aborted from a callback.");
 
-            //TODO implement
-            throw new NotImplementedException();
+            AbortOptimization = true;
         }
 
         /// <summary>
@@ -284,15 +256,13 @@ namespace SATInterface
         /// <param name="_solutionCallback">Invoked for every valid assignment</param>
         public void EnumerateSolutions(IEnumerable<BoolExpr> _modelVariables, Action _solutionCallback)
         {
-            if (proofUnsat)
+            if (State == State.Unsatisfiable)
                 return;
 
             try
             {
                 InOptimization = true;
-
-                proofSat = false;
-                proofUnsat = true;
+                AbortOptimization = false;
 
                 var originalVars = new Dictionary<int, BoolVar>(vars);
                 var originalClauses = clauses.ToList();
@@ -306,6 +276,7 @@ namespace SATInterface
                 foreach (var line in clauses)
                     solver.AddClause(line);
 
+                bool[]? bestAssignment = null;
                 for (; ; )
                 {
                     var assignment = solver.Solve();
@@ -315,19 +286,26 @@ namespace SATInterface
                     for (var i = 0; i < vars.Count; i++)
                         vars[i + 1].Value = assignment[i];
 
-                    proofSat = true;
-                    proofUnsat = false;
-
+                    State = State.Satisfiable;
                     _solutionCallback.Invoke();
 
-                    if (mVars == vars.Count && mClauses == clauses.Count)
+                    if (State == State.Unsatisfiable)
+                        break;
+
+                    if (mClauses == clauses.Count)
                     {
+                        bestAssignment = assignment;
+
                         AddConstrInternal(Or(modelVariables.Select(v => v != v.X)));
                     }
                     else
                     {
-                        //maybe there's another way to find this assignment?
+                        //maybe there's another way to find this assignment, respecting
+                        //the lazy constraints?
                     }
+
+                    if (AbortOptimization)
+                        break;
 
                     //add lazy variables & constraints
                     solver.AddVars(vars.Count - mVars);
@@ -339,6 +317,21 @@ namespace SATInterface
 
                 vars = originalVars;
                 clauses = originalClauses;
+
+                if (bestAssignment != null)
+                {
+                    for (var i = 0; i < vars.Count; i++)
+                        vars[i + 1].Value = bestAssignment[i];
+
+                    State = State.Satisfiable;
+                }
+                else
+                {
+                    if (AbortOptimization)
+                        State = State.Undecided;
+                    else
+                        State = State.Unsatisfiable;
+                }
             }
             finally
             {
@@ -348,12 +341,13 @@ namespace SATInterface
 
         private void Maximize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
         {
-            if (proofUnsat)
+            if (State == State.Unsatisfiable)
                 return;
 
             try
             {
                 InOptimization = true;
+                AbortOptimization = false;
 
                 var solver = InstantiateSolver();
 
@@ -367,13 +361,23 @@ namespace SATInterface
                 foreach (var line in clauses)
                     solver.AddClause(line);
 
+                if (Configuration.Verbosity > 0)
+                {
+                    if (_minimization)
+                        Console.WriteLine($"Minimizing objective, range {-_obj.UB} - {0}");
+                    else
+                        Console.WriteLine($"Maximizing objective, range 0 - {_obj.UB}");
+                }
+
                 bool[]? bestAssignment;
                 for (; ; )
                 {
                     bestAssignment = solver.Solve();
                     if (bestAssignment == null)
                     {
-                        proofUnsat = true;
+                        State = State.Unsatisfiable;
+                        vars = originalVars;
+                        clauses = originalClauses;
                         return;
                     }
 
@@ -381,21 +385,39 @@ namespace SATInterface
                     Debug.Assert(bestAssignment.Length == vars.Count);
                     for (var i = 0; i < vars.Count; i++)
                         vars[i + 1].Value = bestAssignment[i];
-                    proofSat = true;
 
-                    //callback might add lazy constraints
+                    State = State.Satisfiable;
+
+                    //callback might add lazy constraints or abort
                     _solutionCallback?.Invoke();
 
-                    //if it didn't, we have a feasible solution
-                    if (vars.Count == mVars && mClauses == clauses.Count)
-                        break;
+                    if (State == State.Unsatisfiable)
+                    {
+                        vars = originalVars;
+                        clauses = originalClauses;
+                        return;
+                    }
 
-                    //add lazy variables & constraints and re-solve
-                    solver.AddVars(vars.Count - mVars);
-                    mVars = vars.Count;
-                    for (var i = mClauses; i < clauses.Count; i++)
-                        solver.AddClause(clauses[i]);
-                    mClauses = clauses.Count;
+                    //if it didn't, we have a feasible solution
+                    if (mClauses == clauses.Count)
+                        break;
+                    else
+                    {
+                        if (AbortOptimization)
+                        {
+                            State = State.Undecided;
+                            vars = originalVars;
+                            clauses = originalClauses;
+                            return;
+                        }
+
+                        //add lazy variables & constraints and re-solve
+                        solver.AddVars(vars.Count - mVars);
+                        mVars = vars.Count;
+                        for (var i = mClauses; i < clauses.Count; i++)
+                            solver.AddClause(clauses[i]);
+                        mClauses = clauses.Count;
+                    }
                 }
 
                 //start search
@@ -403,8 +425,8 @@ namespace SATInterface
                 var ub = _obj.UB;
                 int objGELB = 0;
                 int hardConstr = int.MinValue;
-                BoolVar objGE = null;
-                for (; ; )
+                BoolVar? objGE = null;
+                while (!AbortOptimization)
                 {
                     if (Configuration.Verbosity > 0)
                     {
@@ -414,11 +436,11 @@ namespace SATInterface
                             Console.WriteLine($"Maximizing objective, range {lb} - {ub}");
                     }
 
-                    int cur = Configuration.OptimizationStrategy switch
+                    int cur = Configuration.OptimizationFocus switch
                     {
-                        OptimizationStrategy.BinarySearch => (lb + 1 + ub) / 2,
-                        OptimizationStrategy.Decreasing => _minimization ? lb + 1 : ub,
-                        OptimizationStrategy.Increasing => _minimization ? ub : lb + 1,
+                        OptimizationFocus.Balanced => (lb + 1 + ub) / 2,
+                        OptimizationFocus.Incumbent => lb + 1,
+                        OptimizationFocus.Bound => ub,
                         _ => throw new NotImplementedException()
                     };
 
@@ -453,20 +475,22 @@ namespace SATInterface
                         solver.AddClause(clauses[i]);
                     mClauses = clauses.Count;
 
-                    var assignment = proofUnsat ? null : solver.Solve(assumptions);
+                    var assignment = State == State.Unsatisfiable ? null : solver.Solve(assumptions);
                     if (assignment != null)
                     {
                         for (var i = 0; i < vars.Count; i++)
                             vars[i + 1].Value = assignment[i];
 
-                        proofSat = true;
+                        State = State.Satisfiable;
 
                         Debug.Assert(_obj.X >= cur);
 
+                        //callback might add lazy constraints
                         _solutionCallback?.Invoke();
 
-                        if (vars.Count == mVars && clauses.Count == mClauses)
+                        if (State == State.Satisfiable && clauses.Count == mClauses)
                         {
+                            //no new lazy constraints
                             lb = _obj.X;
                             bestAssignment = assignment;
                         }
@@ -479,6 +503,9 @@ namespace SATInterface
                                 solver.AddClause(clauses[i]);
                             mClauses = clauses.Count;
                         }
+
+                        if (AbortOptimization)
+                            break;
                     }
                     else
                     {
@@ -491,8 +518,7 @@ namespace SATInterface
                 }
 
                 //restore best known solution
-                proofSat = true;
-                proofUnsat = false;
+                State = State.Satisfiable;
                 vars = originalVars;
                 clauses = originalClauses;
                 for (var i = 0; i < vars.Count; i++)
@@ -510,10 +536,8 @@ namespace SATInterface
         /// </summary>
         public void Solve()
         {
-            if (proofUnsat)
+            if (State != State.Undecided)
                 return;
-
-            proofSat = false;
 
             //set up model
             using (var solver = InstantiateSolver())
@@ -525,14 +549,14 @@ namespace SATInterface
                 var res = solver.Solve();
                 if (res != null)
                 {
-                    proofSat = true;
+                    State = State.Satisfiable;
                     Debug.Assert(res.Length == vars.Count);
 
                     for (var i = 0; i < vars.Count; i++)
                         vars[i + 1].Value = res[i];
                 }
                 else
-                    proofUnsat = true;
+                    State = State.Unsatisfiable;
             }
         }
 
@@ -542,10 +566,10 @@ namespace SATInterface
         /// </summary>
         public void SolveWithExternalSolver(string _executable, string? _arguments = null, string? _newLine = null, string? _tmpInputFilename = null, string? _tmpOutputFilename = null)
         {
-            if (proofUnsat)
+            if (State == State.Unsatisfiable)
                 return;
 
-            proofSat = false;
+            State = State.Undecided;
 
             if (_tmpInputFilename != null)
                 Write(_tmpInputFilename);
@@ -600,9 +624,9 @@ namespace SATInterface
                             if (Configuration.Verbosity > 0 && _tmpOutputFilename == null)
                                 Console.WriteLine(line);
                             if (tk[1] == "SATISFIABLE")
-                                proofSat = true;
+                                State = State.Satisfiable;
                             else if (tk[1] == "UNSATISFIABLE")
-                                proofUnsat = true;
+                                State = State.Unsatisfiable;
                             else
                                 throw new Exception(tk[2]);
                         }

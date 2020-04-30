@@ -21,8 +21,7 @@ namespace Tests
 
                     m.Solve();
 
-                    Assert.AreEqual(i >= j, m.IsSatisfiable);
-                    Assert.AreEqual(i < j, m.IsUnsatisfiable);
+                    Assert.AreEqual(i >= j ? State.Satisfiable : State.Unsatisfiable, m.State);
 
                     if (i >= j)
                         Assert.AreEqual(j, v.Count(r => r.X));
@@ -41,8 +40,7 @@ namespace Tests
 
                     m.Minimize(m.Sum(v));
 
-                    Assert.AreEqual(i >= j, m.IsSatisfiable);
-                    Assert.AreEqual(i < j, m.IsUnsatisfiable);
+                    Assert.AreEqual(i >= j ? State.Satisfiable : State.Unsatisfiable, m.State);
 
                     if (i >= j)
                         Assert.AreEqual(j, v.Count(r => r.X));
@@ -61,7 +59,7 @@ namespace Tests
 
                     m.Maximize(m.Sum(v));
 
-                    Assert.IsTrue(m.IsSatisfiable);
+                    Assert.AreEqual(State.Satisfiable, m.State);
                     Assert.AreEqual(Math.Min(i, j), v.Count(r => r.X));
                 }
         }

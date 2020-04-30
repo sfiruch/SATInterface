@@ -34,7 +34,7 @@ namespace Tests
 
                 m.Solve();
 
-                Assert.IsTrue(m.IsSatisfiable);
+                Assert.AreEqual(State.Satisfiable, m.State);
                 Assert.AreEqual(expected, res1.X);
                 Assert.AreEqual(expected, res2.X);
             }

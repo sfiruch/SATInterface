@@ -12,17 +12,17 @@ namespace Tests
         [TestMethod]
         public void UIntLessEqual()
         {
-            foreach (var strategy in Enum.GetValues(typeof(OptimizationStrategy)).Cast<OptimizationStrategy>())
+            foreach (var strategy in Enum.GetValues(typeof(OptimizationFocus)).Cast<OptimizationFocus>())
                 for (var i = 0; i < 140; i++)
                 {
                     using var m = new Model();
                     var v = m.AddUIntVar(100, true);
                     m.AddConstr(v <= i);
 
-                    m.Configuration.OptimizationStrategy = strategy;
+                    m.Configuration.OptimizationFocus = strategy;
                     m.Maximize(v);
 
-                    Assert.IsTrue(m.IsSatisfiable);
+                    Assert.AreEqual(State.Satisfiable, m.State);
                     Assert.AreEqual(Math.Min(i, 100), v.X);
                 }
         }
@@ -30,23 +30,23 @@ namespace Tests
         [TestMethod]
         public void UIntGreaterEqual()
         {
-            foreach (var strategy in Enum.GetValues(typeof(OptimizationStrategy)).Cast<OptimizationStrategy>())
+            foreach (var strategy in Enum.GetValues(typeof(OptimizationFocus)).Cast<OptimizationFocus>())
                 for (var i = 0; i < 140; i++)
                 {
                     using var m = new Model();
                     var v = m.AddUIntVar(100, true);
                     m.AddConstr(v >= i);
 
-                    m.Configuration.OptimizationStrategy = strategy;
+                    m.Configuration.OptimizationFocus = strategy;
                     m.Minimize(v);
 
                     if (i <= 100)
                     {
-                        Assert.IsTrue(m.IsSatisfiable);
+                        Assert.AreEqual(State.Satisfiable, m.State);
                         Assert.AreEqual(i, v.X);
                     }
                     else
-                        Assert.IsTrue(m.IsUnsatisfiable);
+                        Assert.AreEqual(State.Unsatisfiable, m.State);
                 }
         }
 
@@ -61,7 +61,7 @@ namespace Tests
                     for (var k = 0; k < j; k++)
                         v += true;
                     m.Solve();
-                    Assert.IsTrue(m.IsSatisfiable);
+                    Assert.AreEqual(State.Satisfiable, m.State);
                     Assert.AreEqual(i + j, v.X);
                 }
         }
@@ -79,7 +79,7 @@ namespace Tests
                     v += i;
                     v += j;
                     m.Solve();
-                    Assert.IsTrue(m.IsSatisfiable);
+                    Assert.AreEqual(State.Satisfiable, m.State);
                     Assert.AreEqual(i + j, v.X);
                 }
         }
@@ -99,7 +99,7 @@ namespace Tests
 
                     var sum = m.SumUInt(v);
                     m.Solve();
-                    Assert.IsTrue(m.IsSatisfiable);
+                    Assert.AreEqual(State.Satisfiable, m.State);
                     Assert.AreEqual(values.Count(i => i), sum.X, $"{n} {i} {string.Join("", values)}");
                 }
         }

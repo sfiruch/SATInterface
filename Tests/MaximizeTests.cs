@@ -12,7 +12,7 @@ namespace Tests
     [TestClass]
     public class MaximizeTests
     {
-        void RunTest(int xLB, int xUB, int yLB, int yUB, int xLimit, int yLimit, int xWeight, int yWeight, OptimizationStrategy _strategy)
+        void RunTest(int xLB, int xUB, int yLB, int yUB, int xLimit, int yLimit, int xWeight, int yWeight, OptimizationFocus _strategy)
         {
             using var m = new Model();
             var x = m.AddUIntVar(xUB);
@@ -44,28 +44,28 @@ namespace Tests
         [TestMethod]
         public void Example()
         {
-            RunTest(0, 1000, 0, 200, 512, 100, 1, 7, OptimizationStrategy.BinarySearch);
+            RunTest(0, 1000, 0, 200, 512, 100, 1, 7, OptimizationFocus.Balanced);
         }
 
         [TestMethod]
         public void RandomBinary()
         {
-            RunRandom(10, OptimizationStrategy.BinarySearch);
+            RunRandom(10, OptimizationFocus.Balanced);
         }
 
         [TestMethod]
-        public void RandomDecreasing()
+        public void RandomBound()
         {
-            RunRandom(10, OptimizationStrategy.Decreasing);
+            RunRandom(10, OptimizationFocus.Bound);
         }
 
         [TestMethod]
-        public void RandomIncreasing()
+        public void RandomIncumbent()
         {
-            RunRandom(10, OptimizationStrategy.Increasing);
+            RunRandom(10, OptimizationFocus.Incumbent);
         }
 
-        public void RunRandom(int _iterations, OptimizationStrategy _strategy)
+        public void RunRandom(int _iterations, OptimizationFocus _strategy)
         {
             var RNG = new Random(0);
             for (var i = 0; i < _iterations; i++)
@@ -98,8 +98,7 @@ namespace Tests
             var v = m.AddUIntVar(10, true);
             m.Maximize(v);
 
-            Assert.IsFalse(m.IsSatisfiable);
-            Assert.IsTrue(m.IsUnsatisfiable);
+            Assert.AreEqual(State.Unsatisfiable, m.State);
         }
 
         [TestMethod]
@@ -109,8 +108,7 @@ namespace Tests
             var v = m.AddUIntVar(10, true);
             m.Maximize(v);
 
-            Assert.IsTrue(m.IsSatisfiable);
-            Assert.IsFalse(m.IsUnsatisfiable);
+            Assert.AreEqual(State.Satisfiable, m.State);
         }
     }
 }

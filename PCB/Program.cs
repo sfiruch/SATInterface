@@ -123,7 +123,7 @@ namespace PCB
 
             var vObj = m.Sum(obj1) + m.Sum(obj3) * 3;
 
-            m.Configuration.OptimizationStrategy = OptimizationStrategy.Decreasing;
+            m.Configuration.OptimizationFocus = OptimizationFocus.Incumbent;
             m.Minimize(vObj, () =>
             {
                 Console.WriteLine();

@@ -43,7 +43,7 @@ for (var n = 0; n < 9; n++)
 
 m.Solve();
 
-if (m.IsSatisfiable)
+if (m.State == State.Satisfiable)
     for (var y = 0; y < 9; y++)
     {
         for (var x = 0; x < 9; x++)

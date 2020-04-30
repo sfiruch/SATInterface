@@ -97,8 +97,7 @@ namespace Tests
 
             m.Solve();
 
-            Assert.IsTrue(m.IsSatisfiable);
-
+            Assert.AreEqual(State.Satisfiable, m.State);
 
             for (var y = 0; y < N; y++)
             {
