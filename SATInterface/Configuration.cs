@@ -27,7 +27,7 @@ namespace SATInterface
         /// <summary>
         /// Verbosity of the solver logging. Set to 0 to disable logging.
         /// </summary>
-        public int Verbosity = 1;
+        public int Verbosity = 2;
 
         /// <summary>
         /// Bundled SAT solver to use.
