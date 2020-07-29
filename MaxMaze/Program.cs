@@ -87,7 +87,7 @@ namespace MaxMaze
                         m.AddConstr(!free[x, y] | m.Sum(new[] { a, b, c, d }) == 2);
                 }
 
-            m.Configuration.Verbosity = 1;
+            m.Configuration.Verbosity = 2;
             m.Maximize(m.Sum(free.Cast<BoolExpr>()), () =>
             {
                 for (int y = 0; y < H; y++)

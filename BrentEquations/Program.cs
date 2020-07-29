@@ -1,5 +1,6 @@
 ﻿using SATInterface;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
@@ -39,25 +40,25 @@ namespace BrentEquations
 
             using var m = new Model();
 
-            var f = m.AddVars(ARows, ACols, NoOfProducts);
-            var g = m.AddVars(BRows, BCols, NoOfProducts);
-            var d = m.AddVars(CRows, CCols, NoOfProducts);
+            var a = m.AddVars(ARows, ACols, NoOfProducts);
+            var b = m.AddVars(BRows, BCols, NoOfProducts);
+            var c = m.AddVars(CRows, CCols, NoOfProducts);
 
             //symmetry breaking: permutations of k
             for (var k = 1; k < NoOfProducts; k++)
             {
-                var akm1 = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => f[r, c, k - 1])).ToArray());
-                var ak = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => f[r, c, k])).ToArray());
+                var akm1 = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => a[r, c, k - 1])).ToArray());
+                var ak = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => a[r, c, k])).ToArray());
                 m.AddConstr(akm1 >= ak);
             }
 
-            ////symmetry breaking: transpose
-            //if (ARows == ACols)
-            //{
-            //    var original = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => f[r, c, 0])).ToArray());
-            //    var transpose = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => f[c, r, 0])).ToArray());
-            //    m.AddConstr(original >= transpose);
-            //}
+            //symmetry breaking: transpose
+            if (ARows == ACols)
+            {
+                var originalA = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => a[r, c, 0])).ToArray());
+                var transposeA = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => a[c, r, 0])).ToArray());
+                m.AddConstr(originalA <= transposeA);
+            }
 
             for (var ra = 0; ra < ARows; ra++)
                 for (var ca = 0; ca < ACols; ca++)
@@ -68,31 +69,41 @@ namespace BrentEquations
                                 {
                                     var triples = new BoolExpr[NoOfProducts];
                                     for (var k = 0; k < NoOfProducts; k++)
-                                        triples[k] = (f[ra, ca, k] & g[rb, cb, k] & d[rc, cc, k]).Flatten();
+                                        triples[k] = (a[ra, ca, k] & b[rb, cb, k] & c[rc, cc, k]).Flatten();
 
                                     if ((ra == rc) && (ca == rb) && (cb == cc))
                                         //odd
-                                        m.AddConstr(m.SumUInt(triples).Bits[0]);
+                                        m.AddConstr(m.Xor(triples));
+                                        //m.AddConstr(m.SumUInt(triples).Bits[0]);
                                     else
                                         //even
-                                        m.AddConstr(!m.SumUInt(triples).Bits[0]);
+                                        m.AddConstr(!m.Xor(triples));
+                                        //m.AddConstr(!m.SumUInt(triples).Bits[0]);
+                                        //{
+                                        //    var sum = m.Sum(triples);
+                                        //    m.AddConstr(sum == 2 | sum==0);
+                                        //}
+                                        //m.AddConstr(m.ExactlyKOf(triples,2,Model.ExactlyKOfMethod.UnaryCount).Flatten() | !m.Or(triples).Flatten());
                                 }
 
             Console.WriteLine($"Problem <{ARows}x{ACols}x{BCols}_{NoOfProducts}> setup in {watch.Elapsed.TotalSeconds:F2}s");
             Console.WriteLine("");
 
+            m.Write($"be{ARows}x{ACols}x{BCols}_{NoOfProducts}.dimacs");
+            m.Configuration.Verbosity = 2;
+
             m.Solve();
 
             Console.WriteLine("");
-            if (m.IsSatisfiable)
+            if (m.State == State.Satisfiable)
             {
                 Console.WriteLine("Solution found. Non-zero coefficients:");
                 Console.WriteLine("");
-                PrintArray("F", f);
-                PrintArray("G", g);
-                PrintArray("D", d);
+                PrintArray("A", a);
+                PrintArray("B", b);
+                PrintArray("C", c);
 
-                VerifySolution(f, g, d);
+                VerifySolution(a, b, c);
             }
             else
                 Console.WriteLine("No solution found.");
