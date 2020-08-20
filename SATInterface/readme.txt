@@ -5,6 +5,7 @@
 // that supports DIMACS can be used (e.g. Lingeling, Clasp, RISS, MiniSAT, ...).
 //
 // * CaDiCaL is MIT-licensed and available from https://github.com/arminbiere/cadical
+// * Kissat is MIT-licensed and available from https://github.com/arminbiere/kissat
 // * CryptoMiniSat is MIT-licensed and available from https://github.com/msoos/cryptominisat
 //
 // Here's a usage example: Sudoku

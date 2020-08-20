@@ -136,7 +136,7 @@ namespace SATInterface
 
             //lhsS = (lhsS.VarCount > 2) ? lhsS.Flatten() : lhsS;
             //rhsS = (rhsS.VarCount > 2) ? rhsS.Flatten() : rhsS;
-            return ((lhsS & rhsS) | (!lhsS & !rhsS)).Flatten();
+            //return ((lhsS & rhsS) | (!lhsS & !rhsS)).Flatten();
         }
 
         public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);

@@ -23,7 +23,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CornerTilePacking", "Corner
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrentEquations", "BrentEquations\BrentEquations.csproj", "{0DCC5474-6A03-45BB-A670-C58B77539130}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FloorTiling", "FloorTiling\FloorTiling.csproj", "{E5101855-5DD5-4442-8DB8-045DF811641B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FloorTiling", "FloorTiling\FloorTiling.csproj", "{E5101855-5DD5-4442-8DB8-045DF811641B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Superpermutation", "Superpermutation\Superpermutation.csproj", "{B74679FB-809C-4335-A161-368E851971CC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -71,6 +73,10 @@ Global
 		{E5101855-5DD5-4442-8DB8-045DF811641B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5101855-5DD5-4442-8DB8-045DF811641B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E5101855-5DD5-4442-8DB8-045DF811641B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B74679FB-809C-4335-A161-368E851971CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B74679FB-809C-4335-A161-368E851971CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B74679FB-809C-4335-A161-368E851971CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B74679FB-809C-4335-A161-368E851971CC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

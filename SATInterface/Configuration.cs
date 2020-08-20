@@ -14,7 +14,8 @@ namespace SATInterface
     public enum InternalSolver
     {
         CryptoMiniSat,
-        CaDiCaL
+        CaDiCaL,
+        Kissat
     }
 
     public class Configuration

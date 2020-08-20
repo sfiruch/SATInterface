@@ -102,7 +102,7 @@ namespace SATInterface
 
         #endregion
 
-        public void ApplyConfiguration(Configuration _config)
+        void ISolver.ApplyConfiguration(Configuration _config)
         {
             Verbosity = Math.Max(0, _config.Verbosity - 1);
             CaDiCaLNative.ccadical_set_option(Handle, "quiet", Verbosity == 0 ? 1 : 0);

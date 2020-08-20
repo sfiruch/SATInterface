@@ -229,6 +229,7 @@ namespace SATInterface
             {
                 InternalSolver.CryptoMiniSat => (ISolver)new CryptoMiniSat(),
                 InternalSolver.CaDiCaL => (ISolver)new CaDiCaL(),
+                InternalSolver.Kissat => (ISolver)new Kissat(),
                 _ => throw new ArgumentException("Invalid solver configured", nameof(Configuration.Solver))
             };
             solver.ApplyConfiguration(Configuration);

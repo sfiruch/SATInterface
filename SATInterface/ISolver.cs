@@ -11,6 +11,6 @@ namespace SATInterface
 
         public bool[]? Solve(int[]? _assumptions = null);
 
-        public void ApplyConfiguration(Configuration _config);
+        internal void ApplyConfiguration(Configuration _config);
     }
 }
