@@ -62,7 +62,7 @@ namespace SATInterface
 
         public void AddVars(int _number) => varCount += _number;
 
-        public bool AddClause(int[] _clause)
+        public bool AddClause(Span<int> _clause)
         {
             foreach (var i in _clause)
                 CaDiCaLNative.ccadical_add(Handle, i);
@@ -138,6 +138,12 @@ namespace SATInterface
         public static extern int ccadical_solve(IntPtr wrapper);
 
         [DllImport("CaDiCaL.dll")]
+        public static extern int ccadical_simplify(IntPtr wrapper);
+
+        [DllImport("CaDiCaL.dll")]
+        public static extern int ccadical_lookahead(IntPtr wrapper);
+
+        [DllImport("CaDiCaL.dll")]
         public static extern int ccadical_val(IntPtr wrapper, int lit);
 
         [DllImport("CaDiCaL.dll")]
@@ -145,6 +151,9 @@ namespace SATInterface
 
         [DllImport("CaDiCaL.dll")]
         public static extern void ccadical_set_option(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
+
+        [DllImport("CaDiCaL.dll")]
+        public static extern void ccadical_limit(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
         [DllImport("CaDiCaL.dll")]
         public static extern IntPtr ccadical_signature();

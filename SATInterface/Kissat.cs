@@ -96,9 +96,9 @@ namespace SATInterface
 
         public void AddVars(int _number) => varCount += _number;
 
-        public bool AddClause(int[] _clause)
+        public bool AddClause(Span<int> _clause)
         {
-            clauses.Add(_clause);
+            clauses.Add(_clause.ToArray());
             return true;
         }
 

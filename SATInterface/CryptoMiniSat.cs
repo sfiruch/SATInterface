@@ -49,8 +49,8 @@ namespace SATInterface
 
         public void AddVars(int _number) => CryptoMiniSatNative.cmsat_new_vars(Handle, (IntPtr)_number);
 
-        public bool AddClause(int[] _clause) => CryptoMiniSatNative.cmsat_add_clause(Handle,
-                _clause.Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
+        public bool AddClause(Span<int> _clause) => CryptoMiniSatNative.cmsat_add_clause(Handle,
+                _clause.ToArray().Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
                 (IntPtr)_clause.Length);
 
         #region IDisposable Support

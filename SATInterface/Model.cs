@@ -229,6 +229,7 @@ namespace SATInterface
             {
                 InternalSolver.CryptoMiniSat => (ISolver)new CryptoMiniSat(),
                 InternalSolver.CaDiCaL => (ISolver)new CaDiCaL(),
+                //InternalSolver.CaDiCaLCubed => (ISolver)new CaDiCaLCubed(),
                 InternalSolver.Kissat => (ISolver)new Kissat(),
                 _ => throw new ArgumentException("Invalid solver configured", nameof(Configuration.Solver))
             };
@@ -766,10 +767,25 @@ namespace SATInterface
                     return UIntVar.Const(this, trueCount);
                 case 1:
                     return UIntVar.Convert(this, simplified[0]) + trueCount;
+                case 2:
+                {
+                    var res = new UIntVar(this, 2, false);
+                    res.bit[0] = Xor(simplified);
+                    res.bit[1] = simplified[0] & simplified[1];
+                    return res + trueCount;
+                }
+                case 3:
+                {
+                    var res = new UIntVar(this, 3, false);
+                    res.bit[0] = Xor(simplified);
+                    res.bit[1] = (simplified[0] & simplified[1]) | (simplified[0] & simplified[2]) | (simplified[1] & simplified[2]).Flatten();
+                    return res + trueCount;
+                }
                 default:
-                    var firstHalf = simplified.Take(simplified.Length / 2);
-                    var secondHalf = simplified.Skip(simplified.Length / 2);
-                    return (SumUInt(firstHalf) + SumUInt(secondHalf)) + trueCount;
+                    var groupsOfThree = new UIntVar[(simplified.Length + 2) / 3];
+                    for (var i = 0; i < groupsOfThree.Length; i++)
+                        groupsOfThree[i] = SumUInt(simplified.Skip(i * 3).Take(3));
+                    return Sum(groupsOfThree) + trueCount;
             }
         }
 
@@ -837,6 +853,8 @@ namespace SATInterface
             AddConstr(!(_if & !_then) | !x);
             AddConstr(!(!_if & _else) | x);
             AddConstr(!(!_if & !_else) | !x);
+
+            //arc-consistency
             AddConstr(!(_then & _else) | x);
             AddConstr(!(!_then & !_else) | !x);
             return x;

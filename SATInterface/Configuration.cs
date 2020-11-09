@@ -15,6 +15,7 @@ namespace SATInterface
     {
         CryptoMiniSat,
         CaDiCaL,
+        //CaDiCaLCubed,
         Kissat
     }
 
