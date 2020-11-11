@@ -766,7 +766,7 @@ namespace SATInterface
                 case 0:
                     return UIntVar.Const(this, trueCount);
                 case 1:
-                    return UIntVar.Convert(this, simplified[0]) + trueCount;
+                    return UIntVar.ITE(simplified[0], UIntVar.Const(this, trueCount + 1), UIntVar.Const(this, trueCount));
                 case 2:
                 {
                     var res = new UIntVar(this, 2, false);

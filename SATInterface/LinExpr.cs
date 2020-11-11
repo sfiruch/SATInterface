@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -22,11 +23,24 @@ namespace SATInterface
         private LinExpr? Negated;
         private List<BoolExpr[]>? SequentialCache;
         private UIntVar? UIntCache;
+        private int UIntCacheOffset; //offset has to be added to UIntCache value, may be negative
 
         public LinExpr(int _c = 0)
         {
             Weights = new Dictionary<BoolVar, int>();
             Offset = _c;
+        }
+
+        internal LinExpr(UIntVar _src)
+        {
+            if (_src.UB == UIntVar.Unbounded)
+                throw new ArgumentException($"Only bounded variables supported");
+
+            Weights = new Dictionary<BoolVar, int>();
+            Offset = 0;
+            for (var i = 0; i < _src.Bits.Length; i++)
+                AddTerm(_src.bit[i], 1 << i);
+            UIntCache = _src;
         }
 
         /// <summary>
@@ -36,6 +50,9 @@ namespace SATInterface
         {
             get
             {
+                if (!(UIntCache is null) && UIntCache.UB != UIntVar.Unbounded)
+                    return UIntCache.UB;
+
                 checked
                 {
                     var res = Offset;
@@ -203,10 +220,10 @@ namespace SATInterface
             return Enumerable.Range(0, _limit).Select(i => SequentialCache[i].Last());
         }
 
-        private UIntVar ToUInt()
+        private (UIntVar Var,int Offset) ToUInt()
         {
             if (!(UIntCache is null))
-                return UIntCache;
+                return (UIntCache,UIntCacheOffset);
 
             //convert to all-positive weights
             var posVar = new List<UIntVar>();
@@ -226,18 +243,7 @@ namespace SATInterface
                     offset += e.Value;
                 }
 
-            if (singleVar.Count != 0 && posVar.Count != 0)
-                UIntCache = model.SumUInt(singleVar) + model.Sum(posVar);
-            else if (singleVar.Count != 0 && posVar.Count == 0)
-                UIntCache = model.SumUInt(singleVar);
-            else if (singleVar.Count == 0 && posVar.Count != 0)
-                UIntCache = model.Sum(posVar);
-            else if (singleVar.Count == 0 && posVar.Count == 0)
-                UIntCache = UIntVar.Const(model, 0);
-            else
-                throw new Exception();
-
-            return UIntCache;
+            return (UIntCache,UIntCacheOffset) = (model.SumUInt(singleVar) + model.Sum(posVar), offset);
         }
 
         private void ClearCached()
@@ -260,7 +266,10 @@ namespace SATInterface
                 return Model.True;
 
             if (rhs > BinaryComparisonThreshold)
-                return _a.ToUInt() <= rhs;
+            {
+                var aui = _a.ToUInt();
+                return aui.Var <= rhs; // - aui.Offset; offset is already included in RHS computation
+            }
 
             return !_a.ComputeSequential(rhs + 1).Last();
         }
@@ -278,7 +287,10 @@ namespace SATInterface
                 return Model.False;
 
             if (rhs > BinaryComparisonThreshold)
-                return _a.ToUInt() == rhs;
+            {
+                var aui = _a.ToUInt();
+                return aui.Var == rhs; // - aui.Offset; offset is already included in RHS computation
+            }
 
             var v = _a.ComputeSequential(rhs + 1).ToArray();
 

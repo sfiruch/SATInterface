@@ -84,16 +84,7 @@ namespace SATInterface
         /// with upper bound less than 2^30.
         /// </summary>
         /// <returns></returns>
-        public LinExpr ToLinExpr()
-        {
-            if (UB == UIntVar.Unbounded)
-                throw new ArgumentException($"Only bounded variables supported");
-
-            var le = new LinExpr();
-            for (var i = 0; i < Bits.Length; i++)
-                le.AddTerm(bit[i], 1 << i);
-            return le;
-        }
+        public LinExpr ToLinExpr() => new LinExpr(this);
 
         internal static int RequiredBitsForUB(long _ub) => Log2(_ub) + 1;
 
@@ -200,10 +191,27 @@ namespace SATInterface
         }
 
 
-        public static UIntVar operator +(UIntVar _a, int _add) => (_add == 0) ? _a : (_a + Const(_a.Model, _add));
-        public static UIntVar operator +(int _add, UIntVar _a) => (_add == 0) ? _a : (_a + Const(_a.Model, _add));
+        public static UIntVar operator +(UIntVar _a, int _add)
+        {
+            if (_add > 0)
+                return _a + Const(_a.Model, _add);
+            else if (_add < 0)
+                return _a - Const(_a.Model, -_add);
+            else
+                return _a;
+        }
 
-        public static UIntVar operator -(UIntVar _a, int _add) => (_add == 0) ? _a : (_a - Const(_a.Model, _add));
+        public static UIntVar operator +(int _add, UIntVar _a) => _a + _add;
+
+        public static UIntVar operator -(UIntVar _a, int _add)
+        {
+            if (_add > 0)
+                return _a - Const(_a.Model, _add);
+            else if (_add < 0)
+                return _a + Const(_a.Model, -_add);
+            else
+                return _a;
+        }
         public static UIntVar operator -(int _add, UIntVar _a) => Const(_a.Model, _add) - _a;
 
         public static UIntVar operator -(UIntVar _a, UIntVar _b)

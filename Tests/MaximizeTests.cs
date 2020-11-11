@@ -14,6 +14,17 @@ namespace Tests
     {
         void RunTest(int xLB, int xUB, int yLB, int yUB, int xLimit, int yLimit, int xWeight, int yWeight, OptimizationFocus _strategy)
         {
+            var best = (Val: 0, X: 0, Y: 0);
+            for (var xt = xLB; xt <= xUB; xt++)
+                for (var yt = yLB; yt <= yUB; yt++)
+                    if ((xt < xLimit) || (yt < yLimit))
+                    {
+                        var val = checked(xt * xWeight + yWeight * yt);
+                        if (val > best.Val)
+                            best = (Val: val, X: xt, Y: yt);
+                    }
+
+
             using var m = new Model();
             var x = m.AddUIntVar(xUB);
             var y = m.AddUIntVar(yUB);
@@ -26,16 +37,6 @@ namespace Tests
             m.AddConstr(c == x * y);
 
             m.Maximize(x.ToLinExpr() * xWeight + yWeight * y.ToLinExpr());
-
-            var best = (Val: 0, X: 0, Y: 0);
-            for (var xt = xLB; xt <= xUB; xt++)
-                for (var yt = yLB; yt <= yUB; yt++)
-                    if ((xt < xLimit) || (yt < yLimit))
-                    {
-                        var val = checked(xt * xWeight + yWeight * yt);
-                        if (val > best.Val)
-                            best = (Val: val, X: xt, Y: yt);
-                    }
 
             Assert.AreEqual(checked(x.X * y.X), c.X);
             Assert.AreEqual(checked(best.X * xWeight + best.Y * yWeight), checked(x.X * xWeight + y.X * yWeight));

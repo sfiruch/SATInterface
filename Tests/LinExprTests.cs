@@ -40,10 +40,10 @@ namespace Tests
 
                     m.Minimize(m.Sum(v));
 
-                    Assert.AreEqual(i >= j ? State.Satisfiable : State.Unsatisfiable, m.State);
+                    Assert.AreEqual(i >= j ? State.Satisfiable : State.Unsatisfiable, m.State, $"i={i}, j={j}");
 
                     if (i >= j)
-                        Assert.AreEqual(j, v.Count(r => r.X));
+                        Assert.AreEqual(j, v.Count(r => r.X), $"i={i}, j={j}");
                 }
         }
 
