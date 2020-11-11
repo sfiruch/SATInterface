@@ -112,16 +112,16 @@ namespace PCB
                     }
 
             var obj1 = new List<BoolExpr>();
-            var obj3 = new List<BoolExpr>();
+            var obj3 = new List<UIntVar>();
             for (var y = 0; y < H; y++)
                 for (var x = 0; x < W; x++)
                     for (var c = 0; c < C; c++)
                     {
                         obj1.Add(vXYLC[x, y, 0, c]);
-                        obj3.Add(vXYLC[x, y, 1, c]);
+                        obj3.Add(m.ITE(vXYLC[x, y, 1, c],m.AddUIntConst(3),m.AddUIntConst(0)));
                     }
 
-            var vObj = m.Sum(obj1) + m.Sum(obj3) * 3;
+            var vObj = m.SumUInt(obj1) + m.Sum(obj3);
 
             m.Configuration.OptimizationFocus = OptimizationFocus.Incumbent;
             m.Minimize(vObj, () =>

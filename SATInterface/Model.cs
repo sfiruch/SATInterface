@@ -366,9 +366,9 @@ namespace SATInterface
                 if (Configuration.Verbosity > 0)
                 {
                     if (_minimization)
-                        Console.WriteLine($"Minimizing objective, range {-_obj.UB} - {0}");
+                        Console.WriteLine($"Minimizing objective, range {-_obj.UB} - {-_obj.LB}");
                     else
-                        Console.WriteLine($"Maximizing objective, range 0 - {_obj.UB}");
+                        Console.WriteLine($"Maximizing objective, range {_obj.LB} - {_obj.UB}");
                 }
 
                 bool[]? bestAssignment;
@@ -916,7 +916,7 @@ namespace SATInterface
         /// </summary>
         /// <param name="_expr"></param>
         /// <returns></returns>
-        public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod _method = AtMostOneOfMethod.Sequential)
+        public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod _method = AtMostOneOfMethod.Commander)
         {
             var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
@@ -937,6 +937,8 @@ namespace SATInterface
                 case 2:
                     return !expr[0] | !expr[1];
                 case 3:
+                case 4:
+                case 5:
                     return AtMostOneOfPairwise(_expr);
             }
 

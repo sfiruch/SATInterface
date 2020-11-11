@@ -65,6 +65,24 @@ namespace SATInterface
         }
 
         /// <summary>
+        /// Returns the lower bound of this expression.
+        /// </summary>
+        public int LB
+        {
+            get
+            {
+                checked
+                {
+                    var res = Offset;
+                    foreach (var e in Weights)
+                        if (e.Value < 0)
+                            res += e.Value;
+                    return res;
+                }
+            }
+        }
+
+        /// <summary>
         /// Returns the value of this expression in a SAT model.
         /// </summary>
         public int X
