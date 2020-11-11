@@ -238,10 +238,10 @@ namespace SATInterface
             return Enumerable.Range(0, _limit).Select(i => SequentialCache[i].Last());
         }
 
-        private (UIntVar Var,int Offset) ToUInt()
+        private (UIntVar Var, int Offset) ToUInt()
         {
             if (!(UIntCache is null))
-                return (UIntCache,UIntCacheOffset);
+                return (UIntCache, UIntCacheOffset);
 
             //convert to all-positive weights
             var posVar = new List<UIntVar>();
@@ -253,15 +253,21 @@ namespace SATInterface
                 {
                     singleVar.Add(e.Key);
                 }
+                else if (e.Value == -1)
+                {
+                    singleVar.Add(!e.Key);
+                    offset += e.Value;
+                }
                 else if (e.Value > 0)
                     posVar.Add(UIntVar.ITE(e.Key, UIntVar.Const(model, e.Value), UIntVar.Const(model, 0)));
                 else
                 {
+                    Debug.Assert(e.Value < 0);
                     posVar.Add(UIntVar.ITE(!e.Key, UIntVar.Const(model, -e.Value), UIntVar.Const(model, 0)));
                     offset += e.Value;
                 }
 
-            return (UIntCache,UIntCacheOffset) = (model.SumUInt(singleVar) + model.Sum(posVar), offset);
+            return (UIntCache, UIntCacheOffset) = (model.SumUInt(singleVar) + model.Sum(posVar), offset);
         }
 
         private void ClearCached()
