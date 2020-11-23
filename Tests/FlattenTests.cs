@@ -40,22 +40,24 @@ namespace Tests
             }
         }
 
-        [TestMethod]
-        public void OrFlatten()
+        [DataRow(2)]
+        [DataRow(3)]
+        [DataRow(4)]
+        [DataRow(5)]
+        [DataTestMethod]
+        public void OrFlatten(int _vars)
         {
-            Test(2, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
-            Test(3, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
-            Test(4, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
-            Test(5, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
+            Test(_vars, (m, vars) => m.Or(vars), vals => vals.Any(x => x));
         }
 
-        [TestMethod]
-        public void AndFlatten()
+        [DataRow(2)]
+        [DataRow(3)]
+        [DataRow(4)]
+        [DataRow(5)]
+        [DataTestMethod]
+        public void AndFlatten(int _vars)
         {
-            Test(2, (m, vars) => m.And(vars), vals => vals.All(x => x));
-            Test(3, (m, vars) => m.And(vars), vals => vals.All(x => x));
-            Test(4, (m, vars) => m.And(vars), vals => vals.All(x => x));
-            Test(5, (m, vars) => m.And(vars), vals => vals.All(x => x));
+            Test(_vars, (m, vars) => m.And(vars), vals => vals.All(x => x));
         }
     }
 }

@@ -10,7 +10,7 @@ namespace Tests
     [TestClass]
     public class ExactlyOneOfTests
     {
-        void Pigeonhole(int _holes, int _pigeons, Model.ExactlyOneOfMethod _method)
+        void Pigeonhole(int _holes, int _pigeons, Model.ExactlyOneOfMethod? _method)
         {
             using var m = new Model();
             var assignment = m.AddVars(_holes, _pigeons);
@@ -29,200 +29,64 @@ namespace Tests
             Assert.AreEqual(_holes >= _pigeons ? State.Satisfiable : State.Unsatisfiable, m.State, $"{_holes} {_pigeons}");
         }
 
-        [TestMethod]
-        public void PigeonholeRandomCommander()
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void PigeonholeRandom(Model.ExactlyOneOfMethod? _method)
         {
             var RNG = new Random(1);
-            for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.Commander);
+            for (var i = 0; i < 30; i++)
+                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), _method);
         }
 
-        [TestMethod]
-        public void PigeonholeRandomPairwise()
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void PigeonholeSingle(Model.ExactlyOneOfMethod? _method)
         {
-            var RNG = new Random(1);
-            for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 11), RNG.Next(0, 11), Model.ExactlyOneOfMethod.Pairwise);
+            Pigeonhole(100, 1, _method);
         }
 
-        [TestMethod]
-        public void PigeonholeRandomBinary()
-        {
-            var RNG = new Random(1);
-            for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.BinaryCount);
-        }
-
-        [TestMethod]
-        public void PigeonholeRandomOneHot()
-        {
-            var RNG = new Random(1);
-            for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 11), RNG.Next(0, 11), Model.ExactlyOneOfMethod.OneHot);
-        }
-
-        [TestMethod]
-        public void PigeonholeRandomUnary()
-        {
-            var RNG = new Random(1);
-            for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.UnaryCount);
-        }
-
-        [TestMethod]
-        public void PigeonholeRandomSequential()
-        {
-            var RNG = new Random(1);
-            for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.Sequential);
-        }
-
-        [TestMethod]
-        public void PigeonholeRandomTwoFactor()
-        {
-            var RNG = new Random(1);
-            for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), Model.ExactlyOneOfMethod.TwoFactor);
-        }
-
-        [TestMethod]
-        public void PigeonholeSingleCommander()
-        {
-            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.Commander);
-        }
-
-        [TestMethod]
-        public void PigeonholeSinglePairwise()
-        {
-            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.Pairwise);
-        }
-
-        [TestMethod]
-        public void PigeonholeSingleOneHot()
-        {
-            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.OneHot);
-        }
-
-        [TestMethod]
-        public void PigeonholeSingleBinary()
-        {
-            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.BinaryCount);
-        }
-
-        [TestMethod]
-        public void PigeonholeSingleUnary()
-        {
-            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.UnaryCount);
-        }
-
-        [TestMethod]
-        public void PigeonholeSingleSequential()
-        {
-            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.Sequential);
-        }
-
-        [TestMethod]
-        public void PigeonholeSingleTwoFactor()
-        {
-            Pigeonhole(100, 1, Model.ExactlyOneOfMethod.TwoFactor);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricSATCommander()
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void PigeonholeSymmetricSAT(Model.ExactlyOneOfMethod? _method)
         {
             for (var size = 1; size < 20; size++)
-                Pigeonhole(size, size, Model.ExactlyOneOfMethod.Commander);
+                Pigeonhole(size, size, _method);
         }
 
-        [TestMethod]
-        public void PigeonholeSymmetricSATPairwise()
-        {
-            for (var size = 1; size < 20; size++)
-                Pigeonhole(size, size, Model.ExactlyOneOfMethod.Pairwise);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricSATBinary()
-        {
-            for (var size = 1; size < 20; size++)
-                Pigeonhole(size, size, Model.ExactlyOneOfMethod.BinaryCount);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricSATOneHot()
-        {
-            for (var size = 1; size < 20; size++)
-                Pigeonhole(size, size, Model.ExactlyOneOfMethod.OneHot);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricSATUnary()
-        {
-            for (var size = 1; size < 20; size++)
-                Pigeonhole(size, size, Model.ExactlyOneOfMethod.UnaryCount);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricSATSequential()
-        {
-            for (var size = 1; size < 20; size++)
-                Pigeonhole(size, size, Model.ExactlyOneOfMethod.Sequential);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricSATTwoFactor()
-        {
-            for (var size = 1; size < 20; size++)
-                Pigeonhole(size, size, Model.ExactlyOneOfMethod.TwoFactor);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricUNSATCommander()
-        {
-            for (var size = 1; size < 12; size++)
-                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.Commander);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricUNSATSequential()
-        {
-            for (var size = 1; size < 12; size++)
-                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.Sequential);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricUNSATPairwise()
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void PigeonholeSymmetricUNSAT(Model.ExactlyOneOfMethod? _method)
         {
             for (var size = 1; size < 10; size++)
-                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.Pairwise);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricUNSATOneHot()
-        {
-            for (var size = 1; size < 10; size++)
-                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.OneHot);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricUNSATBinary()
-        {
-            for (var size = 1; size < 12; size++)
-                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.BinaryCount);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricUNSATUnary()
-        {
-            for (var size = 1; size < 11; size++)
-                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.UnaryCount);
-        }
-
-        [TestMethod]
-        public void PigeonholeSymmetricUNSATTwoFactor()
-        {
-            for (var size = 1; size < 12; size++)
-                Pigeonhole(size - 1, size, Model.ExactlyOneOfMethod.TwoFactor);
+                Pigeonhole(size - 1, size, _method);
         }
 
         [TestMethod]
@@ -259,12 +123,20 @@ namespace Tests
             Assert.AreEqual(State.Satisfiable, m.State);
         }
 
-        [TestMethod]
-        public void SimpleBinary()
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void SimpleBinary(Model.ExactlyOneOfMethod? _method)
         {
             using var m = new Model();
             var v = m.AddVars(4);
-            m.AddConstr(m.ExactlyOneOf(v, Model.ExactlyOneOfMethod.BinaryCount));
+            m.AddConstr(m.ExactlyOneOf(v, _method));
 
             m.AddConstr(!v[1]);
             m.AddConstr(!v[2]);
@@ -274,14 +146,22 @@ namespace Tests
             Assert.AreEqual(State.Satisfiable, m.State);
         }
 
-        [TestMethod]
-        public void EnumerateBinary()
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void EnumerateBinary(Model.ExactlyOneOfMethod? _method)
         {
             const int N = 4;
 
             using var m = new Model();
             var v = m.AddVars(N);
-            m.AddConstr(m.ExactlyOneOf(v,Model.ExactlyOneOfMethod.BinaryCount));
+            m.AddConstr(m.ExactlyOneOf(v,_method));
 
             for (var i = 0; i < N; i++)
             {

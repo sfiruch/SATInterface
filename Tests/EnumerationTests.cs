@@ -35,7 +35,7 @@ namespace Tests
             var v = m.AddVars(3);
 
             var cnt = 0;
-            for(var i=0;i<3;i++)
+            for (var i = 0; i < 3; i++)
                 m.EnumerateSolutions(v, () =>
                 {
                     cnt++;
@@ -73,10 +73,10 @@ namespace Tests
             var cnt = 0;
             var found = new bool[4];
             m.EnumerateSolutions(new[] { v[2], v[4] }, () =>
-             {
-                 cnt++;
-                 found[(v[2].X ? 1 : 0) + (v[4].X ? 2 : 0)] = true;
-             });
+            {
+                cnt++;
+                found[(v[2].X ? 1 : 0) + (v[4].X ? 2 : 0)] = true;
+            });
 
             Assert.AreEqual(2 * 2, cnt);
             Assert.IsTrue(found.All(v => v));

@@ -10,6 +10,10 @@ namespace Tests
     [TestClass]
     public class MaxMazeTests
     {
+        [DataRow(10, 63)]
+        [DataRow(9, 51)]
+        [DataRow(8, 39)]
+        [DataTestMethod]
         public static void MaxMaze(int _n, int _expected)
         {
             using var m = new Model();
@@ -46,24 +50,6 @@ namespace Tests
 
             Assert.AreEqual(State.Satisfiable, m.State);
             Assert.AreEqual(_expected, obj.X);
-        }
-
-        [TestMethod]
-        public void Size10()
-        {
-            MaxMaze(10, 63);
-        }
-
-        [TestMethod]
-        public void Size9()
-        {
-            MaxMaze(9, 51);
-        }
-
-        [TestMethod]
-        public void Size8()
-        {
-            MaxMaze(8, 39);
         }
     }
 }

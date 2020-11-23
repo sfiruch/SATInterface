@@ -10,6 +10,10 @@ namespace Tests
     [TestClass]
     public class MinMazeTests
     {
+        [DataRow(10, 37)]
+        [DataRow(9, 33)]
+        [DataRow(8, 29)]
+        [DataTestMethod]
         public static void MinMaze(int _n, int _expected)
         {
             using var m = new Model();
@@ -47,24 +51,6 @@ namespace Tests
 
             Assert.AreEqual(State.Satisfiable, m.State);
             Assert.AreEqual(_expected, obj.X);
-        }
-
-        [TestMethod]
-        public void Size10()
-        {
-            MinMaze(10, 37);
-        }
-
-        [TestMethod]
-        public void Size9()
-        {
-            MinMaze(9, 33);
-        }
-
-        [TestMethod]
-        public void Size8()
-        {
-            MinMaze(8, 29);
         }
     }
 }

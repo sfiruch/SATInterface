@@ -17,29 +17,14 @@ namespace Tests
             Assert.AreEqual(State.Satisfiable, m.State);
         }
 
-        [TestMethod]
-        public void EmptyMaximizeBalanced()
+        [DataRow(OptimizationFocus.Balanced)]
+        [DataRow(OptimizationFocus.Incumbent)]
+        [DataRow(OptimizationFocus.Bound)]
+        [DataTestMethod]
+        public void EmptyMaximizeBalanced(OptimizationFocus _focus)
         {
             using var m = new Model();
-            m.Configuration.OptimizationFocus = OptimizationFocus.Balanced;
-            m.Maximize((LinExpr)0);
-            Assert.AreEqual(State.Satisfiable, m.State);
-        }
-
-        [TestMethod]
-        public void EmptyMaximizeIncumbent()
-        {
-            using var m = new Model();
-            m.Configuration.OptimizationFocus = OptimizationFocus.Incumbent;
-            m.Maximize((LinExpr)0);
-            Assert.AreEqual(State.Satisfiable, m.State);
-        }
-
-        [TestMethod]
-        public void EmptyMaximizeBound()
-        {
-            using var m = new Model();
-            m.Configuration.OptimizationFocus = OptimizationFocus.Bound;
+            m.Configuration.OptimizationFocus = _focus;
             m.Maximize((LinExpr)0);
             Assert.AreEqual(State.Satisfiable, m.State);
         }

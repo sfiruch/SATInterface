@@ -889,7 +889,8 @@ namespace SATInterface
             Pairwise,
             Commander,
             OneHot,
-            Sequential
+            Sequential,
+            BinaryCount
         }
 
         public enum ExactlyKOfMethod
@@ -916,7 +917,7 @@ namespace SATInterface
         /// </summary>
         /// <param name="_expr"></param>
         /// <returns></returns>
-        public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod _method = AtMostOneOfMethod.Commander)
+        public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod? _method = null)
         {
             var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
@@ -936,14 +937,15 @@ namespace SATInterface
                     return True;
                 case 2:
                     return !expr[0] | !expr[1];
-                case 3:
-                case 4:
-                case 5:
-                    return AtMostOneOfPairwise(_expr);
             }
 
             switch (_method)
             {
+                case null:
+                    if (expr.Length <= 8)
+                        return AtMostOneOfPairwise(expr);
+                    else
+                        return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Commander:
                     return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Pairwise:
@@ -952,6 +954,8 @@ namespace SATInterface
                     return AtMostOneOfOneHot(expr);
                 case AtMostOneOfMethod.Sequential:
                     return AtMostOneOfSequential(expr);
+                case AtMostOneOfMethod.BinaryCount:
+                    return SumUInt(expr) < 2;
                 default:
                     throw new ArgumentException();
             }
@@ -1018,7 +1022,7 @@ namespace SATInterface
         /// </summary>
         /// <param name="_expr"></param>
         /// <returns></returns>
-        public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod _method = ExactlyOneOfMethod.Commander)
+        public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod? _method = null)
         {
             var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
@@ -1039,26 +1043,29 @@ namespace SATInterface
                     return expr[0];
                 case 2:
                     return expr[0] ^ expr[1];
-                case 3:
-                    return ExactlyOneOfPairwise(_expr);
             }
 
             switch (_method)
             {
+                case null:
+                    if (expr.Length <= 8)
+                        return ExactlyOneOfPairwise(expr);
+                    else
+                        return ExactlyOneOfCommander(expr);
                 case ExactlyOneOfMethod.UnaryCount:
-                    return ExactlyKOf(_expr, 1, ExactlyKOfMethod.UnaryCount);
+                    return ExactlyKOf(expr, 1, ExactlyKOfMethod.UnaryCount);
                 case ExactlyOneOfMethod.BinaryCount:
-                    return ExactlyKOf(_expr, 1, ExactlyKOfMethod.BinaryCount);
+                    return ExactlyKOf(expr, 1, ExactlyKOfMethod.BinaryCount);
                 case ExactlyOneOfMethod.Sequential:
-                    return ExactlyKOf(_expr, 1, ExactlyKOfMethod.Sequential);
+                    return ExactlyKOf(expr, 1, ExactlyKOfMethod.Sequential);
                 case ExactlyOneOfMethod.Commander:
-                    return ExactlyOneOfCommander(_expr);
+                    return ExactlyOneOfCommander(expr);
                 case ExactlyOneOfMethod.TwoFactor:
-                    return ExactlyOneOfTwoFactor(_expr);
+                    return ExactlyOneOfTwoFactor(expr);
                 case ExactlyOneOfMethod.Pairwise:
-                    return ExactlyOneOfPairwise(_expr);
+                    return ExactlyOneOfPairwise(expr);
                 case ExactlyOneOfMethod.OneHot:
-                    return ExactlyOneOfOneHot(_expr.ToArray());
+                    return ExactlyOneOfOneHot(expr);
                 default:
                     throw new ArgumentException();
             }
@@ -1257,7 +1264,7 @@ namespace SATInterface
         //- https://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
         private BoolExpr ExactlyOneOfCommander(IEnumerable<BoolExpr> _expr)
         {
-            if (_expr.Count() < 5)
+            if (_expr.Count() <= 5)
                 return ExactlyOneOfPairwise(_expr);
 
             var expr = _expr.ToArray();

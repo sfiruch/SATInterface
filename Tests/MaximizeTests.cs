@@ -48,28 +48,14 @@ namespace Tests
             RunTest(0, 1000, 0, 200, 512, 100, 1, 7, OptimizationFocus.Balanced);
         }
 
-        [TestMethod]
-        public void RandomBinary()
-        {
-            RunRandom(10, OptimizationFocus.Balanced);
-        }
-
-        [TestMethod]
-        public void RandomBound()
-        {
-            RunRandom(10, OptimizationFocus.Bound);
-        }
-
-        [TestMethod]
-        public void RandomIncumbent()
-        {
-            RunRandom(10, OptimizationFocus.Incumbent);
-        }
-
-        public void RunRandom(int _iterations, OptimizationFocus _strategy)
+        [DataRow(OptimizationFocus.Balanced)]
+        [DataRow(OptimizationFocus.Bound)]
+        [DataRow(OptimizationFocus.Incumbent)]
+        [DataTestMethod]
+        public void RandomBinary(OptimizationFocus _strategy)
         {
             var RNG = new Random(0);
-            for (var i = 0; i < _iterations; i++)
+            for (var i = 0; i < 10; i++)
             {
                 var xLB = RNG.Next(0, 100);
                 var xUB = RNG.Next(xLB, 10000);

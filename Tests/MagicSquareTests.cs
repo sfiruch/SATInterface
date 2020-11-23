@@ -13,36 +13,12 @@ namespace Tests
     [TestClass]
     public class MagicSquareTests
     {
-        [TestMethod]
-        public void Size3()
-        {
-            MagicSquare(3);
-        }
-
-        [TestMethod]
-        public void Size4()
-        {
-            MagicSquare(4);
-        }
-
-        [TestMethod]
-        public void Size5()
-        {
-            MagicSquare(5);
-        }
-
-        [TestMethod]
-        public void Size6()
-        {
-            MagicSquare(6);
-        }
-
-        [TestMethod]
-        public void Size7()
-        {
-            MagicSquare(7);
-        }
-
+        [DataRow(3)]
+        [DataRow(4)]
+        [DataRow(5)]
+        [DataRow(6)]
+        [DataRow(7)]
+        [DataTestMethod]
         void MagicSquare(int size)
         {
             var NUMBERS = Enumerable.Range(1, size * size).ToArray();
