@@ -1183,7 +1183,7 @@ namespace SATInterface
 
         private BoolExpr AtMostOneOfPairwiseTree(IEnumerable<BoolExpr> _expr)
         {
-            const int Fanout = 5;
+            const int Fanout = 4;
 
             var expr = _expr.ToArray();
             if (expr.Length <= Fanout)
@@ -1202,7 +1202,7 @@ namespace SATInterface
 
         private BoolExpr ExactlyOneOfPairwiseTree(IEnumerable<BoolExpr> _expr)
         {
-            const int Fanout = 5;
+            const int Fanout = 4;
 
             var expr = _expr.ToArray();
             if (expr.Length <= Fanout)
