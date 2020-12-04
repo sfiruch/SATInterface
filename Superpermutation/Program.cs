@@ -50,7 +50,6 @@ namespace Superpermutation
             for (var i = 0; i < N; i++)
                 m.AddConstr(v[i, i]);
 
-            m.Write($"sp-{N}-{LEN}.dimacs");
             m.Solve();
 
             if (m.State == State.Satisfiable)

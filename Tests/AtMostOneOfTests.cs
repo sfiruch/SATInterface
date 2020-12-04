@@ -10,7 +10,7 @@ namespace Tests
     [TestClass]
     public class AtMostOneOfTests
     {
-        void Pigeonhole(int _holes, int _pigeons, Model.AtMostOneOfMethod _method)
+        void Pigeonhole(int _holes, int _pigeons, Model.AtMostOneOfMethod? _method)
         {
             using var m = new Model();
             var assignment = m.AddVars(_holes, _pigeons);
@@ -20,7 +20,7 @@ namespace Tests
 
             for (var p = 0; p < _pigeons; p++)
                 m.AddConstr(
-                    m.Or(Enumerable.Range(0, _holes).Select(h => assignment[h, p]))
+                    m.Or(Enumerable.Range(0, _holes).Select(h => assignment[h, p])).Flatten()
                     & m.AtMostOneOf(Enumerable.Range(0, _holes).Select(h => assignment[h, p]), _method));
 
             m.Solve();
@@ -30,12 +30,14 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataTestMethod]
-        public void PigeonholeRandom(Model.AtMostOneOfMethod _method)
+        public void PigeonholeRandom(Model.AtMostOneOfMethod? _method)
         {
             var RNG = new Random(1);
             for (var i = 0; i < 50; i++)
@@ -44,24 +46,28 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataTestMethod]
-        public void PigeonholeSingle(Model.AtMostOneOfMethod _method)
+        public void PigeonholeSingle(Model.AtMostOneOfMethod? _method)
         {
             Pigeonhole(100, 1, _method);
         }
 
         [DataRow(null)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataTestMethod]
-        public void PigeonholeSymmetricSAT(Model.AtMostOneOfMethod _method)
+        public void PigeonholeSymmetricSAT(Model.AtMostOneOfMethod? _method)
         {
             for (var size = 1; size < 20; size++)
                 Pigeonhole(size, size, _method);
@@ -69,15 +75,31 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataTestMethod]
-        public void PigeonholeSymmetricUNSAT(Model.AtMostOneOfMethod _method)
+        public void PigeonholeSymmetricUNSAT(Model.AtMostOneOfMethod? _method)
         {
             for (var size = 1; size < 10; size++)
                 Pigeonhole(size-1, size, _method);
+        }
+
+        [DataRow(null)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Binary)]
+        [DataRow(Model.AtMostOneOfMethod.Commander)]
+        //[DataRow(Model.AtMostOneOfMethod.OneHot)]
+        //[DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
+        [DataRow(Model.AtMostOneOfMethod.Sequential)]
+        [DataTestMethod]
+        public void PigeonholeSymmetricUNSATDifficult(Model.AtMostOneOfMethod? _method)
+        {
+            Pigeonhole(10, 11, _method);
         }
     }
 }

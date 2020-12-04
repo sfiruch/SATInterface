@@ -768,19 +768,19 @@ namespace SATInterface
                 case 1:
                     return UIntVar.ITE(simplified[0], UIntVar.Const(this, trueCount + 1), UIntVar.Const(this, trueCount));
                 case 2:
-                {
-                    var res = new UIntVar(this, 2, false);
-                    res.bit[0] = Xor(simplified);
-                    res.bit[1] = simplified[0] & simplified[1];
-                    return res + trueCount;
-                }
+                    {
+                        var res = new UIntVar(this, 2, false);
+                        res.bit[0] = Xor(simplified);
+                        res.bit[1] = simplified[0] & simplified[1];
+                        return res + trueCount;
+                    }
                 case 3:
-                {
-                    var res = new UIntVar(this, 3, false);
-                    res.bit[0] = Xor(simplified);
-                    res.bit[1] = (simplified[0] & simplified[1]) | (simplified[0] & simplified[2]) | (simplified[1] & simplified[2]).Flatten();
-                    return res + trueCount;
-                }
+                    {
+                        var res = new UIntVar(this, 3, false);
+                        res.bit[0] = Xor(simplified);
+                        res.bit[1] = (simplified[0] & simplified[1]) | (simplified[0] & simplified[2]) | (simplified[1] & simplified[2]).Flatten();
+                        return res + trueCount;
+                    }
                 default:
                     var groupsOfThree = new UIntVar[(simplified.Length + 2) / 3];
                     for (var i = 0; i < groupsOfThree.Length; i++)
@@ -880,17 +880,21 @@ namespace SATInterface
             BinaryCount,
             TwoFactor,
             Pairwise,
+            PairwiseTree,
             OneHot,
-            Sequential
+            Sequential,
+            Binary
         }
 
         public enum AtMostOneOfMethod
         {
             Pairwise,
+            PairwiseTree,
             Commander,
             OneHot,
             Sequential,
-            BinaryCount
+            BinaryCount,
+            Binary
         }
 
         public enum ExactlyKOfMethod
@@ -950,15 +954,44 @@ namespace SATInterface
                     return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Pairwise:
                     return AtMostOneOfPairwise(expr);
+                case AtMostOneOfMethod.PairwiseTree:
+                    return AtMostOneOfPairwiseTree(expr);
                 case AtMostOneOfMethod.OneHot:
                     return AtMostOneOfOneHot(expr);
                 case AtMostOneOfMethod.Sequential:
                     return AtMostOneOfSequential(expr);
                 case AtMostOneOfMethod.BinaryCount:
                     return SumUInt(expr) < 2;
+                case AtMostOneOfMethod.Binary:
+                    return AtMostOneOfBinary(expr);
                 default:
                     throw new ArgumentException();
             }
+        }
+
+        private BoolExpr AtMostOneOfBinary(IEnumerable<BoolExpr> _expr)
+        {
+            var expr = _expr.ToArray();
+            if (expr.Length < 4)
+                return AtMostOneOfPairwise(expr);
+
+            var one = new BoolExpr[(expr.Length + 1) / 2];
+            var more = new BoolExpr[(expr.Length + 1) / 2];
+            for (var i = 0; i < one.Length; i++)
+            {
+                if (i * 2 + 1 == expr.Length)
+                {
+                    one[i] = expr[i * 2];
+                    more[i] = false;
+                }
+                else
+                {
+                    one[i] = expr[i * 2] | expr[i * 2 + 1];
+                    more[i] = expr[i * 2] & expr[i * 2 + 1];
+                }
+            }
+
+            return AtMostOneOfBinary(one) & !Or(more).Flatten();
         }
 
         private BoolExpr AtMostOneOfSequential(IEnumerable<BoolExpr> _expr)
@@ -1064,6 +1097,10 @@ namespace SATInterface
                     return ExactlyOneOfTwoFactor(expr);
                 case ExactlyOneOfMethod.Pairwise:
                     return ExactlyOneOfPairwise(expr);
+                case ExactlyOneOfMethod.Binary:
+                    return ExactlyOneOfBinary(expr);
+                case ExactlyOneOfMethod.PairwiseTree:
+                    return ExactlyOneOfPairwiseTree(expr);
                 case ExactlyOneOfMethod.OneHot:
                     return ExactlyOneOfOneHot(expr);
                 default:
@@ -1117,6 +1154,69 @@ namespace SATInterface
         private BoolExpr ExactlyOneOfPairwise(IEnumerable<BoolExpr> _expr)
         {
             return OrExpr.Create(_expr).Flatten() & AtMostOneOfPairwise(_expr);
+        }
+
+        private BoolExpr ExactlyOneOfBinary(IEnumerable<BoolExpr> _expr)
+        {
+            var expr = _expr.ToArray();
+            if (expr.Length < 4)
+                return ExactlyOneOfPairwise(expr);
+
+            var one = new BoolExpr[(expr.Length + 1) / 2];
+            var more = new BoolExpr[(expr.Length + 1) / 2];
+            for (var i = 0; i < one.Length; i++)
+            {
+                if (i * 2 + 1 == expr.Length)
+                {
+                    one[i] = expr[i * 2];
+                    more[i] = false;
+                }
+                else
+                {
+                    one[i] = expr[i * 2] | expr[i * 2 + 1];
+                    more[i] = expr[i * 2] & expr[i * 2 + 1];
+                }
+            }
+
+            return ExactlyOneOfBinary(one) & !Or(more).Flatten();
+        }
+
+        private BoolExpr AtMostOneOfPairwiseTree(IEnumerable<BoolExpr> _expr)
+        {
+            const int Fanout = 5;
+
+            var expr = _expr.ToArray();
+            if (expr.Length <= Fanout)
+                return AtMostOneOfPairwise(expr);
+
+            var ok = new BoolExpr[(expr.Length + Fanout-1) / Fanout];
+            var any = new BoolExpr[(expr.Length + Fanout-1) / Fanout];
+            for (var i = 0; i < ok.Length; i++)
+            {
+                ok[i] = AtMostOneOfPairwise(expr.Skip(i * Fanout).Take(Fanout));
+                any[i] = Or(expr.Skip(i * Fanout).Take(Fanout)).Flatten();
+            }
+
+            return And(ok) & AtMostOneOfPairwiseTree(any);
+        }
+
+        private BoolExpr ExactlyOneOfPairwiseTree(IEnumerable<BoolExpr> _expr)
+        {
+            const int Fanout = 5;
+
+            var expr = _expr.ToArray();
+            if (expr.Length <= Fanout)
+                return ExactlyOneOfPairwise(expr);
+
+            var ok = new BoolExpr[(expr.Length + Fanout - 1) / Fanout];
+            var any = new BoolExpr[(expr.Length + Fanout - 1) / Fanout];
+            for (var i = 0; i < ok.Length; i++)
+            {
+                ok[i] = AtMostOneOfPairwise(expr.Skip(i * Fanout).Take(Fanout));
+                any[i] = Or(expr.Skip(i * Fanout).Take(Fanout)).Flatten();
+            }
+
+            return And(ok) & ExactlyOneOfPairwiseTree(any);
         }
 
         private BoolExpr AtMostOneOfPairwise(IEnumerable<BoolExpr> _expr)
