@@ -930,7 +930,7 @@ namespace SATInterface
                 return False;
 
             if (trueCount == 1)
-                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, True))).Flatten();
+                return !Or(expr.Where(e => !ReferenceEquals(e, True))).Flatten();
 
             Debug.Assert(trueCount == 0);
 
@@ -1029,14 +1029,14 @@ namespace SATInterface
                     //1
                     for (var j = 0; j < groups[i].Length; j++)
                         for (var k = j + 1; k < groups[i].Length; k++)
-                            valid.Add(OrExpr.Create(!groups[i][j], !groups[i][k]));
+                            valid.Add(Or(!groups[i][j], !groups[i][k]));
 
                     //AddConstr((!commanders[i]) | new OrExpr(groups[i])); //2
-                    AddConstr(commanders[i] | (!OrExpr.Create(groups[i]))); //3
+                    AddConstr(commanders[i] | (!Or(groups[i]))); //3
                 }
 
             valid.Add(ExactlyOneOfCommander(commanders));
-            return AndExpr.Create(valid);
+            return And(valid);
         }
 
         /// <summary>
@@ -1064,7 +1064,7 @@ namespace SATInterface
                 return False;
 
             if (trueCount == 1)
-                return !OrExpr.Create(expr.Where(e => !ReferenceEquals(e, True))).Flatten();
+                return !Or(expr.Where(e => !ReferenceEquals(e, True))).Flatten();
 
             Debug.Assert(trueCount == 0);
 
@@ -1116,16 +1116,16 @@ namespace SATInterface
                 var ands = new List<BoolExpr>();
                 for (var j = 0; j < _expr.Length; j++)
                     ands.Add((i == j) ? _expr[j] : !_expr[j]);
-                ors.Add(AndExpr.Create(ands).Flatten());
+                ors.Add(And(ands).Flatten());
             }
-            return OrExpr.Create(ors);
+            return Or(ors);
         }
 
         private BoolExpr AtMostOneOfOneHot(BoolExpr[] _expr)
         {
             var cse = new BoolExpr[(_expr.Length + 3) / 4];
             for (var i = 0; i < _expr.Length; i += 4)
-                cse[i / 4] = AndExpr.Create(_expr.Skip(i).Take(4).Select(v => !v)).Flatten();
+                cse[i / 4] = And(_expr.Skip(i).Take(4).Select(v => !v)).Flatten();
 
             var ors = new List<BoolExpr>();
             for (var i = 0; i < _expr.Length; i++)
@@ -1146,14 +1146,14 @@ namespace SATInterface
                             ands.Add(!_expr[j + 3]);
                     }
 
-                ors.Add(AndExpr.Create(ands).Flatten());
+                ors.Add(And(ands).Flatten());
             }
-            return OrExpr.Create(ors);
+            return Or(ors);
         }
 
         private BoolExpr ExactlyOneOfPairwise(IEnumerable<BoolExpr> _expr)
         {
-            return OrExpr.Create(_expr).Flatten() & AtMostOneOfPairwise(_expr);
+            return Or(_expr).Flatten() & AtMostOneOfPairwise(_expr);
         }
 
         private BoolExpr ExactlyOneOfBinary(IEnumerable<BoolExpr> _expr)
@@ -1189,15 +1189,16 @@ namespace SATInterface
             if (expr.Length <= Fanout)
                 return AtMostOneOfPairwise(expr);
 
-            var ok = new BoolExpr[(expr.Length + Fanout-1) / Fanout];
-            var any = new BoolExpr[(expr.Length + Fanout-1) / Fanout];
-            for (var i = 0; i < ok.Length; i++)
+            var ok = new BoolExpr[1 + (expr.Length + Fanout - 1) / Fanout];
+            var any = new BoolExpr[(expr.Length + Fanout - 1) / Fanout];
+            for (var i = 0; i < any.Length; i++)
             {
-                ok[i] = AtMostOneOfPairwise(expr.Skip(i * Fanout).Take(Fanout));
+                ok[1 + i] = AtMostOneOfPairwise(expr.Skip(i * Fanout).Take(Fanout));
                 any[i] = Or(expr.Skip(i * Fanout).Take(Fanout)).Flatten();
             }
 
-            return And(ok) & AtMostOneOfPairwiseTree(any);
+            ok[0] = AtMostOneOfPairwiseTree(any);
+            return And(ok).Flatten();
         }
 
         private BoolExpr ExactlyOneOfPairwiseTree(IEnumerable<BoolExpr> _expr)
@@ -1208,26 +1209,27 @@ namespace SATInterface
             if (expr.Length <= Fanout)
                 return ExactlyOneOfPairwise(expr);
 
-            var ok = new BoolExpr[(expr.Length + Fanout - 1) / Fanout];
+            var ok = new BoolExpr[1 + (expr.Length + Fanout - 1) / Fanout];
             var any = new BoolExpr[(expr.Length + Fanout - 1) / Fanout];
-            for (var i = 0; i < ok.Length; i++)
+            for (var i = 0; i < any.Length; i++)
             {
-                ok[i] = AtMostOneOfPairwise(expr.Skip(i * Fanout).Take(Fanout));
+                ok[1 + i] = AtMostOneOfPairwise(expr.Skip(i * Fanout).Take(Fanout));
                 any[i] = Or(expr.Skip(i * Fanout).Take(Fanout)).Flatten();
             }
 
-            return And(ok) & ExactlyOneOfPairwiseTree(any);
+            ok[0] = ExactlyOneOfPairwiseTree(any);
+            return And(ok);
         }
 
         private BoolExpr AtMostOneOfPairwise(IEnumerable<BoolExpr> _expr)
         {
             var expr = _expr.ToArray();
-            var pairs = new List<BoolExpr>();
+            var pairs = new List<BoolExpr>(expr.Length * (expr.Length - 1) / 2);
             for (var i = 0; i < expr.Length; i++)
                 for (var j = i + 1; j < expr.Length; j++)
-                    pairs.Add(OrExpr.Create(!expr[i], !expr[j]));
+                    pairs.Add(Or(!expr[i], !expr[j]));
 
-            return AndExpr.Create(pairs);
+            return And(pairs);
         }
 
 
@@ -1242,30 +1244,30 @@ namespace SATInterface
             var W = (int)Math.Ceiling(Math.Sqrt(expr.Length));
             var H = (int)Math.Ceiling(expr.Length / (double)W);
 
-            var rows = new List<BoolExpr>();
-            var cols = new List<BoolExpr>();
+            var cols = new List<BoolExpr>(H);
             for (var y = 0; y < H; y++)
             {
-                var c = new List<BoolExpr>();
+                var c = new List<BoolExpr>(W);
                 for (var x = 0; x < W; x++)
                 {
                     var i = W * y + x;
                     if (i < expr.Length)
                         c.Add(expr[i]);
                 }
-                cols.Add(OrExpr.Create(c).Flatten());
+                cols.Add(Or(c).Flatten());
             }
 
+            var rows = new List<BoolExpr>(W);
             for (var x = 0; x < W; x++)
             {
-                var c = new List<BoolExpr>();
+                var c = new List<BoolExpr>(H);
                 for (var y = 0; y < H; y++)
                 {
                     var i = W * y + x;
                     if (i < expr.Length)
                         c.Add(expr[i]);
                 }
-                rows.Add(OrExpr.Create(c).Flatten());
+                rows.Add(Or(c).Flatten());
             }
 
             return ExactlyOneOfTwoFactor(rows) &
@@ -1294,9 +1296,9 @@ namespace SATInterface
             if (_k < 0 || _k > expr.Length)
                 return False;
             else if (_k == 0)
-                return !OrExpr.Create(expr).Flatten();
+                return !Or(expr).Flatten();
             else if (_k == expr.Length)
-                return AndExpr.Create(expr).Flatten();
+                return And(expr).Flatten();
 
             Debug.Assert(_k >= 1 && _k < expr.Length);
 
@@ -1307,7 +1309,7 @@ namespace SATInterface
 
                 case ExactlyKOfMethod.UnaryCount:
                     var uc = Sort(expr);
-                    //return AndExpr.Create(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
+                    //return And(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
                     return uc[_k - 1] & !uc[_k];
 
                 case ExactlyKOfMethod.Sequential:
@@ -1341,17 +1343,17 @@ namespace SATInterface
                             for (var j = i + 1; j < expr.Length; j++)
                                 or.Add(expr[i] & expr[j]);
 
-                        return AndExpr.Create(and) & OrExpr.Create(or);
+                        return And(and) & Or(or);
                     }
                     else
                     {
                         var or = new List<BoolExpr>();
                         for (var i = 0; i < expr.Length; i++)
                             or.Add((expr[i]
-                                & AndExpr.Create(Enumerable.Range(0, i - 1).Select(j => !expr[j]))
+                                & And(Enumerable.Range(0, i - 1).Select(j => !expr[j]))
                                 & ExactlyKOf(Enumerable.Range(i + 1, expr.Length - i - 1).Select(j => expr[j]), _k - 1, _method)
                                 ).Flatten());
-                        return OrExpr.Create(or).Flatten();
+                        return Or(or).Flatten();
                     }
 
                 default:
@@ -1385,15 +1387,15 @@ namespace SATInterface
                     //1
                     for (var j = 0; j < groups[i].Length; j++)
                         for (var k = j + 1; k < groups[i].Length; k++)
-                            valid.Add(OrExpr.Create(!groups[i][j], !groups[i][k]).Flatten());
+                            valid.Add(Or(!groups[i][j], !groups[i][k]).Flatten());
 
-                    AddConstr((!commanders[i]) | OrExpr.Create(groups[i])); //2
-                    AddConstr(commanders[i] | (!OrExpr.Create(groups[i]))); //3
+                    AddConstr((!commanders[i]) | Or(groups[i])); //2
+                    AddConstr(commanders[i] | (!Or(groups[i]))); //3
                 }
 
             valid.Add(ExactlyOneOfCommander(commanders));
 
-            return AndExpr.Create(valid);
+            return And(valid);
         }
 
         /// <summary>
@@ -1430,8 +1432,8 @@ namespace SATInterface
                             var r = a + b;
                             if (r >= 0 && r < R.Length)
                             {
-                                var C1 = OrExpr.Create(!A[a], !B[b], R[r]).Flatten();
-                                var C2 = OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]).Flatten();
+                                var C1 = Or(!A[a], !B[b], R[r]).Flatten();
+                                var C2 = Or(A[a + 1], B[b + 1], !R[r + 1]).Flatten();
                                 AddConstr(C1 & C2);
                             }
                         }
