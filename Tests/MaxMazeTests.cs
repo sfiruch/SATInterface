@@ -14,9 +14,9 @@ namespace Tests
         [DataRow(9, 51)]
         [DataRow(8, 39)]
         [DataTestMethod]
-        public static void MaxMaze(int _n, int _expected)
+        public void MaxMaze(int _n, int _expected)
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var free = m.AddVars(_n, _n);
 
             free[0, 0] = true;

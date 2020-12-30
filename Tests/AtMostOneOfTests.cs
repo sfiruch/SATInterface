@@ -12,7 +12,7 @@ namespace Tests
     {
         void Pigeonhole(int _holes, int _pigeons, Model.AtMostOneOfMethod? _method)
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var assignment = m.AddVars(_holes, _pigeons);
 
             for (var h = 0; h < _holes; h++)
@@ -41,7 +41,7 @@ namespace Tests
         {
             var RNG = new Random(1);
             for (var i = 0; i < 50; i++)
-                Pigeonhole(RNG.Next(0, 12), RNG.Next(0, 12), _method);
+                Pigeonhole(RNG.Next(0, 11), RNG.Next(0, 11), _method);
         }
 
         [DataRow(null)]
@@ -99,7 +99,7 @@ namespace Tests
         [DataTestMethod]
         public void PigeonholeSymmetricUNSATDifficult(Model.AtMostOneOfMethod? _method)
         {
-            Pigeonhole(10, 11, _method);
+            Pigeonhole(9, 10, _method);
         }
     }
 }

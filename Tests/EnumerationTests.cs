@@ -12,18 +12,27 @@ namespace Tests
         [TestMethod]
         public void BinaryAll()
         {
-            using var m = new Model();
-            var v = m.AddVars(3);
+            const int N = 12;
+
+            using var m = new Model(); m.Configuration.Verbosity = 0;
+            var v = m.AddVars(N);
 
             var cnt = 0;
-            var found = new bool[8];
+            var found = new bool[1 << N];
             m.EnumerateSolutions(v, () =>
             {
                 cnt++;
-                found[(v[0].X ? 1 : 0) + (v[1].X ? 2 : 0) + (v[2].X ? 4 : 0)] = true;
+
+                var x = 0;
+                for (var i = 0; i < N; i++)
+                    if (v[i].X)
+                        x |= (1 << i);
+
+                Assert.IsFalse(found[x]);
+                found[x] = true;
             });
 
-            Assert.AreEqual(2 * 2 * 2, cnt);
+            Assert.AreEqual(1 << N, cnt);
             Assert.IsTrue(found.All(v => v));
             Assert.AreEqual(State.Satisfiable, m.State);
         }
@@ -31,7 +40,7 @@ namespace Tests
         [TestMethod]
         public void RepeatedEnumeration()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var v = m.AddVars(3);
 
             var cnt = 0;
@@ -48,7 +57,7 @@ namespace Tests
         [TestMethod]
         public void BinaryUnsat()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var v = m.AddVars(5);
 
             m.AddConstr(m.Sum(v) <= 2);
@@ -67,7 +76,7 @@ namespace Tests
         [TestMethod]
         public void BinarySubset()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var v = m.AddVars(10);
 
             var cnt = 0;
@@ -86,7 +95,7 @@ namespace Tests
         [TestMethod]
         public void BinarySubsetLazyCondition()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var v = m.AddVars(8);
 
             var cnt = 0;
@@ -109,7 +118,7 @@ namespace Tests
         [TestMethod]
         public void BinarySubsetLazyVars()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var v = m.AddVars(4);
 
             var cnt = 0;

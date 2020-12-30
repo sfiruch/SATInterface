@@ -13,7 +13,7 @@ namespace Tests
         [TestMethod]
         public void AbortLazyOptimization()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
 
             var vars = m.AddVars(100);
             var obj = m.Sum(vars);
@@ -39,7 +39,7 @@ namespace Tests
         [TestMethod]
         public void AbortOptimization()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
 
             var vars = m.AddVars(100);
             var obj = m.Sum(vars);
@@ -68,7 +68,7 @@ namespace Tests
         [TestMethod]
         public void AbortOptimizationLazy()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
 
             var vars = m.AddVars(100);
             var obj = m.Sum(vars);
@@ -105,7 +105,7 @@ namespace Tests
         [TestMethod]
         public void AbortOutsideCallbackException()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
 
             Assert.ThrowsException<InvalidOperationException>(() =>
             {
@@ -116,7 +116,7 @@ namespace Tests
         [TestMethod]
         public void AbortAfterSolveException()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
 
             m.Solve();
 
@@ -129,7 +129,7 @@ namespace Tests
         [TestMethod]
         public void AbortEnumerationImmediately()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var vars = m.AddVars(4);
 
             m.EnumerateSolutions(vars, () =>
@@ -144,7 +144,7 @@ namespace Tests
         [TestMethod]
         public void AbortEnumeration()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var vars = m.AddVars(4);
 
             var cnt = 0;

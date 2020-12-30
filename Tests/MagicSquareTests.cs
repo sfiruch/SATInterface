@@ -17,16 +17,15 @@ namespace Tests
         [DataRow(4)]
         [DataRow(5)]
         [DataRow(6)]
-        [DataRow(7)]
         [DataTestMethod]
-        void MagicSquare(int size)
+        public void MagicSquare(int size)
         {
             var NUMBERS = Enumerable.Range(1, size * size).ToArray();
 
             var N = (int)Math.Sqrt(NUMBERS.Length);
             var MAGIC_CONST = NUMBERS.Sum() / N;
 
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var v = m.AddVars(N, N, NUMBERS.Length);
 
             var num = new UIntVar[N, N];

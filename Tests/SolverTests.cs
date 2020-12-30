@@ -22,7 +22,7 @@ namespace Tests
                 var _holes = RNG.Next(0, 12);
                 var _pigeons = RNG.Next(0, 12);
 
-                using var m = new Model();
+                using var m = new Model(); m.Configuration.Verbosity = 0;
                 m.Configuration.Solver = _solver;
 
                 var assignment = m.AddVars(_holes, _pigeons);
@@ -53,7 +53,7 @@ namespace Tests
             const int W = C * C;
             const int H = C * C;
 
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             m.Configuration.Solver = _solver;
 
             var vXYC = m.AddVars(W, H, C);
@@ -86,7 +86,7 @@ namespace Tests
         [DataTestMethod]
         public void SimpleBinary(InternalSolver _solver)
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             m.Configuration.Solver = _solver;
 
             var v = m.AddVars(4);
@@ -108,7 +108,7 @@ namespace Tests
         {
             const int N = 4;
 
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             m.Configuration.Solver = _solver;
 
             var v = m.AddVars(N);

@@ -14,9 +14,10 @@ namespace Tests
         [DataRow(9, 33)]
         [DataRow(8, 29)]
         [DataTestMethod]
-        public static void MinMaze(int _n, int _expected)
+        public void MinMaze(int _n, int _expected)
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
+
             var free = m.AddVars(_n, _n);
 
             free[0, 0] = true;

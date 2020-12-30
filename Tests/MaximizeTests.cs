@@ -25,7 +25,7 @@ namespace Tests
                     }
 
 
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var x = m.AddUIntVar(xUB);
             var y = m.AddUIntVar(yUB);
             var c = m.AddUIntVar(checked(xUB * yUB));
@@ -75,7 +75,7 @@ namespace Tests
         [TestMethod]
         public void UnsatAtEnd()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var a = m.AddVar();
             var b = m.AddVar();
             m.AddConstr(a);
@@ -91,7 +91,7 @@ namespace Tests
         [TestMethod]
         public void SatAtEnd()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             var v = m.AddUIntVar(10, true);
             m.Maximize(v);
 

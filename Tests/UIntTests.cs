@@ -15,7 +15,7 @@ namespace Tests
             foreach (var strategy in Enum.GetValues(typeof(OptimizationFocus)).Cast<OptimizationFocus>())
                 for (var i = 0; i < 140; i++)
                 {
-                    using var m = new Model();
+                    using var m = new Model(); m.Configuration.Verbosity = 0;
                     var v = m.AddUIntVar(100, true);
                     m.AddConstr(v <= i);
 
@@ -33,7 +33,7 @@ namespace Tests
             foreach (var strategy in Enum.GetValues(typeof(OptimizationFocus)).Cast<OptimizationFocus>())
                 for (var i = 0; i < 140; i++)
                 {
-                    using var m = new Model();
+                    using var m = new Model(); m.Configuration.Verbosity = 0;
                     var v = m.AddUIntVar(100, true);
                     m.AddConstr(v >= i);
 
@@ -56,7 +56,7 @@ namespace Tests
             for (var i = 0; i < 100; i++)
                 for (var j = 0; j < 10; j++)
                 {
-                    using var m = new Model();
+                    using var m = new Model(); m.Configuration.Verbosity = 0;
                     var v = m.AddUIntConst(i);
                     for (var k = 0; k < j; k++)
                         v += true;
@@ -72,7 +72,7 @@ namespace Tests
             for (var i = 0; i < 20; i++)
                 for (var j = 0; j < 20; j++)
                 {
-                    using var m = new Model();
+                    using var m = new Model(); m.Configuration.Verbosity = 0;
                     m.Configuration.Verbosity = 0;
 
                     var v = m.AddUIntConst(0);
@@ -91,7 +91,7 @@ namespace Tests
             for (var n = 0; n < 100; n++)
                 for (var i = 0; i < 5; i++)
                 {
-                    using var m = new Model();
+                    using var m = new Model(); m.Configuration.Verbosity = 0;
                     var v = m.AddVars(n);
                     var values = Enumerable.Range(0, n).Select(i => RNG.Next(2) == 0).ToArray();
                     for (var j = 0; j < n; j++)

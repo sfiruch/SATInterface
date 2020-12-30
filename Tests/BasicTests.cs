@@ -12,7 +12,7 @@ namespace Tests
         [TestMethod]
         public void EmptySolve()
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             m.Solve();
             Assert.AreEqual(State.Satisfiable, m.State);
         }
@@ -23,7 +23,7 @@ namespace Tests
         [DataTestMethod]
         public void EmptyMaximizeBalanced(OptimizationFocus _focus)
         {
-            using var m = new Model();
+            using var m = new Model(); m.Configuration.Verbosity = 0;
             m.Configuration.OptimizationFocus = _focus;
             m.Maximize((LinExpr)0);
             Assert.AreEqual(State.Satisfiable, m.State);
