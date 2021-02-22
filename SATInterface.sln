@@ -25,7 +25,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrentEquations", "BrentEqua
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FloorTiling", "FloorTiling\FloorTiling.csproj", "{E5101855-5DD5-4442-8DB8-045DF811641B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Superpermutation", "Superpermutation\Superpermutation.csproj", "{B74679FB-809C-4335-A161-368E851971CC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Superpermutation", "Superpermutation\Superpermutation.csproj", "{B74679FB-809C-4335-A161-368E851971CC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
