@@ -256,6 +256,14 @@ namespace SATInterface
         /// </summary>
         /// <param name="_modelVariables"></param>
         /// <param name="_solutionCallback">Invoked for every valid assignment</param>
+        public void EnumerateSolutions(IEnumerable<UIntVar> _modelVariables, Action _solutionCallback)
+            => EnumerateSolutions(_modelVariables.SelectMany(v => v.Bits), _solutionCallback);
+
+        /// <summary>
+        /// Enumerates all valid assignment, with differing assignments for _modelVariables
+        /// </summary>
+        /// <param name="_modelVariables"></param>
+        /// <param name="_solutionCallback">Invoked for every valid assignment</param>
         public void EnumerateSolutions(IEnumerable<BoolExpr> _modelVariables, Action _solutionCallback)
         {
             if (State == State.Unsatisfiable)

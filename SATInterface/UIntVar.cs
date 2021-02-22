@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -8,7 +9,7 @@ namespace SATInterface
 {
     public class UIntVar
     {
-        public class UIntVarBits
+        public class UIntVarBits:IEnumerable<BoolExpr>
         {
             private readonly UIntVar Parent;
 
@@ -32,6 +33,9 @@ namespace SATInterface
                     return Parent.bit[_bitIndex];
                 }
             }
+
+            public IEnumerator<BoolExpr> GetEnumerator() => Parent.bit.AsEnumerable().GetEnumerator();
+            IEnumerator IEnumerable.GetEnumerator() => Parent.bit.GetEnumerator();
         }
 
         private Model Model;
