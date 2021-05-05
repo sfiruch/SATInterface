@@ -58,11 +58,7 @@ namespace SATInterface
                 }
 
                 if (Verbosity >= 1)
-                {
-                    //TODO: add banner to C API
-                    //Console.WriteLine("c " + Marshal.PtrToStringAnsi(KissatNative.kissat_signature()));
-                    Console.WriteLine("c Kissat 1.0.3");
-                }
+                    KissatNative.kissat_banner("c ", Marshal.PtrToStringAnsi(KissatNative.kissat_signature()));
 
                 var satisfiable = KissatNative.kissat_solve(Handle);
 
@@ -167,7 +163,10 @@ namespace SATInterface
         [DllImport("kissat.dll")]
         public static extern int kissat_set_option(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
-        //[DllImport("kissat.dll")]
-        //public static extern IntPtr kissat_signature();
+        [DllImport("kissat.dll")]
+        public static extern int kissat_banner([In, MarshalAs(UnmanagedType.LPStr)] string line_prefix, [In, MarshalAs(UnmanagedType.LPStr)] string name_of_app);
+
+        [DllImport("kissat.dll")]
+        public static extern IntPtr kissat_signature();
     }
 }
