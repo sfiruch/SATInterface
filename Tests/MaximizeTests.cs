@@ -99,16 +99,19 @@ namespace Tests
         }
 
         [TestMethod]
-        public void RepeatedMinimization()
+        public void RepeatedOptimization()
         {
             using var m = new Model(); m.Configuration.Verbosity = 0;
             var v1 = m.AddUIntVar(10, true);
             var v2 = m.AddUIntVar(10, true);
             var originalVarCount = m.VariableCount;
+            var originalClauseCount = m.ClauseCount;
             m.Maximize(v1);
             Assert.AreEqual(originalVarCount, m.VariableCount);
+            Assert.AreEqual(originalClauseCount, m.ClauseCount);
             m.Maximize(v2);
             Assert.AreEqual(originalVarCount, m.VariableCount);
+            Assert.AreEqual(originalClauseCount, m.ClauseCount);
         }
     }
 }
