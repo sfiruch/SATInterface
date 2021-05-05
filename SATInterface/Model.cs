@@ -9,7 +9,7 @@ using System.Threading;
 namespace SATInterface
 {
     /// <summary>
-    /// Builds an enviroment plus associated model, containing variables and
+    /// Builds an environment plus associated model, containing variables and
     /// constraints, as well as solver configuration and state.
     /// </summary>
     public class Model : IDisposable
@@ -325,6 +325,7 @@ namespace SATInterface
                     mClauses = clauses.Count;
                 }
 
+                VarCount = originalVars.Count;
                 vars = originalVars;
                 clauses = originalClauses;
 
@@ -386,6 +387,7 @@ namespace SATInterface
                     if (bestAssignment == null)
                     {
                         State = State.Unsatisfiable;
+                        VarCount = originalVars.Count;
                         vars = originalVars;
                         clauses = originalClauses;
                         return;
@@ -403,6 +405,7 @@ namespace SATInterface
 
                     if (State == State.Unsatisfiable)
                     {
+                        VarCount = originalVars.Count;
                         vars = originalVars;
                         clauses = originalClauses;
                         return;
@@ -416,6 +419,7 @@ namespace SATInterface
                         if (AbortOptimization)
                         {
                             State = State.Undecided;
+                            VarCount = originalVars.Count;
                             vars = originalVars;
                             clauses = originalClauses;
                             return;
@@ -436,7 +440,7 @@ namespace SATInterface
                 int objGELB = 0;
                 int hardConstr = int.MinValue;
                 BoolVar? objGE = null;
-                while (!AbortOptimization)
+                while (lb!=ub && !AbortOptimization)
                 {
                     if (Configuration.Verbosity > 0)
                     {
@@ -523,12 +527,11 @@ namespace SATInterface
                     }
 
                     Debug.Assert(lb <= ub);
-                    if (lb == ub)
-                        break;
                 }
 
                 //restore best known solution
                 State = State.Satisfiable;
+                VarCount = originalVars.Count;
                 vars = originalVars;
                 clauses = originalClauses;
                 for (var i = 0; i < vars.Count; i++)
