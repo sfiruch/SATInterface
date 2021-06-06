@@ -13,14 +13,15 @@ namespace SATInterface
     {
         private IntPtr Handle;
         private int Verbosity;
-        int varCount = 0;
+        private Model Parent;
 
-        public CaDiCaL()
+        public CaDiCaL(Model _parent)
         {
             if (!Environment.Is64BitProcess)
                 throw new Exception("This library only supports x64 when using the bundled CaDiCaL solver.");
 
             Handle = CaDiCaLNative.ccadical_init();
+            Parent = _parent;
         }
 
         public bool[]? Solve(int[]? _assumptions = null)
@@ -44,8 +45,8 @@ namespace SATInterface
             {
                 case 10:
                     //satisfiable
-                    var res = new bool[varCount];
-                    for (var i = 0; i < varCount; i++)
+                    var res = new bool[Parent.VariableCount];
+                    for (var i = 0; i < res.Length; i++)
                         res[i] = CaDiCaLNative.ccadical_val(Handle, i + 1) > 0;
                     return res;
 
@@ -60,14 +61,11 @@ namespace SATInterface
             }
         }
 
-        public void AddVars(int _number) => varCount += _number;
-
-        public bool AddClause(Span<int> _clause)
+        public void AddClause(Span<int> _clause)
         {
             foreach (var i in _clause)
                 CaDiCaLNative.ccadical_add(Handle, i);
             CaDiCaLNative.ccadical_add(Handle, 0);
-            return true;
         }
 
         #region IDisposable Support
@@ -129,6 +127,7 @@ namespace SATInterface
         public static extern void ccadical_release(IntPtr wrapper);
 
         [DllImport("CaDiCaL.dll")]
+        //TODO: [SuppressGCTransition]
         public static extern void ccadical_add(IntPtr wrapper, int lit);
 
         [DllImport("CaDiCaL.dll")]
@@ -144,6 +143,7 @@ namespace SATInterface
         public static extern int ccadical_lookahead(IntPtr wrapper);
 
         [DllImport("CaDiCaL.dll")]
+        //TODO: [SuppressGCTransition]
         public static extern int ccadical_val(IntPtr wrapper, int lit);
 
         [DllImport("CaDiCaL.dll")]

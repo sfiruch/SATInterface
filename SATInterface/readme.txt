@@ -14,9 +14,11 @@ using System;
 using System.Linq;
 using SATInterface;
 
-using var m = new Model();
-m.Configuration.Solver = InternalSolver.CaDiCaL;
-m.Configuration.Verbosity = 2;
+using var m = new Model(new Configuration()
+{
+    Solver = InternalSolver.CaDiCaL,
+    Verbosity = 2
+});
 
 var v = m.AddVars(9, 9, 9);
 
@@ -36,7 +38,7 @@ for (var y = 0; y < 9; y++)
     for (var n = 0; n < 9; n++)
         m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, 9).Select(x => v[x, y, n])));
 
-//each number occurs once per column (configured formulation)
+//each number occurs once per column (specific encoding)
 for (var x = 0; x < 9; x++)
     for (var n = 0; n < 9; n++)
         m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, 9).Select(y => v[x, y, n]), Model.ExactlyOneOfMethod.PairwiseTree));

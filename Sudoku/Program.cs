@@ -14,9 +14,11 @@ using System;
 using System.Linq;
 using SATInterface;
 
-using var m = new Model();
-m.Configuration.Solver = InternalSolver.CaDiCaL;
-m.Configuration.Verbosity = 2;
+using var m = new Model(new Configuration()
+{
+    Solver = InternalSolver.CaDiCaL,
+    Verbosity = 2
+});
 
 var v = m.AddVars(9, 9, 9);
 

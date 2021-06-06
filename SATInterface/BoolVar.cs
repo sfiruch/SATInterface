@@ -32,7 +32,7 @@ namespace SATInterface
         {
             Model = _model;
             Name = _name;
-            Id = ++_model.VarCount;
+            Id = _model.VariableCount + 1;
             Model.RegisterVariable(this);
         }
 

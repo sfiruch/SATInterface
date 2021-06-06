@@ -37,9 +37,10 @@ namespace PCB
 
         static void Main(string[] args)
         {
-            using var m = new Model();
-
-            m.Configuration.CommonSubexpressionElimination = true;
+            using var m = new Model(new Configuration()
+            {
+                OptimizationFocus = OptimizationFocus.Incumbent
+            });
 
             var vXYLC = new BoolExpr[W, H, L, C];
             var sourceXYC = new bool[W, H, C];
@@ -123,7 +124,6 @@ namespace PCB
 
             var vObj = m.Sum(obj1) + m.Sum(obj3)*3;
 
-            m.Configuration.OptimizationFocus = OptimizationFocus.Incumbent;
             m.Minimize(vObj, () =>
             {
                 Console.WriteLine();

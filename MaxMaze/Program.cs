@@ -45,7 +45,10 @@ namespace MaxMaze
 
         static void Main(string[] args)
         {
-            using var m = new Model();
+            using var m = new Model(new Configuration()
+            {
+                OptimizationFocus=OptimizationFocus.Incumbent
+            });
 
             var free = new BoolExpr[W, H];
             for (int y = 0; y < H; y++)
@@ -87,7 +90,6 @@ namespace MaxMaze
                         m.AddConstr(!free[x, y] | m.Sum(new[] { a, b, c, d }) == 2);
                 }
 
-            m.Configuration.Verbosity = 2;
             m.Maximize(m.Sum(free.Cast<BoolExpr>()), () =>
             {
                 for (int y = 0; y < H; y++)
@@ -111,7 +113,7 @@ namespace MaxMaze
                     if (_x == W - 1 && _y == H - 1)
                         return;
 
-                    if (_visited.Count>2)
+                    if (_visited.Count > 2)
                     {
                         var start = _visited.Last();
                         if (_x == start.X && _y == start.Y)

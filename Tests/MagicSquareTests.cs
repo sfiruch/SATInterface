@@ -25,7 +25,10 @@ namespace Tests
             var N = (int)Math.Sqrt(NUMBERS.Length);
             var MAGIC_CONST = NUMBERS.Sum() / N;
 
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(N, N, NUMBERS.Length);
 
             var num = new UIntVar[N, N];

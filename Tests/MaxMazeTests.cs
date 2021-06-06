@@ -16,7 +16,10 @@ namespace Tests
         [DataTestMethod]
         public void MaxMaze(int _n, int _expected)
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var free = m.AddVars(_n, _n);
 
             free[0, 0] = true;

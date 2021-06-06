@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,41 +15,54 @@ namespace SATInterface
     /// </summary>
     public class Model : IDisposable
     {
-        //TODO: keep learnt clauses/model open
-        //- keep solver instance in memory
-        //- allow additional clauses and variables
-        //- prevent config changes after first invocation.
-
         public static readonly BoolExpr True = new BoolVar("true", -1);
         public static readonly BoolExpr False = new BoolVar("false", -2);
 
-        internal int VarCount = 0;
-        private List<int[]> clauses = new List<int[]>();
-        private Dictionary<int, BoolVar> vars = new Dictionary<int, BoolVar>();
+        private List<BoolVar> vars = new List<BoolVar>();
         public State State { get; internal set; } = State.Undecided;
 
         internal bool InOptimization = false;
         internal bool AbortOptimization = false;
 
-        public readonly Configuration Configuration = new Configuration();
+        internal readonly Configuration Configuration;
+        private readonly ISolver Solver;
 
         /// <summary>
         /// Number of variables in this model.
         /// </summary>
-        public int VariableCount => VarCount;
+        public int VariableCount => vars.Count;
 
         /// <summary>
         /// Number of clauses in this model.
         /// </summary>
-        public int ClauseCount => clauses.Count;
+        public int ClauseCount { get; internal set; }
 
-        internal Dictionary<BoolExpr, BoolExpr> ExprCache = new Dictionary<BoolExpr, BoolExpr>();
+
+        private MemoryStream? DIMACSBuffer;
+        private StreamWriter? DIMACSOutput;
 
         /// <summary>
         /// Allocate a new model.
         /// </summary>
-        public Model()
+        public Model(Configuration? _configuration = null)
         {
+            Configuration = _configuration?.Clone() ?? new Configuration();
+            Configuration.Validate();
+
+            Solver = Configuration.Solver switch
+            {
+                InternalSolver.CryptoMiniSat => (ISolver)new CryptoMiniSat(this),
+                InternalSolver.CaDiCaL => (ISolver)new CaDiCaL(this),
+                InternalSolver.Kissat => (ISolver)new Kissat(this),
+                _ => throw new ArgumentException("Invalid solver configured", nameof(Configuration.Solver))
+            };
+            Solver.ApplyConfiguration(Configuration);
+
+            if (Configuration.EnableDIMACSWriting)
+            {
+                DIMACSBuffer = new MemoryStream();
+                DIMACSOutput = new StreamWriter(DIMACSBuffer, Encoding.UTF8);
+            }
         }
 
         private void AddConstrInternal(BoolExpr _c)
@@ -68,13 +82,15 @@ namespace SATInterface
             {
                 if (!ReferenceEquals(boolVar.Model, this))
                     throw new ArgumentException("Mixing variables from different models is not supported.");
-                clauses.Add(new[] { boolVar.Id });
+                AddClauseToSolver(stackalloc[] { boolVar.Id });
+                ClauseCount++;
             }
             else if (_c is NotExpr notExpr)
             {
                 if (!ReferenceEquals(notExpr.inner.Model, this))
                     throw new ArgumentException("Mixing variables from different models is not supported.");
-                clauses.Add(new[] { -notExpr.inner.Id });
+                AddClauseToSolver(stackalloc[] { -notExpr.inner.Id });
+                ClauseCount++;
             }
             else if (_c is OrExpr orExpr)
             {
@@ -96,10 +112,17 @@ namespace SATInterface
                         _ => throw new NotImplementedException(e.GetType().ToString())
                     }).ToArray();
 
-                clauses.Add(sb);
+                AddClauseToSolver(sb);
+                ClauseCount++;
             }
             else
                 throw new NotImplementedException(_c.GetType().ToString());
+        }
+
+        private void AddClauseToSolver(Span<int> _x)
+        {
+            Solver.AddClause(_x);
+            DIMACSOutput?.WriteLine(string.Join(' ', _x.ToArray().Append(0)));
         }
 
         /// <summary>
@@ -205,7 +228,14 @@ namespace SATInterface
             return res;
         }
 
-        internal void RegisterVariable(BoolVar boolVar) => vars[boolVar.Id] = boolVar;
+        internal void RegisterVariable(BoolVar boolVar)
+        {
+            vars.Add(boolVar);
+            Debug.Assert(boolVar.Id == vars.Count);
+
+            if (!InOptimization && State == State.Satisfiable)
+                State = State.Undecided;
+        }
 
         /// <summary>
         /// Minimizes the supplied LinExpr by solving multiple models sequentially.
@@ -223,20 +253,6 @@ namespace SATInterface
         public void Maximize(LinExpr _obj, Action? _solutionCallback = null)
             => Maximize(_obj, _solutionCallback, _minimization: false);
 
-        private ISolver InstantiateSolver()
-        {
-            var solver = Configuration.Solver switch
-            {
-                InternalSolver.CryptoMiniSat => (ISolver)new CryptoMiniSat(),
-                InternalSolver.CaDiCaL => (ISolver)new CaDiCaL(),
-                //InternalSolver.CaDiCaLCubed => (ISolver)new CaDiCaLCubed(),
-                InternalSolver.Kissat => (ISolver)new Kissat(),
-                _ => throw new ArgumentException("Invalid solver configured", nameof(Configuration.Solver))
-            };
-            solver.ApplyConfiguration(Configuration);
-            return solver;
-        }
-
         /// <summary>
         /// This method can be called from a callback during optimization or enumeration to abort
         /// the optimization/enumeration early. The last solution or best-known solution will be retained.
@@ -249,6 +265,22 @@ namespace SATInterface
                 throw new InvalidOperationException("Optimization/enumeration can only be aborted from a callback.");
 
             AbortOptimization = true;
+        }
+
+        private bool[]? InvokeSolver(int[]? _assumptions = null)
+        {
+            try
+            {
+                if (Configuration.ConsoleSolverLines.HasValue)
+                    Log.LimitOutputTo(Configuration.ConsoleSolverLines.Value);
+
+                return Solver.Solve(_assumptions);
+            }
+            finally
+            {
+                if (Configuration.ConsoleSolverLines.HasValue)
+                    Log.LimitOutputTo();
+            }
         }
 
         /// <summary>
@@ -274,65 +306,50 @@ namespace SATInterface
                 InOptimization = true;
                 AbortOptimization = false;
 
-                var originalVars = new Dictionary<int, BoolVar>(vars);
-                var originalClauses = clauses.ToList();
-
-                using var solver = InstantiateSolver();
                 var modelVariables = _modelVariables.Select(v => v.Flatten()).ToArray();
+                var assumptions = new List<int>();
 
-                var mVars = vars.Count;
-                var mClauses = clauses.Count;
-                solver.AddVars(vars.Count);
-                foreach (var line in clauses)
-                    solver.AddClause(line);
-
-                bool[]? bestAssignment = null;
+                bool[]? lastAssignment = null;
                 for (; ; )
                 {
-                    var assignment = solver.Solve();
+                    var assignment = InvokeSolver(assumptions.ToArray());
                     if (assignment == null)
                         break;
 
-                    for (var i = 0; i < vars.Count; i++)
-                        vars[i + 1].Value = assignment[i];
+                    for (var i = 0; i < assignment.Length; i++)
+                        vars[i].Value = assignment[i];
 
                     State = State.Satisfiable;
+
+                    var mClauses = ClauseCount;
                     _solutionCallback.Invoke();
 
                     if (State == State.Unsatisfiable)
                         break;
 
-                    if (mClauses == clauses.Count)
-                    {
-                        bestAssignment = assignment;
+                    if (AbortOptimization)
+                        break;
 
-                        AddConstrInternal(Or(modelVariables.Select(v => v != v.X)));
+                    if (mClauses == ClauseCount)
+                    {
+                        //no new lazy-added constraints
+                        lastAssignment = assignment;
+
+                        var somethingDifferent = new BoolVar(this);
+                        AddConstrInternal(somethingDifferent == Or(modelVariables.Select(v => v != v.X)));
+                        assumptions.Add(somethingDifferent.Id);
                     }
                     else
                     {
                         //maybe there's another way to find this assignment, respecting
                         //the lazy constraints?
                     }
-
-                    if (AbortOptimization)
-                        break;
-
-                    //add lazy variables & constraints
-                    solver.AddVars(vars.Count - mVars);
-                    mVars = vars.Count;
-                    for (var i = mClauses; i < clauses.Count; i++)
-                        solver.AddClause(clauses[i]);
-                    mClauses = clauses.Count;
                 }
 
-                VarCount = originalVars.Count;
-                vars = originalVars;
-                clauses = originalClauses;
-
-                if (bestAssignment != null)
+                if (lastAssignment != null)
                 {
-                    for (var i = 0; i < vars.Count; i++)
-                        vars[i + 1].Value = bestAssignment[i];
+                    for (var i = 0; i < lastAssignment.Length; i++)
+                        vars[i].Value = lastAssignment[i];
 
                     State = State.Satisfiable;
                 }
@@ -360,18 +377,6 @@ namespace SATInterface
                 InOptimization = true;
                 AbortOptimization = false;
 
-                var solver = InstantiateSolver();
-
-                var mVars = vars.Count;
-                var mClauses = clauses.Count;
-
-                var originalVars = new Dictionary<int, BoolVar>(vars);
-                var originalClauses = clauses.ToList();
-
-                solver.AddVars(vars.Count);
-                foreach (var line in clauses)
-                    solver.AddClause(line);
-
                 if (Configuration.Verbosity > 0)
                 {
                     if (_minimization)
@@ -383,64 +388,44 @@ namespace SATInterface
                 bool[]? bestAssignment;
                 for (; ; )
                 {
-                    bestAssignment = solver.Solve();
+                    bestAssignment = InvokeSolver();
                     if (bestAssignment == null)
                     {
                         State = State.Unsatisfiable;
-                        VarCount = originalVars.Count;
-                        vars = originalVars;
-                        clauses = originalClauses;
                         return;
                     }
 
                     //found initial, potentially feasible solution
-                    Debug.Assert(bestAssignment.Length == vars.Count);
-                    for (var i = 0; i < vars.Count; i++)
-                        vars[i + 1].Value = bestAssignment[i];
+                    for (var i = 0; i < bestAssignment.Length; i++)
+                        vars[i].Value = bestAssignment[i];
 
                     State = State.Satisfiable;
+                    var mClauses = ClauseCount;
 
                     //callback might add lazy constraints or abort
                     _solutionCallback?.Invoke();
 
                     if (State == State.Unsatisfiable)
+                        return;
+
+                    if (AbortOptimization)
                     {
-                        VarCount = originalVars.Count;
-                        vars = originalVars;
-                        clauses = originalClauses;
+                        if (State == State.Satisfiable && ClauseCount != mClauses)
+                            State = State.Undecided;
                         return;
                     }
 
                     //if it didn't, we have a feasible solution
-                    if (mClauses == clauses.Count)
+                    if (mClauses == ClauseCount)
                         break;
-                    else
-                    {
-                        if (AbortOptimization)
-                        {
-                            State = State.Undecided;
-                            VarCount = originalVars.Count;
-                            vars = originalVars;
-                            clauses = originalClauses;
-                            return;
-                        }
-
-                        //add lazy variables & constraints and re-solve
-                        solver.AddVars(vars.Count - mVars);
-                        mVars = vars.Count;
-                        for (var i = mClauses; i < clauses.Count; i++)
-                            solver.AddClause(clauses[i]);
-                        mClauses = clauses.Count;
-                    }
                 }
 
                 //start search
                 var lb = _obj.X;
                 var ub = _obj.UB;
                 int objGELB = 0;
-                int hardConstr = int.MinValue;
                 BoolVar? objGE = null;
-                while (lb!=ub && !AbortOptimization)
+                while (lb != ub && !AbortOptimization)
                 {
                     if (Configuration.Verbosity > 0)
                     {
@@ -458,68 +443,42 @@ namespace SATInterface
                         _ => throw new NotImplementedException()
                     };
 
-                    //add additional clauses
-                    int[]? assumptions;
-                    if (cur == lb + 1)
+                    //prehaps we already added this GE var, and the current
+                    //round is only a repetition with additional lazy constraints?
+                    if (objGE is null || objGELB != cur)
                     {
-                        if (hardConstr < cur)
-                        {
-                            AddConstrInternal(_obj >= cur);
-                            hardConstr = cur;
-                        }
-                        assumptions = null;
-                    }
-                    else
-                    {
-                        //prehaps we already added this GE var, and the current
-                        //round is only a repetition with additional lazy constraints?
-                        if (objGE is null || objGELB != cur)
-                        {
-                            objGELB = cur;
-                            objGE = new BoolVar(this);
-                            AddConstrInternal(objGE == (_obj >= cur));
-                        }
-                        assumptions = new int[] { objGE.Id };
+                        objGELB = cur;
+                        objGE = new BoolVar(this);
+                        AddConstrInternal(objGE == (_obj >= cur));
                     }
 
-                    solver.AddVars(vars.Count - mVars);
-                    mVars = vars.Count;
-
-                    for (var i = mClauses; i < clauses.Count; i++)
-                        solver.AddClause(clauses[i]);
-                    mClauses = clauses.Count;
-
-                    var assignment = State == State.Unsatisfiable ? null : solver.Solve(assumptions);
+                    var assignment = State == State.Unsatisfiable ? null : InvokeSolver(new[] { objGE.Id });
                     if (assignment != null)
                     {
-                        for (var i = 0; i < vars.Count; i++)
-                            vars[i + 1].Value = assignment[i];
+                        for (var i = 0; i < assignment.Length; i++)
+                            vars[i].Value = assignment[i];
 
                         State = State.Satisfiable;
 
                         Debug.Assert(_obj.X >= cur);
 
                         //callback might add lazy constraints
+                        var mClauses = ClauseCount;
                         _solutionCallback?.Invoke();
 
-                        if (State == State.Satisfiable && clauses.Count == mClauses)
+                        if (State == State.Satisfiable && ClauseCount == mClauses)
                         {
                             //no new lazy constraints
                             lb = _obj.X;
                             bestAssignment = assignment;
                         }
-                        else
-                        {
-                            //add lazy variables & constraints
-                            solver.AddVars(vars.Count - mVars);
-                            mVars = vars.Count;
-                            for (var i = mClauses; i < clauses.Count; i++)
-                                solver.AddClause(clauses[i]);
-                            mClauses = clauses.Count;
-                        }
 
                         if (AbortOptimization)
+                        {
+                            if (State == State.Satisfiable && ClauseCount != mClauses)
+                                State = State.Undecided;
                             break;
+                        }
                     }
                     else
                     {
@@ -531,11 +490,8 @@ namespace SATInterface
 
                 //restore best known solution
                 State = State.Satisfiable;
-                VarCount = originalVars.Count;
-                vars = originalVars;
-                clauses = originalClauses;
-                for (var i = 0; i < vars.Count; i++)
-                    vars[i + 1].Value = bestAssignment[i];
+                for (var i = 0; i < bestAssignment.Length; i++)
+                    vars[i].Value = bestAssignment[i];
             }
             finally
             {
@@ -552,27 +508,20 @@ namespace SATInterface
             if (State != State.Undecided)
                 return;
 
-            //set up model
-            using (var solver = InstantiateSolver())
+            var res = InvokeSolver();
+            if (res != null)
             {
-                solver.AddVars(vars.Count);
-                foreach (var line in clauses)
-                    solver.AddClause(line);
+                State = State.Satisfiable;
+                Debug.Assert(res.Length == vars.Count);
 
-                var res = solver.Solve();
-                if (res != null)
-                {
-                    State = State.Satisfiable;
-                    Debug.Assert(res.Length == vars.Count);
-
-                    for (var i = 0; i < vars.Count; i++)
-                        vars[i + 1].Value = res[i];
-                }
-                else
-                    State = State.Unsatisfiable;
+                for (var i = 0; i < res.Length; i++)
+                    vars[i].Value = res[i];
             }
+            else
+                State = State.Unsatisfiable;
         }
 
+        /* TODO: reimplement as ISolver
         /// <summary>
         /// Finds an satisfying assignment (SAT) or proves the model
         /// is not satisfiable (UNSAT) with an external solver.
@@ -671,6 +620,7 @@ namespace SATInterface
                     File.Delete(_tmpOutputFilename);
             }
         }
+        */
 
         /// <summary>
         /// Writes the model as DIMACS file
@@ -688,16 +638,21 @@ namespace SATInterface
         /// <param name="_out"></param>
         public void Write(StreamWriter _out)
         {
+            if (DIMACSBuffer is null)
+                throw new Exception("Configuration.EnableDIMACSWriting must be set");
+
             _out.WriteLine("c Created by SATInterface");
-            _out.Flush();
-            _out.WriteLine($"p cnf {vars.Count} {clauses.Count}");
-            _out.Flush();
-            foreach (var line in clauses)
-            {
-                _out.Write(string.Join(' ', line));
-                _out.WriteLine(" 0");
-                _out.Flush();
-            }
+            _out.WriteLine($"p cnf {VariableCount} {ClauseCount}");
+            DIMACSOutput!.Flush();
+
+            DIMACSBuffer.Position = 0;
+            Span<char> buf = stackalloc char[4096];
+            using (var fin = new StreamReader(DIMACSBuffer, Encoding.UTF8, false, -1, true))
+                while (!fin.EndOfStream)
+                {
+                    var bytes = fin.ReadBlock(buf);
+                    _out.Write(buf[0..bytes]);
+                }
         }
 
         /// <summary>
@@ -1455,6 +1410,7 @@ namespace SATInterface
 
         public void Dispose()
         {
+            Solver.Dispose();
         }
     }
 }

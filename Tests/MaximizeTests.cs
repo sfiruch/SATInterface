@@ -25,7 +25,10 @@ namespace Tests
                     }
 
 
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var x = m.AddUIntVar(xUB);
             var y = m.AddUIntVar(yUB);
             var c = m.AddUIntVar(checked(xUB * yUB));
@@ -75,7 +78,10 @@ namespace Tests
         [TestMethod]
         public void UnsatAtEnd()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var a = m.AddVar();
             var b = m.AddVar();
             m.AddConstr(a);
@@ -91,7 +97,10 @@ namespace Tests
         [TestMethod]
         public void SatAtEnd()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddUIntVar(10, true);
             m.Maximize(v);
 
@@ -101,17 +110,27 @@ namespace Tests
         [TestMethod]
         public void RepeatedOptimization()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v1 = m.AddUIntVar(10, true);
-            var v2 = m.AddUIntVar(10, true);
-            var originalVarCount = m.VariableCount;
-            var originalClauseCount = m.ClauseCount;
+            m.AddConstr(v1 >= 2);
+
+            var v2 = m.AddUIntVar(5, true);
+            m.AddConstr(v2 >= 3);
+
             m.Maximize(v1);
-            Assert.AreEqual(originalVarCount, m.VariableCount);
-            Assert.AreEqual(originalClauseCount, m.ClauseCount);
+            Assert.AreEqual(10, v1.X);
+
             m.Maximize(v2);
-            Assert.AreEqual(originalVarCount, m.VariableCount);
-            Assert.AreEqual(originalClauseCount, m.ClauseCount);
+            Assert.AreEqual(5, v2.X);
+
+            m.Minimize(v1);
+            Assert.AreEqual(2, v1.X);
+
+            m.Minimize(v2);
+            Assert.AreEqual(3, v2.X);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace SATInterface
@@ -26,7 +27,6 @@ namespace SATInterface
     {
         CryptoMiniSat,
         CaDiCaL,
-        //CaDiCaLCubed,
         Kissat
     }
 
@@ -56,6 +56,25 @@ namespace SATInterface
         /// </summary>
         public int? Threads;
 
+
+        /// <summary>
+        /// Set to true to allow saving the model to a stream/file
+        /// </summary>
+        public bool EnableDIMACSWriting;
+
+
+        internal void Validate()
+        {
+            if ((Threads ?? 1) < 1)
+                throw new ArgumentOutOfRangeException(nameof(Threads));
+
+            if ((ConsoleSolverLines ?? 1) < 1)
+                throw new ArgumentOutOfRangeException(nameof(ConsoleSolverLines));
+
+            if (Verbosity < 0)
+                throw new ArgumentOutOfRangeException(nameof(Verbosity));
+        }
+
         /// <summary>
         /// Random seed used by the solver for tie-breaking.
         /// Default: null
@@ -69,11 +88,27 @@ namespace SATInterface
         public bool? InitialPhase;
 
         /// <summary>
-        /// Eliminating duplicate subexpressions makes setting up models
-        /// more resource intensive, but solving potentially faster.
-        /// Default: false
+        /// Number of lines the solver output will use, after
+        /// which the solver log will scroll.
+        /// Default: 30
         /// </summary>
-        public bool CommonSubexpressionElimination = false;
+        public int? ConsoleSolverLines = 30;
+
+
+
+
+
+        public Configuration Clone()
+            => new Configuration()
+            {
+                OptimizationFocus=OptimizationFocus,
+                Verbosity=Verbosity,
+                Solver=Solver,
+                Threads=Threads,
+                RandomSeed=RandomSeed,
+                InitialPhase=InitialPhase,
+                EnableDIMACSWriting=EnableDIMACSWriting,
+            };
 
         //TODO: Time limit
         //public TimeSpan TimeLimit = TimeSpan.Zero;

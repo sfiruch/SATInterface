@@ -12,9 +12,30 @@ namespace Tests
         [TestMethod]
         public void EmptySolve()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             m.Solve();
             Assert.AreEqual(State.Satisfiable, m.State);
+        }
+
+        [TestMethod]
+        public void RepeatedSolves()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            m.Solve();
+            m.AddVar();
+            m.Solve();
+            var v2 = m.AddVar();
+            m.Solve();
+            m.AddConstr(v2);
+            m.Solve();
+            m.Solve();
         }
 
         [DataRow(OptimizationFocus.Balanced)]
@@ -23,8 +44,11 @@ namespace Tests
         [DataTestMethod]
         public void EmptyMaximizeBalanced(OptimizationFocus _focus)
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
-            m.Configuration.OptimizationFocus = _focus;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0,
+                OptimizationFocus = _focus
+            });
             m.Maximize((LinExpr)0);
             Assert.AreEqual(State.Satisfiable, m.State);
         }

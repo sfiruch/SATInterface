@@ -11,7 +11,10 @@ namespace Maximize
     {
         static void Main(string[] args)
         {
-            using var m = new Model();
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 1
+            });
 
             var x = m.AddUIntVar(1000);
             var y = m.AddUIntVar(200);
@@ -20,7 +23,6 @@ namespace Maximize
             m.AddConstr((x < 512) | (y < 100));
             m.AddConstr(c == x * y);
 
-            m.Configuration.Verbosity = 1;
             m.Maximize(x + 7 * y, () => Console.WriteLine($"Intermediate result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}, x*y = {c.X}"));
 
             Console.WriteLine($"Final result: {x.X} + 7*{y.X} = {x.X + 7 * y.X}, x*y = {c.X}");

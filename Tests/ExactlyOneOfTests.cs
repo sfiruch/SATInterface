@@ -12,7 +12,10 @@ namespace Tests
     {
         void Pigeonhole(int _holes, int _pigeons, Model.ExactlyOneOfMethod? _method)
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var assignment = m.AddVars(_holes, _pigeons);
 
             for (var h = 0; h < _holes; h++)
@@ -106,7 +109,10 @@ namespace Tests
             const int W = C * C;
             const int H = C * C;
 
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var vXYC = m.AddVars(W, H, C);
             for (var y = 0; y < H; y++)
                 for (var x = 0; x < W; x++)
@@ -144,7 +150,10 @@ namespace Tests
         [DataTestMethod]
         public void SimpleBinary(Model.ExactlyOneOfMethod? _method)
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(4);
             m.AddConstr(m.ExactlyOneOf(v, _method));
 
@@ -171,7 +180,10 @@ namespace Tests
         {
             const int N = 4;
 
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(N);
             m.AddConstr(m.ExactlyOneOf(v,_method));
 

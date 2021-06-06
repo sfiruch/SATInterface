@@ -259,11 +259,11 @@ namespace SATInterface
                     offset += e.Value;
                 }
                 else if (e.Value > 0)
-                    posVar.Add(UIntVar.ITE(e.Key, UIntVar.Const(model, e.Value), UIntVar.Const(model, 0)));
+                    posVar.Add(e.Key * UIntVar.Const(model, e.Value));
                 else
                 {
                     Debug.Assert(e.Value < 0);
-                    posVar.Add(UIntVar.ITE(!e.Key, UIntVar.Const(model, -e.Value), UIntVar.Const(model, 0)));
+                    posVar.Add(!e.Key * UIntVar.Const(model, -e.Value));
                     offset += e.Value;
                 }
 

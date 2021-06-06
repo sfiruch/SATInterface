@@ -76,15 +76,7 @@ namespace SATInterface
             if (res.OfType<NotExpr>().Any(ne => res.Contains(ne.inner)))
                 return Model.False;
 
-            var ret = new AndExpr(res.ToArray());
-            var model = ret.EnumVars().First().Model;
-            if (model.Configuration.CommonSubexpressionElimination)
-            {
-                if (model.ExprCache.TryGetValue(ret, out var lu))
-                    return lu;
-                model.ExprCache[ret] = ret;
-            }
-            return ret;
+            return new AndExpr(res.ToArray());
         }
 
         private BoolExpr? flattenCache;
@@ -95,20 +87,10 @@ namespace SATInterface
 
             var model = EnumVars().First().Model;
 
-            if (model.Configuration.CommonSubexpressionElimination
-                && model.ExprCache.TryGetValue(this, out var lu) && lu.VarCount <= 1)
-                return flattenCache = lu;
-
             flattenCache = model.AddVar();
             model.AddConstr(OrExpr.Create(elements.Select(e => !e).Append(flattenCache)));
             foreach (var e in elements)
                 model.AddConstr(e | !flattenCache);
-
-            if (model.Configuration.CommonSubexpressionElimination)
-            {
-                model.ExprCache[this] = flattenCache;
-                model.ExprCache[!this] = !flattenCache;
-            }
 
             return flattenCache;
         }

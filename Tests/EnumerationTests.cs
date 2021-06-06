@@ -14,7 +14,10 @@ namespace Tests
         {
             const int N = 12;
 
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(N);
 
             var cnt = 0;
@@ -40,7 +43,10 @@ namespace Tests
         [TestMethod]
         public void RepeatedEnumeration()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(3);
 
             var cnt = 0;
@@ -57,7 +63,10 @@ namespace Tests
         [TestMethod]
         public void BinaryUnsat()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(5);
 
             m.AddConstr(m.Sum(v) <= 2);
@@ -76,7 +85,10 @@ namespace Tests
         [TestMethod]
         public void BinarySubset()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(10);
 
             var cnt = 0;
@@ -95,7 +107,10 @@ namespace Tests
         [TestMethod]
         public void BinarySubsetLazyCondition()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(8);
 
             var cnt = 0;
@@ -118,7 +133,10 @@ namespace Tests
         [TestMethod]
         public void BinarySubsetLazyVars()
         {
-            using var m = new Model(); m.Configuration.Verbosity = 0;
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
             var v = m.AddVars(4);
 
             var cnt = 0;

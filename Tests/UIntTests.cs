@@ -15,11 +15,14 @@ namespace Tests
             foreach (var strategy in Enum.GetValues(typeof(OptimizationFocus)).Cast<OptimizationFocus>())
                 for (var i = 0; i < 140; i++)
                 {
-                    using var m = new Model(); m.Configuration.Verbosity = 0;
+                    using var m = new Model(new Configuration()
+                    {
+                        Verbosity = 0,
+                        OptimizationFocus = strategy
+                    });
                     var v = m.AddUIntVar(100, true);
                     m.AddConstr(v <= i);
 
-                    m.Configuration.OptimizationFocus = strategy;
                     m.Maximize(v);
 
                     Assert.AreEqual(State.Satisfiable, m.State);
@@ -33,11 +36,14 @@ namespace Tests
             foreach (var strategy in Enum.GetValues(typeof(OptimizationFocus)).Cast<OptimizationFocus>())
                 for (var i = 0; i < 140; i++)
                 {
-                    using var m = new Model(); m.Configuration.Verbosity = 0;
+                    using var m = new Model(new Configuration()
+                    {
+                        Verbosity = 0,
+                        OptimizationFocus = strategy
+                    });
                     var v = m.AddUIntVar(100, true);
                     m.AddConstr(v >= i);
 
-                    m.Configuration.OptimizationFocus = strategy;
                     m.Minimize(v);
 
                     if (i <= 100)
@@ -56,7 +62,10 @@ namespace Tests
             for (var i = 0; i < 100; i++)
                 for (var j = 0; j < 10; j++)
                 {
-                    using var m = new Model(); m.Configuration.Verbosity = 0;
+                    using var m = new Model(new Configuration()
+                    {
+                        Verbosity = 0
+                    });
                     var v = m.AddUIntConst(i);
                     for (var k = 0; k < j; k++)
                         v += true;
@@ -72,8 +81,10 @@ namespace Tests
             for (var i = 0; i < 20; i++)
                 for (var j = 0; j < 20; j++)
                 {
-                    using var m = new Model(); m.Configuration.Verbosity = 0;
-                    m.Configuration.Verbosity = 0;
+                    using var m = new Model(new Configuration()
+                    {
+                        Verbosity = 0
+                    });
 
                     var v = m.AddUIntConst(0);
                     v += i;
@@ -91,7 +102,10 @@ namespace Tests
             for (var n = 0; n < 100; n++)
                 for (var i = 0; i < 5; i++)
                 {
-                    using var m = new Model(); m.Configuration.Verbosity = 0;
+                    using var m = new Model(new Configuration()
+                    {
+                        Verbosity = 0
+                    });
                     var v = m.AddVars(n);
                     var values = Enumerable.Range(0, n).Select(i => RNG.Next(2) == 0).ToArray();
                     for (var j = 0; j < n; j++)

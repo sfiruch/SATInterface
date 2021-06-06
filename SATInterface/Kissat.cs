@@ -13,13 +13,15 @@ namespace SATInterface
     {
         private Configuration config = new Configuration();
         private int Verbosity;
-        int varCount = 0;
+        private Model Parent;
         List<int[]> clauses = new List<int[]>();
 
-        public Kissat()
+        public Kissat(Model _parent)
         {
             if (!Environment.Is64BitProcess)
                 throw new Exception("This library only supports x64 when using the bundled Kissat solver.");
+
+            Parent = _parent;
         }
 
         public bool[]? Solve(int[]? _assumptions = null)
@@ -69,8 +71,8 @@ namespace SATInterface
                 {
                     case 10:
                         //satisfiable
-                        var res = new bool[varCount];
-                        for (var i = 0; i < varCount; i++)
+                        var res = new bool[Parent.VariableCount];
+                        for (var i = 0; i < Parent.VariableCount; i++)
                             res[i] = KissatNative.kissat_value(Handle, i + 1) > 0;
                         return res;
 
@@ -90,12 +92,9 @@ namespace SATInterface
             }
         }
 
-        public void AddVars(int _number) => varCount += _number;
-
-        public bool AddClause(Span<int> _clause)
+        public void AddClause(Span<int> _clause)
         {
             clauses.Add(_clause.ToArray());
-            return true;
         }
 
         #region IDisposable Support
@@ -143,9 +142,11 @@ namespace SATInterface
         public static extern void kissat_release(IntPtr wrapper);
 
         [DllImport("kissat.dll")]
+        //TODO: [SuppressGCTransition]
         public static extern void kissat_add(IntPtr wrapper, int lit);
 
         //[DllImport("kissat.dll")]
+        ////TODO: [SuppressGCTransition]
         //public static extern void kissat_assume(IntPtr wrapper, int lit);
 
         [DllImport("kissat.dll")]
@@ -155,6 +156,7 @@ namespace SATInterface
         public static extern void kissat_terminate(IntPtr wrapper);
 
         [DllImport("kissat.dll")]
+        //TODO: [SuppressGCTransition]
         public static extern int kissat_value(IntPtr wrapper, int lit);
 
         [DllImport("kissat.dll")]

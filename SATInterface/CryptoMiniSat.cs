@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace SATInterface
 {
@@ -13,13 +14,15 @@ namespace SATInterface
     {
         private IntPtr Handle;
         private int Verbosity;
+        private Model Parent;
 
-        public CryptoMiniSat()
+        public CryptoMiniSat(Model _parent)
         {
             if (!Environment.Is64BitProcess)
                 throw new Exception("This library only supports x64 when using the bundled CryptoMiniSat solver.");
 
             Handle = CryptoMiniSatNative.cmsat_new();
+            Parent = _parent;
         }
 
         public bool[]? Solve(int[]? _assumptions = null)
@@ -38,7 +41,9 @@ namespace SATInterface
             if (satisfiable)
             {
                 var model = CryptoMiniSatNative.cmsat_get_model(Handle);
-                var bytes = new byte[(int)model.num_vals];
+
+                Debug.Assert((int)model.num_vals <= Parent.VariableCount);
+                var bytes = new byte[Parent.VariableCount];
                 if ((int)model.num_vals != 0)
                     Marshal.Copy(model.vals, bytes, 0, (int)model.num_vals);
                 return bytes.Select(v => v == (byte)CryptoMiniSatNative.c_lbool.L_TRUE).ToArray();
@@ -47,11 +52,23 @@ namespace SATInterface
                 return null;
         }
 
-        public void AddVars(int _number) => CryptoMiniSatNative.cmsat_new_vars(Handle, (IntPtr)_number);
+        public void AddClause(Span<int> _clause)
+        {
+            var maxVar = 0;
+            foreach (var v in _clause)
+                if (v > maxVar)
+                    maxVar = v;
+                else if (-v > maxVar)
+                    maxVar = -v;
 
-        public bool AddClause(Span<int> _clause) => CryptoMiniSatNative.cmsat_add_clause(Handle,
+            var curVars = CryptoMiniSatNative.cmsat_nvars(Handle);
+            if(curVars<maxVar)
+                CryptoMiniSatNative.cmsat_new_vars(Handle, (IntPtr)(maxVar-curVars));
+
+            CryptoMiniSatNative.cmsat_add_clause(Handle,
                 _clause.ToArray().Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
                 (IntPtr)_clause.Length);
+        }
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -123,9 +140,11 @@ namespace SATInterface
         }
 
         [DllImport("cryptominisat5win.dll")]
+        //TODO: [SuppressGCTransition]
         public static extern bool cmsat_add_clause(IntPtr self, [In, MarshalAs(UnmanagedType.LPArray)] Int32[] lits, IntPtr num_lits);
 
         [DllImport("cryptominisat5win.dll")]
+        //TODO: [SuppressGCTransition]
         public static extern bool cmsat_add_xor_clause(IntPtr self, [In, MarshalAs(UnmanagedType.LPArray)] UInt32[] vars, IntPtr num_vars, bool rhs);
 
         [DllImport("cryptominisat5win.dll")]
@@ -141,6 +160,7 @@ namespace SATInterface
         public static extern IntPtr cmsat_new();
 
         [DllImport("cryptominisat5win.dll")]
+        //TODO: [SuppressGCTransition]
         public static extern void cmsat_new_vars(IntPtr self, IntPtr n);
 
         [DllImport("cryptominisat5win.dll")]

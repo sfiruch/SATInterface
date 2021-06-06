@@ -13,7 +13,10 @@ namespace Tests
         {
             for (var i = 0; i < 1 << _vars; i++)
             {
-                using var m = new Model(); m.Configuration.Verbosity = 0;
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
                 var v = m.AddVars(_vars);
                 var bv = new bool[_vars];
                 for (var j = 0; j < _vars; j++)

@@ -6,8 +6,7 @@ namespace SATInterface
 {
     interface ISolver:IDisposable
     {
-        public void AddVars(int _number);
-        public bool AddClause(Span<int> _clause);
+        public void AddClause(Span<int> _clause);
 
         public bool[]? Solve(int[]? _assumptions = null);
 
