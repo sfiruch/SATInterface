@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SATInterface;
+using SATInterface.Solver;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,11 +11,11 @@ namespace Tests
     [TestClass]
     public class SolverTests
     {
-        [DataRow(InternalSolver.CaDiCaL)]
-        [DataRow(InternalSolver.Kissat)]
-        [DataRow(InternalSolver.CryptoMiniSat)]
+        [DataRow(typeof(CaDiCaL))]
+        [DataRow(typeof(Kissat))]
+        [DataRow(typeof(CryptoMiniSat))]
         [DataTestMethod]
-        public void PigeonholeRandom(InternalSolver _solver)
+        public void PigeonholeRandom(Type _solver)
         {
             var RNG = new Random(1);
             for (var i = 0; i < 50; i++)
@@ -25,7 +26,7 @@ namespace Tests
                 using var m = new Model(new Configuration()
                 {
                     Verbosity = 0,
-                    Solver = _solver
+                    Solver = (ISolver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
                 });
 
                 var assignment = m.AddVars(_holes, _pigeons);
@@ -44,11 +45,11 @@ namespace Tests
             }
         }
 
-        [DataRow(InternalSolver.CaDiCaL)]
-        [DataRow(InternalSolver.Kissat)]
-        [DataRow(InternalSolver.CryptoMiniSat)]
+        [DataRow(typeof(CaDiCaL))]
+        [DataRow(typeof(Kissat))]
+        [DataRow(typeof(CryptoMiniSat))]
         [DataTestMethod]
-        public void CornerTilePacking(InternalSolver _solver)
+        public void CornerTilePacking(Type _solver)
         {
             const int C = 2;
             const int N = C * C * C * C;
@@ -59,7 +60,7 @@ namespace Tests
             using var m = new Model(new Configuration()
             {
                 Verbosity = 0,
-                Solver = _solver
+                Solver = (ISolver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
             });
 
             var vXYC = m.AddVars(W, H, C);
@@ -86,16 +87,16 @@ namespace Tests
             Assert.AreEqual(State.Satisfiable, m.State);
         }
 
-        [DataRow(InternalSolver.CaDiCaL)]
-        [DataRow(InternalSolver.Kissat)]
-        [DataRow(InternalSolver.CryptoMiniSat)]
+        [DataRow(typeof(CaDiCaL))]
+        [DataRow(typeof(Kissat))]
+        [DataRow(typeof(CryptoMiniSat))]
         [DataTestMethod]
-        public void SimpleBinary(InternalSolver _solver)
+        public void SimpleBinary(Type _solver)
         {
             using var m = new Model(new Configuration()
             {
                 Verbosity = 0,
-                Solver = _solver
+                Solver = (ISolver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
             });
 
             var v = m.AddVars(4);
@@ -109,18 +110,18 @@ namespace Tests
             Assert.AreEqual(State.Satisfiable, m.State);
         }
 
-        [DataRow(InternalSolver.CaDiCaL)]
-        [DataRow(InternalSolver.Kissat)]
-        [DataRow(InternalSolver.CryptoMiniSat)]
+        [DataRow(typeof(CaDiCaL))]
+        [DataRow(typeof(Kissat))]
+        [DataRow(typeof(CryptoMiniSat))]
         [DataTestMethod]
-        public void EnumerateBinary(InternalSolver _solver)
+        public void EnumerateBinary(Type _solver)
         {
             const int N = 4;
 
             using var m = new Model(new Configuration()
             {
                 Verbosity = 0,
-                Solver = _solver
+                Solver = (ISolver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
             });
 
             var v = m.AddVars(N);

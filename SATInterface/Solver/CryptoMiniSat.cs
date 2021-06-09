@@ -5,7 +5,7 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 
-namespace SATInterface
+namespace SATInterface.Solver
 {
     /// <summary>
     /// Managed-code facade of the native CryptoMiniSat solver
@@ -14,18 +14,16 @@ namespace SATInterface
     {
         private IntPtr Handle;
         private int Verbosity;
-        private Model Parent;
 
-        public CryptoMiniSat(Model _parent)
+        public CryptoMiniSat()
         {
             if (!Environment.Is64BitProcess)
                 throw new Exception("This library only supports x64 when using the bundled CryptoMiniSat solver.");
 
             Handle = CryptoMiniSatNative.cmsat_new();
-            Parent = _parent;
         }
 
-        public bool[]? Solve(int[]? _assumptions = null)
+        public bool[]? Solve(int _variableCount, int[]? _assumptions = null)
         {
             bool satisfiable;
             if (_assumptions == null || _assumptions.Length == 0)
@@ -42,8 +40,8 @@ namespace SATInterface
             {
                 var model = CryptoMiniSatNative.cmsat_get_model(Handle);
 
-                Debug.Assert((int)model.num_vals <= Parent.VariableCount);
-                var bytes = new byte[Parent.VariableCount];
+                Debug.Assert((int)model.num_vals <= _variableCount);
+                var bytes = new byte[_variableCount];
                 if ((int)model.num_vals != 0)
                     Marshal.Copy(model.vals, bytes, 0, (int)model.num_vals);
                 return bytes.Select(v => v == (byte)CryptoMiniSatNative.c_lbool.L_TRUE).ToArray();

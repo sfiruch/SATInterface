@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 
-namespace SATInterface
+namespace SATInterface.Solver
 {
     /// <summary>
     /// Managed-code facade of the native CaDiCaL solver
@@ -13,18 +13,16 @@ namespace SATInterface
     {
         private IntPtr Handle;
         private int Verbosity;
-        private Model Parent;
 
-        public CaDiCaL(Model _parent)
+        public CaDiCaL()
         {
             if (!Environment.Is64BitProcess)
                 throw new Exception("This library only supports x64 when using the bundled CaDiCaL solver.");
 
             Handle = CaDiCaLNative.ccadical_init();
-            Parent = _parent;
         }
 
-        public bool[]? Solve(int[]? _assumptions = null)
+        public bool[]? Solve(int _variableCount, int[]? _assumptions = null)
         {
             if (_assumptions != null)
                 foreach (var a in _assumptions)
@@ -45,7 +43,7 @@ namespace SATInterface
             {
                 case 10:
                     //satisfiable
-                    var res = new bool[Parent.VariableCount];
+                    var res = new bool[_variableCount];
                     for (var i = 0; i < res.Length; i++)
                         res[i] = CaDiCaLNative.ccadical_val(Handle, i + 1) > 0;
                     return res;

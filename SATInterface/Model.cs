@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SATInterface.Solver;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -49,13 +50,7 @@ namespace SATInterface
             Configuration = _configuration?.Clone() ?? new Configuration();
             Configuration.Validate();
 
-            Solver = Configuration.Solver switch
-            {
-                InternalSolver.CryptoMiniSat => (ISolver)new CryptoMiniSat(this),
-                InternalSolver.CaDiCaL => (ISolver)new CaDiCaL(this),
-                InternalSolver.Kissat => (ISolver)new Kissat(this),
-                _ => throw new ArgumentException("Invalid solver configured", nameof(Configuration.Solver))
-            };
+            Solver = Configuration.Solver;
             Solver.ApplyConfiguration(Configuration);
 
             if (Configuration.EnableDIMACSWriting)
@@ -274,7 +269,7 @@ namespace SATInterface
                 if (Configuration.ConsoleSolverLines.HasValue)
                     Log.LimitOutputTo(Configuration.ConsoleSolverLines.Value);
 
-                return Solver.Solve(_assumptions);
+                return Solver.Solve(VariableCount, _assumptions);
             }
             finally
             {
@@ -521,107 +516,6 @@ namespace SATInterface
                 State = State.Unsatisfiable;
         }
 
-        /* TODO: reimplement as ISolver
-        /// <summary>
-        /// Finds an satisfying assignment (SAT) or proves the model
-        /// is not satisfiable (UNSAT) with an external solver.
-        /// </summary>
-        public void SolveWithExternalSolver(string _executable, string? _arguments = null, string? _newLine = null, string? _tmpInputFilename = null, string? _tmpOutputFilename = null)
-        {
-            if (State == State.Unsatisfiable)
-                return;
-
-            State = State.Undecided;
-
-            if (_tmpInputFilename != null)
-                Write(_tmpInputFilename);
-
-            var p = Process.Start(new ProcessStartInfo()
-            {
-                FileName = _executable,
-                Arguments = _arguments,
-                RedirectStandardInput = _tmpInputFilename == null,
-                RedirectStandardOutput = _tmpOutputFilename == null,
-                UseShellExecute = false
-            });
-
-            Thread? satWriterThread = null;
-            if (_tmpInputFilename == null)
-            {
-                satWriterThread = new Thread(new ParameterizedThreadStart(delegate
-                {
-                    p.StandardInput.AutoFlush = false;
-                    p.StandardInput.NewLine = _newLine ?? "\n";
-                    Write(p.StandardInput);
-                    p.StandardInput.Close();
-                }))
-                {
-                    IsBackground = true,
-                    Name = "SAT Writer Thread"
-                };
-                satWriterThread.Start();
-            }
-            if (_tmpInputFilename != null)
-                p.WaitForExit();
-
-            var log = new List<string>();
-            try
-            {
-                using (StreamReader output = _tmpOutputFilename == null ? p.StandardOutput : File.OpenText(_tmpOutputFilename))
-                {
-                    for (var line = output.ReadLine(); line != null; line = output.ReadLine())
-                    {
-                        var tk = line.Split(' ').Where(e => e != "").ToArray();
-                        if (tk.Length == 0)
-                        {
-                            //skip empty lines
-                        }
-                        if (tk.Length > 1 && tk[0] == "c" && _tmpOutputFilename == null)
-                        {
-                            if (Configuration.Verbosity > 0)
-                                Console.WriteLine(line);
-                        }
-                        if (tk.Length == 2 && tk[0] == "s")
-                        {
-                            if (Configuration.Verbosity > 0 && _tmpOutputFilename == null)
-                                Console.WriteLine(line);
-                            if (tk[1] == "SATISFIABLE")
-                                State = State.Satisfiable;
-                            else if (tk[1] == "UNSATISFIABLE")
-                                State = State.Unsatisfiable;
-                            else
-                                throw new Exception(tk[2]);
-                        }
-                        else if (tk.Length >= 2 && tk[0] == "v")
-                        {
-                            foreach (var n in tk.Skip(1).Select(s => int.Parse(s)))
-                                if (n > 0)
-                                    vars[n].Value = true;
-                                else if (n < 0)
-                                    vars[-n].Value = false;
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                satWriterThread?.Abort();
-                p.WaitForExit();
-
-                if (_tmpInputFilename == null)
-                    p.StandardInput.Dispose();
-                if (_tmpOutputFilename == null)
-                    p.StandardOutput.Dispose();
-                p.Dispose();
-
-                if (_tmpInputFilename != null)
-                    File.Delete(_tmpInputFilename);
-                if (_tmpOutputFilename != null)
-                    File.Delete(_tmpOutputFilename);
-            }
-        }
-        */
-
         /// <summary>
         /// Writes the model as DIMACS file
         /// </summary>
@@ -636,15 +530,15 @@ namespace SATInterface
         /// Serializes the model in DIMACS format into a stream
         /// </summary>
         /// <param name="_out"></param>
-        public void Write(StreamWriter _out)
+        public void Write(TextWriter _out)
         {
             if (DIMACSBuffer is null)
                 throw new Exception("Configuration.EnableDIMACSWriting must be set");
 
             _out.WriteLine("c Created by SATInterface");
             _out.WriteLine($"p cnf {VariableCount} {ClauseCount}");
-            DIMACSOutput!.Flush();
 
+            DIMACSOutput!.Flush();
             DIMACSBuffer.Position = 0;
             Span<char> buf = stackalloc char[4096];
             using (var fin = new StreamReader(DIMACSBuffer, Encoding.UTF8, false, -1, true))

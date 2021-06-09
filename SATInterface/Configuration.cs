@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SATInterface.Solver;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -23,13 +24,6 @@ namespace SATInterface
         Bound
     }
 
-    public enum InternalSolver
-    {
-        CryptoMiniSat,
-        CaDiCaL,
-        Kissat
-    }
-
     public class Configuration
     {
         /// <summary>
@@ -46,9 +40,9 @@ namespace SATInterface
 
         /// <summary>
         /// Bundled SAT solver to use.
-        /// Default: CaDiCaL
+        /// Default: new SATInterface.Solver.CaDiCaL()
         /// </summary>
-        public InternalSolver Solver = InternalSolver.CaDiCaL;
+        public ISolver Solver = new CaDiCaL();
 
         /// <summary>
         /// Number of threads the solver may use.

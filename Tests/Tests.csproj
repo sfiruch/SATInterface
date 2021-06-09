@@ -25,4 +25,13 @@
     <ProjectReference Include="..\SATInterface\SATInterface.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="kissat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="kissat.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -4,28 +4,28 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 
-namespace SATInterface
+namespace SATInterface.Solver
 {
     /// <summary>
     /// Managed-code facade of the native Kissat solver
     /// </summary>
     public class Kissat : ISolver
     {
-        private Configuration config = new Configuration();
+        private Configuration? config;
         private int Verbosity;
-        private Model Parent;
-        List<int[]> clauses = new List<int[]>();
+        List<int> clauses = new List<int>();
 
-        public Kissat(Model _parent)
+        public Kissat()
         {
             if (!Environment.Is64BitProcess)
                 throw new Exception("This library only supports x64 when using the bundled Kissat solver.");
-
-            Parent = _parent;
         }
 
-        public bool[]? Solve(int[]? _assumptions = null)
+        public bool[]? Solve(int _variableCount, int[]? _assumptions = null)
         {
+            if(config is null)
+                throw new InvalidOperationException();
+
             var Handle = KissatNative.kissat_init();
             try
             {
@@ -43,12 +43,8 @@ namespace SATInterface
                 if (config.InitialPhase.HasValue)
                     KissatNative.kissat_set_option(Handle, "phase", config.InitialPhase.Value ? 1 : 0);
 
-                foreach (var c in clauses)
-                {
-                    foreach (var i in c)
-                        KissatNative.kissat_add(Handle, i);
-                    KissatNative.kissat_add(Handle, 0);
-                }
+                foreach (var v in clauses)
+                    KissatNative.kissat_add(Handle, v);
 
                 if (_assumptions != null)
                 {
@@ -71,8 +67,8 @@ namespace SATInterface
                 {
                     case 10:
                         //satisfiable
-                        var res = new bool[Parent.VariableCount];
-                        for (var i = 0; i < Parent.VariableCount; i++)
+                        var res = new bool[_variableCount];
+                        for (var i = 0; i < _variableCount; i++)
                             res[i] = KissatNative.kissat_value(Handle, i + 1) > 0;
                         return res;
 
@@ -94,7 +90,9 @@ namespace SATInterface
 
         public void AddClause(Span<int> _clause)
         {
-            clauses.Add(_clause.ToArray());
+            foreach(var v in _clause)
+                clauses.Add(v);
+            clauses.Add(0);
         }
 
         #region IDisposable Support

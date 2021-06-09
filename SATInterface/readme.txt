@@ -13,10 +13,10 @@
 using System;
 using System.Linq;
 using SATInterface;
+using SATInterface.Solver;
 
 using var m = new Model(new Configuration()
 {
-    Solver = InternalSolver.CaDiCaL,
     Verbosity = 2
 });
 
