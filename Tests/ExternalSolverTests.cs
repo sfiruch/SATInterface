@@ -68,6 +68,7 @@ namespace Tests
         }
 
         [TestMethod]
+        [Ignore]
         public void kissatWSLPipe()
         {
             using var m = new Model(new Configuration()
@@ -82,16 +83,33 @@ namespace Tests
         }
 
         [TestMethod]
+        [Ignore]
         public void kissatWSLFile()
         {
             using var m = new Model(new Configuration()
             {
                 Verbosity = 0,
-                //m.SolverArguments = $"./plingeling | tee {m.UseTmpOutputFile} | sed '/^v / d'";
 
                 Solver = new ExternalSolver(
                     $@"{(Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "sysnative") : Environment.GetFolderPath(Environment.SpecialFolder.System))}\wsl.exe",
                     "./kissat input.cnf | tee solution.sol",
+                    "input.cnf",
+                    "solution.sol")
+            });
+
+            BuildAndTestModel(m);
+        }
+
+        [TestMethod]
+        public void kissatWin32File()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0,
+
+                Solver = new ExternalSolver(
+                    $"cmd.exe",
+                    "/c kissat.exe input.cnf > solution.sol",
                     "input.cnf",
                     "solution.sol")
             });

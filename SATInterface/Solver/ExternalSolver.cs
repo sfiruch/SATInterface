@@ -73,7 +73,6 @@ namespace SATInterface.Solver
             Thread? satWriterThread = null;
             if (FilenameInput is null)
             {
-                Write(Console.Out, _variableCount, _assumptions);
                 satWriterThread = new Thread(new ParameterizedThreadStart(delegate
                 {
                     p.StandardInput.AutoFlush = false;
