@@ -186,8 +186,8 @@ namespace SATInterface
         public BoolExpr[,] AddVars(int _n1, int _n2)
         {
             var res = new BoolExpr[_n1, _n2];
-            for (var i1 = 0; i1 < _n1; i1++)
-                for (var i2 = 0; i2 < _n2; i2++)
+            for (var i2 = 0; i2 < _n2; i2++)
+                for (var i1 = 0; i1 < _n1; i1++)
                     res[i1, i2] = AddVar();
             return res;
         }
@@ -200,9 +200,9 @@ namespace SATInterface
         public BoolExpr[,,] AddVars(int _n1, int _n2, int _n3)
         {
             var res = new BoolExpr[_n1, _n2, _n3];
-            for (var i1 = 0; i1 < _n1; i1++)
+            for (var i3 = 0; i3 < _n3; i3++)
                 for (var i2 = 0; i2 < _n2; i2++)
-                    for (var i3 = 0; i3 < _n3; i3++)
+                    for (var i1 = 0; i1 < _n1; i1++)
                         res[i1, i2, i3] = AddVar();
             return res;
         }
@@ -215,10 +215,10 @@ namespace SATInterface
         public BoolExpr[,,,] AddVars(int _n1, int _n2, int _n3, int _n4)
         {
             var res = new BoolExpr[_n1, _n2, _n3, _n4];
-            for (var i1 = 0; i1 < _n1; i1++)
-                for (var i2 = 0; i2 < _n2; i2++)
-                    for (var i3 = 0; i3 < _n3; i3++)
-                        for (var i4 = 0; i4 < _n4; i4++)
+            for (var i4 = 0; i4 < _n4; i4++)
+                for (var i3 = 0; i3 < _n3; i3++)
+                    for (var i2 = 0; i2 < _n2; i2++)
+                        for (var i1 = 0; i1 < _n1; i1++)
                             res[i1, i2, i3, i4] = AddVar();
             return res;
         }
@@ -266,14 +266,14 @@ namespace SATInterface
         {
             try
             {
-                if (Configuration.ConsoleSolverLines.HasValue)
+                if (Configuration.ConsoleSolverLines.HasValue && Configuration.Verbosity > 0)
                     Log.LimitOutputTo(Configuration.ConsoleSolverLines.Value);
 
                 return Solver.Solve(VariableCount, _assumptions);
             }
             finally
             {
-                if (Configuration.ConsoleSolverLines.HasValue)
+                if (Configuration.ConsoleSolverLines.HasValue && Configuration.Verbosity > 0)
                     Log.LimitOutputTo();
             }
         }

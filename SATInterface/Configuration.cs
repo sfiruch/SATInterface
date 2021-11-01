@@ -84,9 +84,9 @@ namespace SATInterface
         /// <summary>
         /// Number of lines the solver output will use, after
         /// which the solver log will scroll.
-        /// Default: 30
+        /// Default: 35
         /// </summary>
-        public int? ConsoleSolverLines = 30;
+        public int? ConsoleSolverLines = 35;
 
 
 
@@ -95,6 +95,7 @@ namespace SATInterface
         public Configuration Clone()
             => new Configuration()
             {
+                ConsoleSolverLines=ConsoleSolverLines,
                 OptimizationFocus=OptimizationFocus,
                 Verbosity=Verbosity,
                 Solver=Solver,

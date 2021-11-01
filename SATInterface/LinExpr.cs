@@ -310,6 +310,9 @@ namespace SATInterface
             if (rhs > _a.Weights.Sum(x => Math.Abs(x.Value)))
                 return Model.False;
 
+            if (rhs == 0)
+                return AndExpr.Create(_a.Weights.Select(x => x.Value>0 ? !x.Key:x.Key));
+
             if (rhs > BinaryComparisonThreshold)
             {
                 var aui = _a.ToUInt();

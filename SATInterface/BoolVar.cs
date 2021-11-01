@@ -59,8 +59,8 @@ namespace SATInterface
                 if (ReferenceEquals(this, Model.False))
                     return false;
 
-                if (Model.State != State.Satisfiable)
-                    throw new InvalidOperationException("Model is not SAT");
+                if (Model.State == State.Unsatisfiable)
+                    throw new InvalidOperationException("Model is UNSAT");
 
                 return Value;
             }
