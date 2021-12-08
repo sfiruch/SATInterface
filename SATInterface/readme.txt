@@ -6,6 +6,7 @@
 //
 // * CaDiCaL is MIT-licensed and available from https://github.com/arminbiere/cadical
 // * Kissat is MIT-licensed and available from https://github.com/arminbiere/kissat
+// * YalSAT is MIT-licensed and available from http://fmv.jku.at/yalsat/
 // * CryptoMiniSat is MIT-licensed and available from https://github.com/msoos/cryptominisat
 //
 // Here's a usage example: Sudoku

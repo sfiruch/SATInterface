@@ -36,7 +36,6 @@ namespace Tests
 
             Assert.AreEqual(State.Undecided, m.State);
             Assert.IsTrue(abortCalled);
-            Assert.ThrowsException<InvalidOperationException>(() => obj.X);
         }
 
         [TestMethod]

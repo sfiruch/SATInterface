@@ -1,4 +1,5 @@
 ﻿using SATInterface;
+using SATInterface.Solver;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

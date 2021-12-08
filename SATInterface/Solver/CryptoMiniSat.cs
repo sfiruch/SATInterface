@@ -113,6 +113,11 @@ namespace SATInterface.Solver
 
             if (_config.InitialPhase.HasValue)
                 throw new NotImplementedException("CryptoMiniSat does not allow the configuration of InitialPhase.");
+
+            if (_config.TimeLimit != TimeSpan.Zero)
+                CryptoMiniSatNative.cmsat_set_max_time(Handle,_config.TimeLimit.TotalSeconds);
+
+            //TODO: respect _config.Target
         }
     }
 

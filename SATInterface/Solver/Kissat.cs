@@ -12,7 +12,6 @@ namespace SATInterface.Solver
     public class Kissat : ISolver
     {
         private Configuration? config;
-        private int Verbosity;
         List<int> clauses = new List<int>();
 
         public Kissat()
@@ -29,10 +28,9 @@ namespace SATInterface.Solver
             var Handle = KissatNative.kissat_init();
             try
             {
-                Verbosity = Math.Max(0, config.Verbosity - 1);
-                KissatNative.kissat_set_option(Handle, "quiet", Verbosity == 0 ? 1 : 0);
+                KissatNative.kissat_set_option(Handle, "quiet", config.Verbosity == 0 ? 1 : 0);
                 //KissatNative.kissat_set_option(Handle, "report", Verbosity > 0 ? 1 : 0);
-                KissatNative.kissat_set_option(Handle, "verbose", Math.Max(0, Verbosity - 1));
+                KissatNative.kissat_set_option(Handle, "verbose", Math.Max(0, config.Verbosity - 1));
 
                 if ((config.Threads ?? 1) != 1)
                     throw new NotImplementedException("Kissat only supports single-threaded operation.");
@@ -42,6 +40,29 @@ namespace SATInterface.Solver
 
                 if (config.InitialPhase.HasValue)
                     KissatNative.kissat_set_option(Handle, "phase", config.InitialPhase.Value ? 1 : 0);
+
+                if(config.TimeLimit!=TimeSpan.Zero)
+                    //TODO: kissat uses signals to stop the process --> use terminate callback instead
+                    throw new NotImplementedException("Kissat does not yet support time limits.");
+
+                switch (config.Target)
+                {
+                    case Target.FindAssignment:
+                        KissatNative.kissat_set_option(Handle, "target", 2);
+                        KissatNative.kissat_set_option(Handle, "restartint", 50);
+                        break;
+                    case Target.ProveUnsat:
+                        KissatNative.kissat_set_option(Handle, "stable", 0);
+                        break;
+                    case Target.RandomSampledAssignment:
+                        KissatNative.kissat_set_option(Handle, "target", 2);
+                        KissatNative.kissat_set_option(Handle, "restartint", 50);
+                        KissatNative.kissat_set_option(Handle, "restartreusetrail", 0);
+                        KissatNative.kissat_set_option(Handle, "walkeffort", 500000);
+                        KissatNative.kissat_set_option(Handle, "walkinitially", 1);
+                        KissatNative.kissat_set_option(Handle, "reluctant", 0);
+                        break;
+                }
 
                 foreach (var v in clauses)
                     KissatNative.kissat_add(Handle, v);
@@ -55,12 +76,12 @@ namespace SATInterface.Solver
                     }
                 }
 
-                if (Verbosity >= 1)
+                if (config.Verbosity >= 1)
                     KissatNative.kissat_banner("c ", Marshal.PtrToStringAnsi(KissatNative.kissat_signature()));
 
                 var satisfiable = KissatNative.kissat_solve(Handle);
 
-                if (Verbosity >= 1)
+                if (config.Verbosity >= 1)
                     KissatNative.kissat_print_statistics(Handle);
 
                 switch (satisfiable)

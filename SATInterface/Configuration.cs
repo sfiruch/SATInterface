@@ -24,6 +24,29 @@ namespace SATInterface
         Bound
     }
 
+    public enum Target
+    {
+        /// <summary>
+        /// Binary search
+        /// </summary>
+        Unknown,
+
+        /// <summary>
+        /// Likely SAT. Prioritize finding assignment.
+        /// </summary>
+        FindAssignment,
+
+        /// <summary>
+        /// Likely UNSAT. Prioritize finding proof.
+        /// </summary>
+        ProveUnsat,
+
+        /// <summary>
+        /// Find randomly sampled assignment
+        /// </summary>
+        RandomSampledAssignment
+    }
+
     public class Configuration
     {
         /// <summary>
@@ -88,9 +111,16 @@ namespace SATInterface
         /// </summary>
         public int? ConsoleSolverLines = 35;
 
+        /// <summary>
+        /// Solver time limit
+        /// </summary>
+        public TimeSpan TimeLimit = TimeSpan.Zero;
 
-
-
+        /// <summary>
+        /// Expected result.
+        /// Default: ExpectedOutcome.Unknown
+        /// </summary>
+        public Target Target = Target.Unknown;
 
         public Configuration Clone()
             => new Configuration()
@@ -103,9 +133,8 @@ namespace SATInterface
                 RandomSeed=RandomSeed,
                 InitialPhase=InitialPhase,
                 EnableDIMACSWriting=EnableDIMACSWriting,
+                TimeLimit=TimeLimit,
+                Target=Target
             };
-
-        //TODO: Time limit
-        //public TimeSpan TimeLimit = TimeSpan.Zero;
     }
 }

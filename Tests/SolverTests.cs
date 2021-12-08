@@ -48,6 +48,7 @@ namespace Tests
         [DataRow(typeof(CaDiCaL))]
         [DataRow(typeof(Kissat))]
         [DataRow(typeof(CryptoMiniSat))]
+        [DataRow(typeof(YalSAT))]
         [DataTestMethod]
         public void CornerTilePacking(Type _solver)
         {
@@ -90,6 +91,7 @@ namespace Tests
         [DataRow(typeof(CaDiCaL))]
         [DataRow(typeof(Kissat))]
         [DataRow(typeof(CryptoMiniSat))]
+        [DataRow(typeof(YalSAT))]
         [DataTestMethod]
         public void SimpleBinary(Type _solver)
         {

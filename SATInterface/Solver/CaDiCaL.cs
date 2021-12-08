@@ -113,6 +113,34 @@ namespace SATInterface.Solver
 
             if (_config.InitialPhase.HasValue)
                 CaDiCaLNative.ccadical_set_option(Handle, "phase", _config.InitialPhase.Value ? 1 : 0);
+
+            if(_config.TimeLimit!=TimeSpan.Zero)
+                //TODO: kissat uses signals to stop the process --> use terminate callback instead
+                throw new NotImplementedException();
+
+            switch(_config.Target)
+            {
+                case Target.FindAssignment:
+                    //copied from config.cpp
+                    CaDiCaLNative.ccadical_set_option(Handle, "elimreleff", 10);
+                    CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
+                    CaDiCaLNative.ccadical_set_option(Handle, "subsumereleff", 60);
+                    break;
+                case Target.ProveUnsat:
+                    //copied from config.cpp
+                    CaDiCaLNative.ccadical_set_option(Handle, "stabilize", 0);
+                    CaDiCaLNative.ccadical_set_option(Handle, "walk", 0);
+                    break;
+                case Target.RandomSampledAssignment:
+                    CaDiCaLNative.ccadical_set_option(Handle, "reluctant", 0);
+                    CaDiCaLNative.ccadical_set_option(Handle, "reluctantmax", 0);
+                    CaDiCaLNative.ccadical_set_option(Handle, "restartint", 50);
+                    CaDiCaLNative.ccadical_set_option(Handle, "restartreusetrail", 0);
+                    CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
+
+                    CaDiCaLNative.ccadical_set_option(Handle, "walkreleff", 100000); //TODO: ?
+                    break;
+            }
         }
     }
 
