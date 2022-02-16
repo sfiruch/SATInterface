@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29613.14
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.31911.260
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SATInterface", "SATInterface\SATInterface.csproj", "{1F113811-88B8-417A-8D4A-F4D9A33887AF}"
 EndProject
@@ -26,6 +26,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FloorTiling", "FloorTiling\FloorTiling.csproj", "{E5101855-5DD5-4442-8DB8-045DF811641B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Superpermutation", "Superpermutation\Superpermutation.csproj", "{B74679FB-809C-4335-A161-368E851971CC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParkerSquare", "ParkerSquare\ParkerSquare.csproj", "{2220C5C8-5217-42F2-996C-1DADED8F17CA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -77,6 +79,10 @@ Global
 		{B74679FB-809C-4335-A161-368E851971CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B74679FB-809C-4335-A161-368E851971CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B74679FB-809C-4335-A161-368E851971CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2220C5C8-5217-42F2-996C-1DADED8F17CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2220C5C8-5217-42F2-996C-1DADED8F17CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2220C5C8-5217-42F2-996C-1DADED8F17CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2220C5C8-5217-42F2-996C-1DADED8F17CA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
