@@ -30,7 +30,7 @@ namespace SATInterface.Solver
             {
                 KissatNative.kissat_set_option(Handle, "quiet", config.Verbosity == 0 ? 1 : 0);
                 //KissatNative.kissat_set_option(Handle, "report", Verbosity > 0 ? 1 : 0);
-                KissatNative.kissat_set_option(Handle, "verbose", Math.Max(0, config.Verbosity - 1));
+                KissatNative.kissat_set_option(Handle, "verbose", Math.Max(0, config.Verbosity - 2));
 
                 if ((config.Threads ?? 1) != 1)
                     throw new NotImplementedException("Kissat only supports single-threaded operation.");
