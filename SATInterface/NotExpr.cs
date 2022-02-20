@@ -46,7 +46,7 @@ namespace SATInterface
 
         public override int VarCount => 1;
 
-        public override bool Equals(object _obj) => (_obj is NotExpr ne) && inner.Equals(ne.inner);
+        public override bool Equals(object? _obj) => (_obj is NotExpr ne) && inner.Equals(ne.inner);
 
         public override int GetHashCode() => ~inner.GetHashCode();
     }

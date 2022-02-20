@@ -108,7 +108,7 @@ namespace SATInterface
 
         public override int VarCount => elements.Length;
 
-        public override bool Equals(object _obj)
+        public override bool Equals(object? _obj)
         {
             var other = _obj as AndExpr;
             if (ReferenceEquals(other, null))

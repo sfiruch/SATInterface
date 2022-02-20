@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <Version>4.1.0</Version>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <Version>4.2.0</Version>
+    <TargetFramework>net5.0</TargetFramework>
     <Nullable>enable</Nullable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/deiruch/SATInterface</PackageProjectUrl>
@@ -16,7 +16,7 @@
     <PackageId>deiruch.SATInterface</PackageId>
     <Authors>Simon Felix</Authors>
     <Description>Library to formulate and solve SAT problems in .NET. Includes CaDiCaL, Kissat and CryptoMiniSat as solvers.</Description>
-    <Copyright>Copyright 2021 Simon Felix</Copyright>
+    <Copyright>Copyright 2022 Simon Felix</Copyright>
   </PropertyGroup>
   <ItemGroup>
     <None Pack="true" PackageCopyToOutput="true" Include="cryptominisat5win.dll">

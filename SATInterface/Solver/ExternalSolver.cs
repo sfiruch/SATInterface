@@ -64,7 +64,7 @@ namespace SATInterface.Solver
             var p = Process.Start(new ProcessStartInfo()
             {
                 FileName = SolverExecutable,
-                Arguments = SolverArguments,
+                Arguments = SolverArguments ?? "",
                 RedirectStandardInput = FilenameInput == null,
                 RedirectStandardOutput = FilenameOutput == null,
                 UseShellExecute = false
@@ -75,10 +75,10 @@ namespace SATInterface.Solver
             {
                 satWriterThread = new Thread(new ParameterizedThreadStart(delegate
                 {
-                    p.StandardInput.AutoFlush = false;
-                    p.StandardInput.NewLine = NewLine ?? "\n";
-                    Write(p.StandardInput, _variableCount, _assumptions);
-                    p.StandardInput.Close();
+                    p!.StandardInput.AutoFlush = false;
+                    p!.StandardInput.NewLine = NewLine ?? "\n";
+                    Write(p!.StandardInput, _variableCount, _assumptions);
+                    p!.StandardInput.Close();
                 }))
                 {
                     IsBackground = true,
@@ -87,7 +87,7 @@ namespace SATInterface.Solver
                 satWriterThread.Start();
             }
             if (FilenameOutput is not null)
-                p.WaitForExit();
+                p!.WaitForExit();
 
             var log = new List<string>();
             try
@@ -95,7 +95,7 @@ namespace SATInterface.Solver
                 var isSat = false;
                 var res = new bool[_variableCount];
 
-                using StreamReader output = FilenameOutput is null ? p.StandardOutput : File.OpenText(FilenameOutput);
+                using StreamReader output = FilenameOutput is null ? p!.StandardOutput : File.OpenText(FilenameOutput);
                 for (var line = output.ReadLine(); line != null; line = output.ReadLine())
                 {
                     var tk = line.Split(' ').Where(e => e != "").ToArray();
@@ -137,13 +137,13 @@ namespace SATInterface.Solver
             finally
             {
                 satWriterThread?.Interrupt();
-                p.WaitForExit();
+                p!.WaitForExit();
 
                 if (FilenameInput is null)
-                    p.StandardInput.Dispose();
+                    p!.StandardInput.Dispose();
                 if (FilenameOutput is null)
-                    p.StandardOutput.Dispose();
-                p.Dispose();
+                    p!.StandardOutput.Dispose();
+                p!.Dispose();
 
                 if (FilenameInput is not null)
                     File.Delete(FilenameInput);

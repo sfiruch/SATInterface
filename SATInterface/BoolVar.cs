@@ -75,6 +75,6 @@ namespace SATInterface
 
         public override int GetHashCode() => Id;
 
-        public override bool Equals(object obj) => (obj is BoolVar bv) && bv.Id == Id;
+        public override bool Equals(object? obj) => (obj is BoolVar bv) && bv.Id == Id;
     }
 }

@@ -77,7 +77,7 @@ namespace SATInterface.Solver
                 }
 
                 if (config.Verbosity >= 1)
-                    KissatNative.kissat_banner("c ", Marshal.PtrToStringAnsi(KissatNative.kissat_signature()));
+                    KissatNative.kissat_banner("c ", Marshal.PtrToStringAnsi(KissatNative.kissat_signature())!);
 
                 var satisfiable = KissatNative.kissat_solve(Handle);
 

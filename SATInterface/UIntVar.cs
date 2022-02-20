@@ -142,7 +142,7 @@ namespace SATInterface
         internal static UIntVar Convert(Model _m, BoolExpr _v) => new UIntVar(_m, 1, new[] { _v });
         public static implicit operator LinExpr(UIntVar _v) => _v.ToLinExpr();
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             var other = obj as UIntVar;
             if (ReferenceEquals(other, null))
