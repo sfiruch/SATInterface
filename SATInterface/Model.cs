@@ -117,7 +117,8 @@ namespace SATInterface
         private void AddClauseToSolver(Span<int> _x)
         {
             Solver.AddClause(_x);
-            DIMACSOutput?.WriteLine(string.Join(' ', _x.ToArray().Append(0)));
+            if(DIMACSOutput is not null)
+                DIMACSOutput.WriteLine(string.Join(' ', _x.ToArray().Append(0)));
         }
 
         /// <summary>
