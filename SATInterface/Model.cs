@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -39,7 +40,7 @@ namespace SATInterface
         public int ClauseCount { get; internal set; }
 
 
-        private MemoryStream? DIMACSBuffer;
+        private FileStream? DIMACSBuffer;
         private StreamWriter? DIMACSOutput;
 
         /// <summary>
@@ -55,7 +56,9 @@ namespace SATInterface
 
             if (Configuration.EnableDIMACSWriting)
             {
-                DIMACSBuffer = new MemoryStream();
+                var tmp = Path.GetTempFileName();
+                new FileInfo(tmp).Attributes |= FileAttributes.Temporary;
+                DIMACSBuffer = File.Create(tmp, 65536, FileOptions.DeleteOnClose);
                 DIMACSOutput = new StreamWriter(DIMACSBuffer, Encoding.UTF8);
             }
         }
@@ -117,7 +120,7 @@ namespace SATInterface
         private void AddClauseToSolver(Span<int> _x)
         {
             Solver.AddClause(_x);
-            if(DIMACSOutput is not null)
+            if (DIMACSOutput is not null)
                 DIMACSOutput.WriteLine(string.Join(' ', _x.ToArray().Append(0)));
         }
 
@@ -1305,6 +1308,9 @@ namespace SATInterface
 
         public void Dispose()
         {
+            DIMACSOutput?.Dispose();
+            DIMACSBuffer?.Dispose();
+
             Solver.Dispose();
         }
     }
