@@ -43,18 +43,18 @@ namespace SATInterface.Solver
                     //TODO: yalsat uses signals to stop the process --> use terminate callback instead
                     throw new NotImplementedException("YalSAT does not yet support time limits.");
 
-                switch (config.Target)
+                switch (config.ExpectedOutcome)
                 {
-                    case Target.FindAssignment:
+                    case ExpectedOutcome.Sat:
                         break;
-                    case Target.ProveUnsat:
+                    case ExpectedOutcome.Unsat:
                         break;
-                    case Target.RandomSampledAssignment:
-                        YalSATNative.yals_setopt(Handle, "pick", 0);
-                        YalSATNative.yals_setopt(Handle, "pol", 0);
-                        YalSATNative.yals_setopt(Handle, "cacheduni", 1);
-                        YalSATNative.yals_setopt(Handle, "toggleuniform", 1);
-                        break;
+                    //case ExpectedOutcome.RandomSampledAssignment:
+                    //    YalSATNative.yals_setopt(Handle, "pick", 0);
+                    //    YalSATNative.yals_setopt(Handle, "pol", 0);
+                    //    YalSATNative.yals_setopt(Handle, "cacheduni", 1);
+                    //    YalSATNative.yals_setopt(Handle, "toggleuniform", 1);
+                    //    break;
                 }
 
                 foreach (var v in clauses)

@@ -45,23 +45,23 @@ namespace SATInterface.Solver
                     //TODO: kissat uses signals to stop the process --> use terminate callback instead
                     throw new NotImplementedException("Kissat does not yet support time limits.");
 
-                switch (config.Target)
+                switch (config.ExpectedOutcome)
                 {
-                    case Target.FindAssignment:
+                    case ExpectedOutcome.Sat:
                         KissatNative.kissat_set_option(Handle, "target", 2);
                         KissatNative.kissat_set_option(Handle, "restartint", 50);
                         break;
-                    case Target.ProveUnsat:
+                    case ExpectedOutcome.Unsat:
                         KissatNative.kissat_set_option(Handle, "stable", 0);
                         break;
-                    case Target.RandomSampledAssignment:
-                        KissatNative.kissat_set_option(Handle, "target", 2);
-                        KissatNative.kissat_set_option(Handle, "restartint", 50);
-                        KissatNative.kissat_set_option(Handle, "restartreusetrail", 0);
-                        KissatNative.kissat_set_option(Handle, "walkeffort", 500000);
-                        KissatNative.kissat_set_option(Handle, "walkinitially", 1);
-                        KissatNative.kissat_set_option(Handle, "reluctant", 0);
-                        break;
+                    //case ExpectedOutcome.RandomSampledAssignment:
+                    //    KissatNative.kissat_set_option(Handle, "target", 2);
+                    //    KissatNative.kissat_set_option(Handle, "restartint", 50);
+                    //    KissatNative.kissat_set_option(Handle, "restartreusetrail", 0);
+                    //    KissatNative.kissat_set_option(Handle, "walkeffort", 500000);
+                    //    KissatNative.kissat_set_option(Handle, "walkinitially", 1);
+                    //    KissatNative.kissat_set_option(Handle, "reluctant", 0);
+                    //    break;
                 }
 
                 foreach (var v in clauses)

@@ -24,27 +24,28 @@ namespace SATInterface
         Bound
     }
 
-    public enum Target
+    public enum ExpectedOutcome
     {
         /// <summary>
-        /// Binary search
+        /// Unkown result. Will rely on default solver configuration.
         /// </summary>
         Unknown,
 
         /// <summary>
         /// Likely SAT. Prioritize finding assignment.
         /// </summary>
-        FindAssignment,
+        Sat,
 
         /// <summary>
         /// Likely UNSAT. Prioritize finding proof.
         /// </summary>
-        ProveUnsat,
+        Unsat,
 
-        /// <summary>
-        /// Find randomly sampled assignment
-        /// </summary>
-        RandomSampledAssignment
+        //doesn't appear to work as intended
+        ///// <summary>
+        ///// Find randomly sampled assignment
+        ///// </summary>
+        //RandomSampledAssignment
     }
 
     public class Configuration
@@ -54,7 +55,7 @@ namespace SATInterface
         /// Default: Balanced
         /// </summary>
         public OptimizationFocus OptimizationFocus = OptimizationFocus.Balanced;
-        
+
         /// <summary>
         /// Verbosity of the solver logging. Set to 0 to disable logging.
         /// Default: 2
@@ -117,24 +118,24 @@ namespace SATInterface
         public TimeSpan TimeLimit = TimeSpan.Zero;
 
         /// <summary>
-        /// Expected result.
+        /// Expected outcome.
         /// Default: ExpectedOutcome.Unknown
         /// </summary>
-        public Target Target = Target.Unknown;
+        public ExpectedOutcome ExpectedOutcome = ExpectedOutcome.Unknown;
 
         public Configuration Clone()
             => new Configuration()
             {
-                ConsoleSolverLines=ConsoleSolverLines,
-                OptimizationFocus=OptimizationFocus,
-                Verbosity=Verbosity,
-                Solver=Solver,
-                Threads=Threads,
-                RandomSeed=RandomSeed,
-                InitialPhase=InitialPhase,
-                EnableDIMACSWriting=EnableDIMACSWriting,
-                TimeLimit=TimeLimit,
-                Target=Target
+                ConsoleSolverLines = ConsoleSolverLines,
+                OptimizationFocus = OptimizationFocus,
+                Verbosity = Verbosity,
+                Solver = Solver,
+                Threads = Threads,
+                RandomSeed = RandomSeed,
+                InitialPhase = InitialPhase,
+                EnableDIMACSWriting = EnableDIMACSWriting,
+                TimeLimit = TimeLimit,
+                ExpectedOutcome = ExpectedOutcome
             };
     }
 }

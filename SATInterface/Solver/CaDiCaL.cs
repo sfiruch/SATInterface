@@ -118,28 +118,28 @@ namespace SATInterface.Solver
                 //TODO: kissat uses signals to stop the process --> use terminate callback instead
                 throw new NotImplementedException();
 
-            switch(_config.Target)
+            switch(_config.ExpectedOutcome)
             {
-                case Target.FindAssignment:
+                case ExpectedOutcome.Sat:
                     //copied from config.cpp
                     CaDiCaLNative.ccadical_set_option(Handle, "elimreleff", 10);
                     CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
                     CaDiCaLNative.ccadical_set_option(Handle, "subsumereleff", 60);
                     break;
-                case Target.ProveUnsat:
+                case ExpectedOutcome.Unsat:
                     //copied from config.cpp
                     CaDiCaLNative.ccadical_set_option(Handle, "stabilize", 0);
                     CaDiCaLNative.ccadical_set_option(Handle, "walk", 0);
                     break;
-                case Target.RandomSampledAssignment:
-                    CaDiCaLNative.ccadical_set_option(Handle, "reluctant", 0);
-                    CaDiCaLNative.ccadical_set_option(Handle, "reluctantmax", 0);
-                    CaDiCaLNative.ccadical_set_option(Handle, "restartint", 50);
-                    CaDiCaLNative.ccadical_set_option(Handle, "restartreusetrail", 0);
-                    CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
+                //case ExpectedOutcome.RandomSampledAssignment:
+                //    CaDiCaLNative.ccadical_set_option(Handle, "reluctant", 0);
+                //    CaDiCaLNative.ccadical_set_option(Handle, "reluctantmax", 0);
+                //    CaDiCaLNative.ccadical_set_option(Handle, "restartint", 50);
+                //    CaDiCaLNative.ccadical_set_option(Handle, "restartreusetrail", 0);
+                //    CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
 
-                    CaDiCaLNative.ccadical_set_option(Handle, "walkreleff", 100000); //TODO: ?
-                    break;
+                //    CaDiCaLNative.ccadical_set_option(Handle, "walkreleff", 100000); //TODO: ?
+                //    break;
             }
         }
     }
