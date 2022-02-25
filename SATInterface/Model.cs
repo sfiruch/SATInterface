@@ -712,6 +712,22 @@ namespace SATInterface
             if (ReferenceEquals(_if, False))
                 return _else;
 
+            if (ReferenceEquals(_then, True) && ReferenceEquals(_else, False))
+                return _if;
+
+            if (ReferenceEquals(_then, False) && ReferenceEquals(_else, True))
+                return !_if;
+
+            if (ReferenceEquals(_else, False))
+                return (_if & _then).Flatten();
+            if (ReferenceEquals(_else, True))
+                return (!_if | _then).Flatten();
+
+            if (ReferenceEquals(_then, False))
+                return (!_if & _else).Flatten();
+            if (ReferenceEquals(_then, True))
+                return (_if | _else).Flatten();
+
             var x = AddVar();
             AddConstr(!(_if & _then) | x);
             AddConstr(!(_if & !_then) | !x);
