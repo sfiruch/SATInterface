@@ -502,12 +502,30 @@ namespace SATInterface
         /// Finds an satisfying assignment (SAT) or proves the model
         /// is not satisfiable (UNSAT) with the built-in solver.
         /// </summary>
-        public void Solve()
+        public void Solve(BoolExpr[]? _assumptions=null)
         {
-            if (State != State.Undecided)
+            if (State == State.Satisfiable && _assumptions is null)
                 return;
 
-            var res = InvokeSolver();
+            int[]? assumptions = null;
+            if(_assumptions is not null)
+            {
+                assumptions = new int[_assumptions.Length];
+                for (var i = 0; i < _assumptions.Length; i++)
+                    assumptions[i] = _assumptions[i] switch
+                    {
+                        BoolVar bv => bv.Id,
+                        NotExpr ne => -ne.inner.Id,
+                        BoolExpr be => be.Flatten() switch
+                        {
+                            BoolVar ibv => ibv.Id,
+                            NotExpr ine => -ine.inner.Id,
+                            _ => throw new Exception()
+                        }
+                    };
+            }
+
+            var res = InvokeSolver(assumptions);
             if (res != null)
             {
                 State = State.Satisfiable;

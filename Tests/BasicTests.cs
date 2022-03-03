@@ -21,6 +21,26 @@ namespace Tests
         }
 
         [TestMethod]
+        public void Assumptions()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVar();
+
+            m.Solve(new[] { v });
+            Assert.AreEqual(State.Satisfiable, m.State);
+            Assert.IsTrue(v.X);
+
+            m.Solve(new[] { !v });
+            Assert.AreEqual(State.Satisfiable, m.State);
+            Assert.IsFalse(v.X);
+        }
+
+
+        [TestMethod]
         public void RepeatedSolves()
         {
             using var m = new Model(new Configuration()
