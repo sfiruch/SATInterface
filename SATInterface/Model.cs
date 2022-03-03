@@ -25,6 +25,7 @@ namespace SATInterface
 
         internal bool InOptimization = false;
         internal bool AbortOptimization = false;
+        internal bool UnsatWithAssumptions = false;
 
         internal readonly Configuration Configuration;
         private readonly ISolver Solver;
@@ -66,7 +67,10 @@ namespace SATInterface
         private void AddConstrInternal(BoolExpr _c)
         {
             if (ReferenceEquals(_c, False))
+            {
                 State = State.Unsatisfiable;
+                UnsatWithAssumptions = false;
+            }
             else if (ReferenceEquals(_c, True))
             {
                 //ignore
@@ -130,7 +134,7 @@ namespace SATInterface
         /// <param name="_clause"></param>
         public void AddConstr(BoolExpr _clause)
         {
-            if (State == State.Unsatisfiable)
+            if (State == State.Unsatisfiable && !UnsatWithAssumptions)
                 return;
 
             AddConstrInternal(_clause);
@@ -297,7 +301,7 @@ namespace SATInterface
         /// <param name="_solutionCallback">Invoked for every valid assignment</param>
         public void EnumerateSolutions(IEnumerable<BoolExpr> _modelVariables, Action _solutionCallback)
         {
-            if (State == State.Unsatisfiable)
+            if (State == State.Unsatisfiable && !UnsatWithAssumptions)
                 return;
 
             try
@@ -353,12 +357,8 @@ namespace SATInterface
                     State = State.Satisfiable;
                 }
                 else
-                {
-                    if (AbortOptimization)
-                        State = State.Undecided;
-                    else
-                        State = State.Unsatisfiable;
-                }
+                    State = AbortOptimization ? State.Undecided : State.Unsatisfiable;
+                UnsatWithAssumptions = false;
             }
             finally
             {
@@ -368,7 +368,7 @@ namespace SATInterface
 
         private void Maximize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
         {
-            if (State == State.Unsatisfiable)
+            if (State == State.Unsatisfiable && !UnsatWithAssumptions)
                 return;
 
             try
@@ -391,6 +391,7 @@ namespace SATInterface
                     if (bestAssignment == null)
                     {
                         State = State.Unsatisfiable;
+                        UnsatWithAssumptions = false;
                         return;
                     }
 
@@ -405,12 +406,18 @@ namespace SATInterface
                     _solutionCallback?.Invoke();
 
                     if (State == State.Unsatisfiable)
+                    {
+                        UnsatWithAssumptions = false;
                         return;
+                    }
 
                     if (AbortOptimization)
                     {
                         if (State == State.Satisfiable && ClauseCount != mClauses)
+                        {
                             State = State.Undecided;
+                            UnsatWithAssumptions = false;
+                        }
                         return;
                     }
 
@@ -475,7 +482,10 @@ namespace SATInterface
                         if (AbortOptimization)
                         {
                             if (State == State.Satisfiable && ClauseCount != mClauses)
+                            {
                                 State = State.Undecided;
+                                UnsatWithAssumptions = false;
+                            }
                             break;
                         }
                     }
@@ -489,6 +499,7 @@ namespace SATInterface
 
                 //restore best known solution
                 State = State.Satisfiable;
+                UnsatWithAssumptions = false;
                 for (var i = 0; i < bestAssignment.Length; i++)
                     vars[i].Value = bestAssignment[i];
             }
@@ -504,7 +515,9 @@ namespace SATInterface
         /// </summary>
         public void Solve(BoolExpr[]? _assumptions=null)
         {
-            if (State == State.Satisfiable && _assumptions is null)
+            if (State == State.Unsatisfiable && !UnsatWithAssumptions)
+                return;
+            if (State == State.Satisfiable && (_assumptions is null || _assumptions.All(a => a.X)))
                 return;
 
             int[]? assumptions = null;
@@ -536,6 +549,8 @@ namespace SATInterface
             }
             else
                 State = State.Unsatisfiable;
+
+            UnsatWithAssumptions = assumptions is not null;
         }
 
         /// <summary>
