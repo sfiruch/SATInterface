@@ -14,7 +14,7 @@ namespace Tests
     [TestClass]
     public class TimeoutTests
     {
-        private void BuildAndTestModel(Model m, bool _runOnSeparateThread)
+        private void BuildAndTestModel(Model m)
         {
             m.Configuration.Verbosity = 0;
             m.Configuration.TimeLimit = TimeSpan.FromSeconds(0.1);
@@ -34,8 +34,7 @@ namespace Tests
             var elapsed = Environment.TickCount64 - start;
 
             Assert.AreEqual(State.Undecided, m.State);
-            Assert.IsTrue(elapsed >= 100);
-            Assert.IsTrue(elapsed < 2000);
+            Assert.IsTrue(elapsed >= 100 && elapsed < 2100, $"Completed in {elapsed}ms");
         }
 
         [TestMethod]
@@ -62,8 +61,7 @@ namespace Tests
 
             Assert.AreEqual(State.Satisfiable, m.State);
             Assert.IsTrue(cnt > 0);
-            Assert.IsTrue(elapsed < 2100);
-            Assert.IsTrue(elapsed >= 100);
+            Assert.IsTrue(elapsed >= 100 && elapsed < 2100, $"Completed in {elapsed}ms");
         }
 
         [TestMethod]
@@ -85,8 +83,7 @@ namespace Tests
 
             Assert.AreEqual(State.Satisfiable, m.State);
             Assert.IsTrue(cnt > 0);
-            Assert.IsTrue(elapsed < 3000);
-            Assert.IsTrue(elapsed >= 1000);
+            Assert.IsTrue(elapsed >= 1000 && elapsed < 3000, $"Completed in {elapsed}ms");
         }
 
 
@@ -102,7 +99,7 @@ namespace Tests
                 Solver = (Solver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
             });
 
-            BuildAndTestModel(m, false);
+            BuildAndTestModel(m);
         }
 
         [TestMethod]
@@ -113,7 +110,7 @@ namespace Tests
                 Solver = new ExternalSolver("kissat.exe")
             });
 
-            BuildAndTestModel(m, true);
+            BuildAndTestModel(m);
         }
 
         [TestMethod]
@@ -130,7 +127,7 @@ namespace Tests
                     output)
             });
 
-            BuildAndTestModel(m, true);
+            BuildAndTestModel(m);
         }
     }
 }
