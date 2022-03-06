@@ -30,6 +30,7 @@ namespace SATInterface.Solver
                 YalSATNative.yals_setopt(Handle, "verbose", Math.Max(0, Model.Configuration.Verbosity-1));
 
                 if ((Model.Configuration.Threads ?? 1) != 1)
+                    //TODO: YalSATNative.yals_setopt(Handle, "threads", Model.Configuration.Threads.Value);
                     throw new NotImplementedException("YalSAT only supports single-threaded operation.");
 
                 if (Model.Configuration.RandomSeed.HasValue)

@@ -17,7 +17,7 @@ namespace Tests
         private void BuildAndTestModel(Model m, bool _runOnSeparateThread)
         {
             m.Configuration.Verbosity = 0;
-            m.Configuration.TimeLimit = TimeSpan.FromSeconds(1);
+            m.Configuration.TimeLimit = TimeSpan.FromSeconds(0.1);
 
             const int holes = 50;
             const int pigeons = 51;
@@ -29,14 +29,13 @@ namespace Tests
             for (var p = 0; p < pigeons; p++)
                 m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, holes).Select(h => assignment[h, p])));
 
-            var sw = new Stopwatch();
-            sw.Start();
-
+            var start = Environment.TickCount64;
             m.Solve();
+            var elapsed = Environment.TickCount64 - start;
 
             Assert.AreEqual(State.Undecided, m.State);
-            Assert.IsTrue(sw.ElapsedMilliseconds < 2000);
-            Assert.IsTrue(sw.ElapsedMilliseconds > 1000);
+            Assert.IsTrue(elapsed >= 100);
+            Assert.IsTrue(elapsed < 2000);
         }
 
         [TestMethod]
@@ -47,8 +46,6 @@ namespace Tests
             m.Configuration.TimeLimit = TimeSpan.FromSeconds(0.1);
 
             var cnt = 0;
-            var sw = new Stopwatch();
-            sw.Start();
 
             var a = m.AddUIntVar(1000000);
             var b = m.AddUIntVar(1000000);
@@ -56,15 +53,17 @@ namespace Tests
 
             m.AddConstr(a * a + b * b == c * c);
 
+            var start = Environment.TickCount64;
             m.Maximize(c, () =>
             {
                 cnt++;
             });
+            var elapsed = Environment.TickCount64 - start;
 
             Assert.AreEqual(State.Satisfiable, m.State);
             Assert.IsTrue(cnt > 0);
-            Assert.IsTrue(sw.ElapsedMilliseconds < 2000);
-            Assert.IsTrue(sw.ElapsedMilliseconds > 100);
+            Assert.IsTrue(elapsed < 2100);
+            Assert.IsTrue(elapsed >= 100);
         }
 
         [TestMethod]
@@ -75,26 +74,25 @@ namespace Tests
             m.Configuration.TimeLimit = TimeSpan.FromSeconds(1);
 
             var cnt = 0;
-            var sw = new Stopwatch();
-            sw.Start();
 
             var v = m.AddVars(1000);
+            var start = Environment.TickCount64;
             m.EnumerateSolutions(v, () =>
             {
                 cnt++;
             });
+            var elapsed = Environment.TickCount64 - start;
 
             Assert.AreEqual(State.Satisfiable, m.State);
-            Assert.IsTrue(cnt > 10);
-            Assert.IsTrue(sw.ElapsedMilliseconds < 2000);
-            Assert.IsTrue(sw.ElapsedMilliseconds > 1000);
+            Assert.IsTrue(cnt > 0);
+            Assert.IsTrue(elapsed < 3000);
+            Assert.IsTrue(elapsed >= 1000);
         }
 
 
 
         [DataRow(typeof(CaDiCaL))]
         [DataRow(typeof(Kissat))]
-        [DataRow(typeof(CryptoMiniSat))]
         [DataRow(typeof(YalSAT))]
         [DataTestMethod]
         public void InternalTimeout(Type _solver)

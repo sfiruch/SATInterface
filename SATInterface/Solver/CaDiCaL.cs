@@ -23,6 +23,11 @@ namespace SATInterface.Solver
 
         public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
         {
+            var verbosity = Math.Max(0, Model.Configuration.Verbosity - 1);
+            CaDiCaLNative.ccadical_set_option(Handle, "quiet", verbosity == 0 ? 1 : 0);
+            CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
+            CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
+
             var callback = (CaDiCaLNative.TerminateCallback)(s =>
             {
                 return Environment.TickCount64 > _timeout ? 1 : 0;
@@ -89,11 +94,6 @@ namespace SATInterface.Solver
 
         internal override void ApplyConfiguration()
         {
-            var verbosity = Math.Max(0, Model.Configuration.Verbosity - 1);
-            CaDiCaLNative.ccadical_set_option(Handle, "quiet", verbosity == 0 ? 1 : 0);
-            CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
-            CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
-
             if ((Model.Configuration.Threads ?? 1) != 1)
                 throw new NotImplementedException("CaDiCaL only supports single-threaded operation.");
 

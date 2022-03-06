@@ -24,7 +24,12 @@ namespace SATInterface.Solver
 
         public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
         {
-            CryptoMiniSatNative.cmsat_set_max_time(Handle, (_timeout - Environment.TickCount64) / 1000d);
+            CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)Math.Max(0, Model.Configuration.Verbosity - 1));
+
+            if (_timeout != long.MaxValue)
+                //CryptoMiniSatNative.cmsat_set_max_time(Handle, (_timeout - Environment.TickCount64) / 1000d);
+                throw new Exception("CryptoMiniSat does not support wall-clock time limits");
+
 
             CryptoMiniSatNative.c_lbool result;
             if (_assumptions == null || _assumptions.Length == 0)
@@ -82,8 +87,6 @@ namespace SATInterface.Solver
 
         internal override void ApplyConfiguration()
         {
-            CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)Math.Max(0, Model.Configuration.Verbosity - 1));
-
             if (Model.Configuration.Threads.HasValue)
                 CryptoMiniSatNative.cmsat_set_num_threads(Handle, (uint)Model.Configuration.Threads.Value);
 
