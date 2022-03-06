@@ -121,13 +121,15 @@ namespace Tests
         [TestMethod]
         public void kissatWin32FileTimeout()
         {
+            var input = Path.GetTempFileName();
+            var output = Path.GetTempFileName();
             using var m = new Model(new Configuration()
             {
                 Solver = new ExternalSolver(
                     $"cmd.exe",
-                    "/c kissat.exe input.cnf > solution.sol",
-                    "input.cnf",
-                    "solution.sol")
+                    $"/c kissat.exe {input} > {output}",
+                    input,
+                    output)
             });
 
             BuildAndTestModel(m, true);
