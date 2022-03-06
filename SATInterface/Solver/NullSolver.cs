@@ -12,22 +12,16 @@ namespace SATInterface.Solver
     /// This NULL solver can be used to save memory when no
     /// solver is needed.
     /// </summary>
-    public class NullSolver : ISolver
+    public class NullSolver : Solver
     {
-        public void AddClause(Span<int> _clause)
+        public override void AddClause(Span<int> _clause)
         {
         }
 
-        public void Dispose()
-        {
-        }
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout=long.MaxValue, int[]? _assumptions = null)
+            => throw new NotImplementedException();
 
-        public bool[]? Solve(int _variableCount, int[]? _assumptions = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        void ISolver.ApplyConfiguration(Configuration _config)
+        internal override void ApplyConfiguration()
         {
         }
     }

@@ -9,9 +9,8 @@ namespace SATInterface.Solver
     /// <summary>
     /// Managed-code facade of the native YalSAT solver
     /// </summary>
-    public class YalSAT : ISolver
+    public class YalSAT : Solver
     {
-        private Configuration? config;
         List<int> clauses = new List<int>();
 
         public YalSAT()
@@ -20,30 +19,26 @@ namespace SATInterface.Solver
                 throw new Exception("This library only supports x64 when using the bundled YalSAT solver.");
         }
 
-        public bool[]? Solve(int _variableCount, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout=long.MaxValue, int[]? _assumptions = null)
         {
-            if(config is null)
-                throw new InvalidOperationException();
-
+            var callback = (YalSATNative.TerminateCallback)(s => Environment.TickCount64 > _timeout ? 1 : 0);
             var Handle = YalSATNative.yals_new();
             try
             {
-                YalSATNative.yals_setopt(Handle, "verbose", Math.Max(0, config.Verbosity-1));
+                YalSATNative.yals_seterm(Handle, callback, IntPtr.Zero);
 
-                if ((config.Threads ?? 1) != 1)
+                YalSATNative.yals_setopt(Handle, "verbose", Math.Max(0, Model.Configuration.Verbosity-1));
+
+                if ((Model.Configuration.Threads ?? 1) != 1)
                     throw new NotImplementedException("YalSAT only supports single-threaded operation.");
 
-                if (config.RandomSeed.HasValue)
-                    YalSATNative.yals_srand(Handle, (ulong)config.RandomSeed.Value);
+                if (Model.Configuration.RandomSeed.HasValue)
+                    YalSATNative.yals_srand(Handle, (ulong)Model.Configuration.RandomSeed.Value);
 
-                if (config.InitialPhase.HasValue)
+                if (Model.Configuration.InitialPhase.HasValue)
                     throw new NotImplementedException("YalSAT does not yet support initial phase.");
 
-                if (config.TimeLimit!=TimeSpan.Zero)
-                    //TODO: yalsat uses signals to stop the process --> use terminate callback instead
-                    throw new NotImplementedException("YalSAT does not yet support time limits.");
-
-                switch (config.ExpectedOutcome)
+                switch (Model.Configuration.ExpectedOutcome)
                 {
                     case ExpectedOutcome.Sat:
                         break;
@@ -74,7 +69,7 @@ namespace SATInterface.Solver
 
                 var satisfiable = YalSATNative.yals_sat(Handle);
 
-                if (config.Verbosity >= 1)
+                if (Model.Configuration.Verbosity >= 1)
                     YalSATNative.yals_stats(Handle);
 
                 switch (satisfiable)
@@ -84,14 +79,16 @@ namespace SATInterface.Solver
                         var res = new bool[_variableCount];
                         for (var i = 0; i < _variableCount; i++)
                             res[i] = YalSATNative.yals_deref(Handle, i + 1) > 0;
-                        return res;
+                        return (State.Satisfiable, res);
 
                     case 20:
                         //unsat
-                        return null;
+                        return (State.Unsatisfiable, null);
 
                     case 0:
-                    //interrupted
+                        //interrupted
+                        return (State.Undecided, null);
+
                     default:
                         throw new Exception();
                 }
@@ -99,71 +96,57 @@ namespace SATInterface.Solver
             finally
             {
                 YalSATNative.yals_del(Handle);
+                GC.KeepAlive(callback);
             }
         }
 
-        public void AddClause(Span<int> _clause)
+        public override void AddClause(Span<int> _clause)
         {
             foreach(var v in _clause)
                 clauses.Add(v);
             clauses.Add(0);
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
+        internal override void ApplyConfiguration()
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    //dispose managed state
-                }
-
-
-                disposedValue = true;
-            }
-        }
-
-        ~YalSAT()
-        {
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
-
-        void ISolver.ApplyConfiguration(Configuration _config)
-        {
-            config = _config;
         }
     }
 
     public static class YalSATNative
     {
-        [DllImport("YalSAT.dll")]
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr yals_new();
-        [DllImport("YalSAT.dll")]
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void yals_del(IntPtr wrapper);
-        [DllImport("YalSAT.dll")]
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void yals_srand(IntPtr wrapper, ulong seed);
-        [DllImport("YalSAT.dll")]
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int yals_setopt(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
-        [DllImport("YalSAT.dll")]
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void yals_setphase(IntPtr wrapper, int lit);
-        [DllImport("YalSAT.dll")]
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
+        [SuppressGCTransition]
         public static extern void yals_add(IntPtr wrapper, int lit);
-        [DllImport("YalSAT.dll")]
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int yals_sat(IntPtr wrapper);
-        [DllImport("YalSAT.dll")]
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void yals_stats(IntPtr wrapper);
-        [DllImport("YalSAT.dll")]
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
+        [SuppressGCTransition]
         public static extern int yals_deref(IntPtr wrapper, int lit);
+
+        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)] 
+        public static extern void yals_seterm(IntPtr wrapper, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate, IntPtr state);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int TerminateCallback(IntPtr State);
     }
 }

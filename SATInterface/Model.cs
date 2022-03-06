@@ -27,8 +27,7 @@ namespace SATInterface
         internal bool AbortOptimization = false;
         internal bool UnsatWithAssumptions = false;
 
-        internal readonly Configuration Configuration;
-        private readonly ISolver Solver;
+        public readonly Configuration Configuration;
 
         /// <summary>
         /// Number of variables in this model.
@@ -49,11 +48,11 @@ namespace SATInterface
         /// </summary>
         public Model(Configuration? _configuration = null)
         {
-            Configuration = _configuration?.Clone() ?? new Configuration();
+            Configuration = _configuration ?? new Configuration();
             Configuration.Validate();
 
-            Solver = Configuration.Solver;
-            Solver.ApplyConfiguration(Configuration);
+            Configuration.Solver.Model = this;
+            Configuration.Solver.ApplyConfiguration();
 
             if (Configuration.EnableDIMACSWriting)
             {
@@ -123,7 +122,7 @@ namespace SATInterface
 
         private void AddClauseToSolver(Span<int> _x)
         {
-            Solver.AddClause(_x);
+            Configuration.Solver.AddClause(_x);
             if (DIMACSOutput is not null)
                 DIMACSOutput.WriteLine(string.Join(' ', _x.ToArray().Append(0)));
         }
@@ -270,14 +269,14 @@ namespace SATInterface
             AbortOptimization = true;
         }
 
-        private bool[]? InvokeSolver(int[]? _assumptions = null)
+        private (State State, bool[]? Vars) InvokeSolver(long _timeout, int[]? _assumptions)
         {
             try
             {
                 if (Configuration.ConsoleSolverLines.HasValue && Configuration.Verbosity > 0)
                     Log.LimitOutputTo(Configuration.ConsoleSolverLines.Value);
 
-                return Solver.Solve(VariableCount, _assumptions);
+                return Configuration.Solver.Solve(VariableCount, _timeout, _assumptions);
             }
             finally
             {
@@ -304,6 +303,10 @@ namespace SATInterface
             if (State == State.Unsatisfiable && !UnsatWithAssumptions)
                 return;
 
+            var timeout = long.MaxValue;
+            if (Configuration.TimeLimit != TimeSpan.Zero)
+                timeout = Environment.TickCount64 + (long)Configuration.TimeLimit.TotalMilliseconds;
+
             try
             {
                 InOptimization = true;
@@ -315,8 +318,12 @@ namespace SATInterface
                 bool[]? lastAssignment = null;
                 for (; ; )
                 {
-                    var assignment = InvokeSolver(assumptions.ToArray());
-                    if (assignment == null)
+                    (var state, var assignment) = InvokeSolver(timeout, assumptions.ToArray());
+
+                    if (state == State.Undecided)
+                        AbortOptimization = true;
+
+                    if (assignment is null)
                         break;
 
                     for (var i = 0; i < assignment.Length; i++)
@@ -349,7 +356,7 @@ namespace SATInterface
                     }
                 }
 
-                if (lastAssignment != null)
+                if (lastAssignment is not null)
                 {
                     for (var i = 0; i < lastAssignment.Length; i++)
                         vars[i].Value = lastAssignment[i];
@@ -371,6 +378,10 @@ namespace SATInterface
             if (State == State.Unsatisfiable && !UnsatWithAssumptions)
                 return;
 
+            var timeout = long.MaxValue;
+            if (Configuration.TimeLimit != TimeSpan.Zero)
+                timeout = Environment.TickCount64 + (long)Configuration.TimeLimit.TotalMilliseconds;
+
             try
             {
                 InOptimization = true;
@@ -387,13 +398,14 @@ namespace SATInterface
                 bool[]? bestAssignment;
                 for (; ; )
                 {
-                    bestAssignment = InvokeSolver();
-                    if (bestAssignment == null)
+                    (State, bestAssignment) = InvokeSolver(timeout, null);
+                    if (State != State.Satisfiable)
                     {
-                        State = State.Unsatisfiable;
                         UnsatWithAssumptions = false;
                         return;
                     }
+
+                    Debug.Assert(bestAssignment is not null);
 
                     //found initial, potentially feasible solution
                     for (var i = 0; i < bestAssignment.Length; i++)
@@ -458,13 +470,14 @@ namespace SATInterface
                         AddConstrInternal(objGE == (_obj >= cur));
                     }
 
-                    var assignment = State == State.Unsatisfiable ? null : InvokeSolver(new[] { objGE.Id });
-                    if (assignment != null)
+                    (var subState, var assignment) = State==State.Unsatisfiable ? (State,null) : InvokeSolver(timeout, new[] { objGE.Id });
+                    if (subState == State.Satisfiable)
                     {
-                        for (var i = 0; i < assignment.Length; i++)
-                            vars[i].Value = assignment[i];
+                        Debug.Assert(assignment is not null);
 
                         State = State.Satisfiable;
+                        for (var i = 0; i < assignment.Length; i++)
+                            vars[i].Value = assignment[i];
 
                         Debug.Assert(_obj.X >= cur);
 
@@ -480,18 +493,16 @@ namespace SATInterface
                         }
 
                         if (AbortOptimization)
-                        {
-                            if (State == State.Satisfiable && ClauseCount != mClauses)
-                            {
-                                State = State.Undecided;
-                                UnsatWithAssumptions = false;
-                            }
                             break;
-                        }
+                    }
+                    else if(subState == State.Unsatisfiable)
+                    {
+                        ub = cur - 1;
                     }
                     else
                     {
-                        ub = cur - 1;
+                        Debug.Assert(subState == State.Undecided);
+                        break;
                     }
 
                     Debug.Assert(lb <= ub);
@@ -513,7 +524,7 @@ namespace SATInterface
         /// Finds an satisfying assignment (SAT) or proves the model
         /// is not satisfiable (UNSAT) with the built-in solver.
         /// </summary>
-        public void Solve(BoolExpr[]? _assumptions=null)
+        public void Solve(BoolExpr[]? _assumptions = null)
         {
             if (State == State.Unsatisfiable && !UnsatWithAssumptions)
                 return;
@@ -521,7 +532,7 @@ namespace SATInterface
                 return;
 
             int[]? assumptions = null;
-            if(_assumptions is not null)
+            if (_assumptions is not null)
             {
                 assumptions = new int[_assumptions.Length];
                 for (var i = 0; i < _assumptions.Length; i++)
@@ -538,17 +549,19 @@ namespace SATInterface
                     };
             }
 
-            var res = InvokeSolver(assumptions);
-            if (res != null)
-            {
-                State = State.Satisfiable;
-                Debug.Assert(res.Length == vars.Count);
+            var timeout = long.MaxValue;
+            if (Configuration.TimeLimit != TimeSpan.Zero)
+                timeout = Environment.TickCount64 + (long)Configuration.TimeLimit.TotalMilliseconds;
 
-                for (var i = 0; i < res.Length; i++)
-                    vars[i].Value = res[i];
+            (State, var assignment) = InvokeSolver(timeout, assumptions);
+            if (State == State.Satisfiable)
+            {
+                Debug.Assert(assignment is not null);
+                Debug.Assert(assignment.Length == vars.Count);
+
+                for (var i = 0; i < assignment.Length; i++)
+                    vars[i].Value = assignment[i];
             }
-            else
-                State = State.Unsatisfiable;
 
             UnsatWithAssumptions = assumptions is not null;
         }
@@ -1360,7 +1373,7 @@ namespace SATInterface
             DIMACSOutput?.Dispose();
             DIMACSBuffer?.Dispose();
 
-            Solver.Dispose();
+            Configuration.Solver.Dispose();
         }
     }
 }

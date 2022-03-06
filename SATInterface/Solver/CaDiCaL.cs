@@ -9,10 +9,9 @@ namespace SATInterface.Solver
     /// <summary>
     /// Managed-code facade of the native CaDiCaL solver
     /// </summary>
-    public class CaDiCaL : ISolver
+    public class CaDiCaL : Solver
     {
         private IntPtr Handle;
-        private int Verbosity;
 
         public CaDiCaL()
         {
@@ -22,103 +21,89 @@ namespace SATInterface.Solver
             Handle = CaDiCaLNative.ccadical_init();
         }
 
-        public bool[]? Solve(int _variableCount, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
         {
-            if (_assumptions != null)
-                foreach (var a in _assumptions)
-                    CaDiCaLNative.ccadical_assume(Handle, a);
-
-            if (Verbosity >= 1)
+            var callback = (CaDiCaLNative.TerminateCallback)(s =>
             {
-                //TODO: add banner to C API
-                Console.WriteLine("c " + Marshal.PtrToStringAnsi(CaDiCaLNative.ccadical_signature()));
+                return Environment.TickCount64 > _timeout ? 1 : 0;
+            });
+            try
+            {
+                CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, callback);
+
+                if (_assumptions != null)
+                    foreach (var a in _assumptions)
+                        CaDiCaLNative.ccadical_assume(Handle, a);
+
+                if (Model.Configuration.Verbosity >= 2)
+                {
+                    //TODO: add banner to C API
+                    Console.WriteLine("c " + Marshal.PtrToStringAnsi(CaDiCaLNative.ccadical_signature()));
+                }
+
+                var satisfiable = CaDiCaLNative.ccadical_solve(Handle);
+
+                if (Model.Configuration.Verbosity >= 2)
+                    CaDiCaLNative.ccadical_print_statistics(Handle);
+
+                switch (satisfiable)
+                {
+                    case 10:
+                        //satisfiable
+                        var res = new bool[_variableCount];
+                        for (var i = 0; i < res.Length; i++)
+                            res[i] = CaDiCaLNative.ccadical_val(Handle, i + 1) > 0;
+                        return (State.Satisfiable, res);
+
+                    case 20:
+                        //unsat
+                        return (State.Unsatisfiable, null);
+
+                    case 0:
+                        //interrupted
+                        return (State.Undecided, null);
+
+                    default:
+                        throw new Exception();
+                }
             }
-
-            var satisfiable = CaDiCaLNative.ccadical_solve(Handle);
-
-            if (Verbosity >= 1)
-                CaDiCaLNative.ccadical_print_statistics(Handle);
-
-            switch (satisfiable)
+            finally
             {
-                case 10:
-                    //satisfiable
-                    var res = new bool[_variableCount];
-                    for (var i = 0; i < res.Length; i++)
-                        res[i] = CaDiCaLNative.ccadical_val(Handle, i + 1) > 0;
-                    return res;
-
-                case 20:
-                    //unsat
-                    return null;
-
-                case 0:
-                //interrupted
-                default:
-                    throw new Exception();
+                CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, null);
+                GC.KeepAlive(callback);
             }
         }
 
-        public void AddClause(Span<int> _clause)
+        public override void AddClause(Span<int> _clause)
         {
             foreach (var i in _clause)
                 CaDiCaLNative.ccadical_add(Handle, i);
             CaDiCaLNative.ccadical_add(Handle, 0);
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
+        protected override void DisposeUnmanaged()
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    //dispose managed state
-                }
-
-                CaDiCaLNative.ccadical_release(Handle);
-                Handle = IntPtr.Zero;
-
-                disposedValue = true;
-            }
+            CaDiCaLNative.ccadical_release(Handle);
+            Handle = IntPtr.Zero;
         }
 
-        ~CaDiCaL()
+        internal override void ApplyConfiguration()
         {
-            Dispose(false);
-        }
+            var verbosity = Math.Max(0, Model.Configuration.Verbosity - 1);
+            CaDiCaLNative.ccadical_set_option(Handle, "quiet", verbosity == 0 ? 1 : 0);
+            CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
+            CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
 
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
-
-        void ISolver.ApplyConfiguration(Configuration _config)
-        {
-            Verbosity = Math.Max(0, _config.Verbosity - 1);
-            CaDiCaLNative.ccadical_set_option(Handle, "quiet", Verbosity == 0 ? 1 : 0);
-            CaDiCaLNative.ccadical_set_option(Handle, "report", Verbosity > 0 ? 1 : 0);
-            CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, Verbosity - 1));
-
-            if ((_config.Threads ?? 1) != 1)
+            if ((Model.Configuration.Threads ?? 1) != 1)
                 throw new NotImplementedException("CaDiCaL only supports single-threaded operation.");
 
-            if (_config.RandomSeed.HasValue)
-                CaDiCaLNative.ccadical_set_option(Handle, "seed", _config.RandomSeed.Value);
+            if (Model.Configuration.RandomSeed.HasValue)
+                CaDiCaLNative.ccadical_set_option(Handle, "seed", Model.Configuration.RandomSeed.Value);
 
-            if (_config.InitialPhase.HasValue)
-                CaDiCaLNative.ccadical_set_option(Handle, "phase", _config.InitialPhase.Value ? 1 : 0);
+            if (Model.Configuration.InitialPhase.HasValue)
+                CaDiCaLNative.ccadical_set_option(Handle, "phase", Model.Configuration.InitialPhase.Value ? 1 : 0);
 
-            if(_config.TimeLimit!=TimeSpan.Zero)
-                //TODO: kissat uses signals to stop the process --> use terminate callback instead
-                throw new NotImplementedException();
-
-            switch(_config.ExpectedOutcome)
+            switch (Model.Configuration.ExpectedOutcome)
             {
                 case ExpectedOutcome.Sat:
                     //copied from config.cpp
@@ -131,57 +116,64 @@ namespace SATInterface.Solver
                     CaDiCaLNative.ccadical_set_option(Handle, "stabilize", 0);
                     CaDiCaLNative.ccadical_set_option(Handle, "walk", 0);
                     break;
-                //case ExpectedOutcome.RandomSampledAssignment:
-                //    CaDiCaLNative.ccadical_set_option(Handle, "reluctant", 0);
-                //    CaDiCaLNative.ccadical_set_option(Handle, "reluctantmax", 0);
-                //    CaDiCaLNative.ccadical_set_option(Handle, "restartint", 50);
-                //    CaDiCaLNative.ccadical_set_option(Handle, "restartreusetrail", 0);
-                //    CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
+                    //case ExpectedOutcome.RandomSampledAssignment:
+                    //    CaDiCaLNative.ccadical_set_option(Handle, "reluctant", 0);
+                    //    CaDiCaLNative.ccadical_set_option(Handle, "reluctantmax", 0);
+                    //    CaDiCaLNative.ccadical_set_option(Handle, "restartint", 50);
+                    //    CaDiCaLNative.ccadical_set_option(Handle, "restartreusetrail", 0);
+                    //    CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
 
-                //    CaDiCaLNative.ccadical_set_option(Handle, "walkreleff", 100000); //TODO: ?
-                //    break;
+                    //    CaDiCaLNative.ccadical_set_option(Handle, "walkreleff", 100000); //TODO: ?
+                    //    break;
             }
         }
     }
 
     public static class CaDiCaLNative
     {
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr ccadical_init();
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void ccadical_release(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll")]
-        //TODO: [SuppressGCTransition]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
+        [SuppressGCTransition]
         public static extern void ccadical_add(IntPtr wrapper, int lit);
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
+        [SuppressGCTransition]
         public static extern void ccadical_assume(IntPtr wrapper, int lit);
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int ccadical_solve(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int ccadical_simplify(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int ccadical_lookahead(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll")]
-        //TODO: [SuppressGCTransition]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
+        [SuppressGCTransition]
         public static extern int ccadical_val(IntPtr wrapper, int lit);
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int ccadical_print_statistics(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void ccadical_set_option(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void ccadical_limit(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
-        [DllImport("CaDiCaL.dll")]
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr ccadical_signature();
+
+        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void ccadical_set_terminate(IntPtr wrapper, IntPtr state, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int TerminateCallback(IntPtr State);
     }
 }

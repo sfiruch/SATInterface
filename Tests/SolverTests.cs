@@ -26,7 +26,7 @@ namespace Tests
                 using var m = new Model(new Configuration()
                 {
                     Verbosity = 0,
-                    Solver = (ISolver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
+                    Solver = (Solver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
                 });
 
                 var assignment = m.AddVars(_holes, _pigeons);
@@ -61,7 +61,7 @@ namespace Tests
             using var m = new Model(new Configuration()
             {
                 Verbosity = 0,
-                Solver = (ISolver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
+                Solver = (Solver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
             });
 
             var vXYC = m.AddVars(W, H, C);
@@ -98,7 +98,7 @@ namespace Tests
             using var m = new Model(new Configuration()
             {
                 Verbosity = 0,
-                Solver = (ISolver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
+                Solver = (Solver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
             });
 
             var v = m.AddVars(4);
@@ -123,7 +123,7 @@ namespace Tests
             using var m = new Model(new Configuration()
             {
                 Verbosity = 0,
-                Solver = (ISolver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
+                Solver = (Solver)_solver.GetConstructor(Type.EmptyTypes).Invoke(null)
             });
 
             var v = m.AddVars(N);

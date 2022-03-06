@@ -66,7 +66,7 @@ namespace SATInterface
         /// Bundled SAT solver to use.
         /// Default: new SATInterface.Solver.CaDiCaL()
         /// </summary>
-        public ISolver Solver = new CaDiCaL();
+        public Solver.Solver Solver = new CaDiCaL();
 
         /// <summary>
         /// Number of threads the solver may use.
@@ -122,20 +122,5 @@ namespace SATInterface
         /// Default: ExpectedOutcome.Unknown
         /// </summary>
         public ExpectedOutcome ExpectedOutcome = ExpectedOutcome.Unknown;
-
-        public Configuration Clone()
-            => new Configuration()
-            {
-                ConsoleSolverLines = ConsoleSolverLines,
-                OptimizationFocus = OptimizationFocus,
-                Verbosity = Verbosity,
-                Solver = Solver,
-                Threads = Threads,
-                RandomSeed = RandomSeed,
-                InitialPhase = InitialPhase,
-                EnableDIMACSWriting = EnableDIMACSWriting,
-                TimeLimit = TimeLimit,
-                ExpectedOutcome = ExpectedOutcome
-            };
     }
 }

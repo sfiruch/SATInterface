@@ -7,20 +7,20 @@ using System.IO;
 using System.Diagnostics;
 using System.Threading;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 
 namespace SATInterface.Solver
 {
     /// <summary>
     /// Supports execution of an external solver in a separate process
     /// </summary>
-    public class ExternalSolver : ISolver
+    public class ExternalSolver : Solver
     {
         private string SolverExecutable;
         private string? SolverArguments;
         private string? FilenameInput;
         private string? FilenameOutput;
         private string NewLine;
-        private int Verbosity;
 
         private List<int[]> clauses = new List<int[]>();
 
@@ -53,7 +53,7 @@ namespace SATInterface.Solver
                     _out.WriteLine($"{c} 0");
         }
 
-        public bool[]? Solve(int _variableCount, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
         {
             if (FilenameInput is not null)
             {
@@ -86,12 +86,13 @@ namespace SATInterface.Solver
                 };
                 satWriterThread.Start();
             }
-            if (FilenameOutput is not null)
-                p!.WaitForExit();
 
-            var log = new List<string>();
-            try
+            var t = Task.Run<(State, bool[]?)>(() =>
             {
+                if (FilenameOutput is not null)
+                    p!.WaitForExit();
+
+                var log = new List<string>();
                 var isSat = false;
                 var res = new bool[_variableCount];
 
@@ -103,47 +104,62 @@ namespace SATInterface.Solver
                     {
                         //skip empty lines
                     }
-                    if (tk.Length > 1 && tk[0] == "c" && FilenameOutput is null)
+                    else if (tk.Length > 1 && tk[0] == "c" && FilenameOutput is null)
                     {
-                        if (Verbosity > 0)
+                        if (Model.Configuration.Verbosity > 0)
                             Console.WriteLine(line);
                     }
-                    if (tk.Length == 2 && tk[0] == "s")
+                    else if (tk.Length == 2 && tk[0] == "s")
                     {
-                        if (Verbosity > 0 && FilenameOutput is null)
+                        if (Model.Configuration.Verbosity > 0 && FilenameOutput is null)
                             Console.WriteLine(line);
                         if (tk[1] == "SATISFIABLE")
                         {
                             isSat = true;
                         }
                         else if (tk[1] == "UNSATISFIABLE")
-                            return null;
+                            return (State.Unsatisfiable, null);
                         else
-                            throw new Exception(tk[2]);
+                            throw new Exception($"Unexpected status {tk[2]}");
                     }
                     else if (tk.Length >= 2 && tk[0] == "v")
                     {
                         foreach (var n in tk.Skip(1).Select(s => int.Parse(s)))
                             if (n > 0)
-                                res[n-1] = true;
+                                res[n - 1] = true;
                     }
                 }
 
                 if (!isSat)
-                    throw new Exception("Solver did not report SAT or UNSAT");
+                    return (State.Undecided, null);
 
-                return res;
+                return (State.Satisfiable, res);
+            });
+
+            try
+            {
+                if (_timeout == long.MaxValue)
+                    t.Wait();
+                else
+                {
+                    var timeout = (int)Math.Min(int.MaxValue, _timeout - Environment.TickCount64);
+                    if (timeout <= 0 || !t.Wait(timeout))
+                        return (State.Undecided, null);
+                }
+
+                return t.Result;
             }
             finally
             {
-                satWriterThread?.Interrupt();
-                p!.WaitForExit();
+                p!.Kill(true);
+                p.WaitForExit();
 
                 if (FilenameInput is null)
-                    p!.StandardInput.Dispose();
+                    p.StandardInput.Dispose();
                 if (FilenameOutput is null)
-                    p!.StandardOutput.Dispose();
-                p!.Dispose();
+                    p.StandardOutput.Dispose();
+
+                p.Dispose();
 
                 if (FilenameInput is not null)
                     File.Delete(FilenameInput);
@@ -152,44 +168,13 @@ namespace SATInterface.Solver
             }
         }
 
-        public void AddClause(Span<int> _clause)
+        public override void AddClause(Span<int> _clause)
         {
             clauses.Add(_clause.ToArray());
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
+        internal override void ApplyConfiguration()
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    //dispose managed state
-                }
-
-
-                disposedValue = true;
-            }
-        }
-
-        ~ExternalSolver()
-        {
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
-
-        void ISolver.ApplyConfiguration(Configuration _config)
-        {
-            Verbosity = _config.Verbosity;
         }
     }
 }
