@@ -161,6 +161,15 @@ namespace SATInterface.Solver
 
                 p.Dispose();
 
+                try
+                {
+                    //let task close the file
+                    t.Wait();
+                }
+                catch
+                {
+                }
+
                 if (FilenameInput is not null)
                     File.Delete(FilenameInput);
                 if (FilenameOutput is not null)
