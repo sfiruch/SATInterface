@@ -276,6 +276,9 @@ namespace SATInterface
                 if (Configuration.ConsoleSolverLines.HasValue && Configuration.Verbosity > 0)
                     Log.LimitOutputTo(Configuration.ConsoleSolverLines.Value);
 
+                if (Environment.TickCount64 >= _timeout)
+                    return (State.Undecided, null);
+
                 return Configuration.Solver.Solve(VariableCount, _timeout, _assumptions);
             }
             finally
@@ -531,6 +534,10 @@ namespace SATInterface
             if (State == State.Satisfiable && (_assumptions is null || _assumptions.All(a => a.X)))
                 return;
 
+            var timeout = long.MaxValue;
+            if (Configuration.TimeLimit != TimeSpan.Zero)
+                timeout = Environment.TickCount64 + (long)Configuration.TimeLimit.TotalMilliseconds;
+
             int[]? assumptions = null;
             if (_assumptions is not null)
             {
@@ -548,10 +555,6 @@ namespace SATInterface
                         }
                     };
             }
-
-            var timeout = long.MaxValue;
-            if (Configuration.TimeLimit != TimeSpan.Zero)
-                timeout = Environment.TickCount64 + (long)Configuration.TimeLimit.TotalMilliseconds;
 
             (State, var assignment) = InvokeSolver(timeout, assumptions);
             if (State == State.Satisfiable)

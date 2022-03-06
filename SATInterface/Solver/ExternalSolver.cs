@@ -141,11 +141,12 @@ namespace SATInterface.Solver
                 if (_timeout == long.MaxValue)
                     t.Wait();
                 else
-                {
-                    var timeout = (int)Math.Min(int.MaxValue, _timeout - Environment.TickCount64);
-                    if (timeout <= 0 || !t.Wait(timeout))
-                        return (State.Undecided, null);
-                }
+                    for (; ; )
+                    {
+                        var timeout = (int)Math.Min(int.MaxValue - 100, _timeout - Environment.TickCount64);
+                        if (timeout <= 0 || !t.Wait(timeout + 100))
+                            return (State.Undecided, null);
+                    }
 
                 return t.Result;
             }
