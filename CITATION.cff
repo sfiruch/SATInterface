@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+title: SATInterface
+message: Please cite this software using these metadata.
+type: software
+authors:
+  - given-names: Simon
+    family-names: Felix
+    email: de@iru.ch
+    orcid: 'https://orcid.org/0000-0002-3979-128X'
+url: "https://github.com/deiruch/SATInterface"
