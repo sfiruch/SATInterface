@@ -145,7 +145,7 @@ namespace SATInterface
             throw new InvalidOperationException();
         }
 
-        public override bool X => Elements.ToArray().Any(e => e.X);
+        public override bool X => Elements.Any(e => e.X);
 
         public override int VarCount => Elements.Length;
 

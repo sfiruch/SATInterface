@@ -260,11 +260,11 @@ namespace SATInterface
 
 
             var toSum = new List<UIntVar>();
-            while(posWeights.Any())
+            while (posWeights.Any())
             {
                 var minWeight = posWeights.Min(pw => pw.Weight);
-                var minWeightVars = posWeights.Where(pw => pw.Weight == minWeight).Select(pw=>pw.Var).ToArray();
-                posWeights.RemoveAll(pw => pw.Weight==minWeight);
+                var minWeightVars = posWeights.Where(pw => pw.Weight == minWeight).Select(pw => pw.Var).ToArray();
+                posWeights.RemoveAll(pw => pw.Weight == minWeight);
 
                 if (minWeightVars.Length == 1)
                     toSum.Add(model.ITE(minWeightVars.Single(), model.AddUIntConst(minWeight), model.AddUIntConst(0)));

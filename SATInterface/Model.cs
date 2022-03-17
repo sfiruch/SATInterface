@@ -746,12 +746,12 @@ namespace SATInterface
         /// <summary>
         /// Returns the sum of the supplied expressions.
         /// </summary>
-        public LinExpr Sum(IEnumerable<BoolExpr> _count) => Sum(_count.ToArray());
+        public LinExpr Sum(IEnumerable<BoolExpr> _elems) => Sum(_elems.ToArray());
 
         /// <summary>
         /// Returns the sum of the supplied expressions as UIntVar.
         /// </summary>
-        public UIntVar SumUInt(IEnumerable<BoolExpr> _count) => SumUInt(_count.ToArray());
+        public UIntVar SumUInt(IEnumerable<BoolExpr> _elems) => SumUInt(_elems.ToArray());
 
         /// <summary>
         /// Returns the sum of the supplied expressions as UIntVar.
@@ -866,7 +866,9 @@ namespace SATInterface
                     //}
                     //return new UIntVar(this, UB > UIntVar.MaxUB ? UIntVar.Unbounded : (int)UB, bits.ToArray());
 
-                    //var oe = _elems..OrderBy(e => unchecked((uint)e.UB)).ToArray();
+                    //var oe = _elems.ToArray().OrderBy(e => unchecked((uint)e.UB)).ToArray();
+                    //return Sum(oe[..(_elems.Length / 2)]) + Sum(oe[(_elems.Length / 2)..]);
+
                     return Sum(_elems[..(_elems.Length / 2)]) + Sum(_elems[(_elems.Length / 2)..]);
 
                     ////WORKS
@@ -1151,8 +1153,6 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
-        /// <param name="_expr"></param>
-        /// <returns></returns>
         public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod? _method = null) => ExactlyOneOf(_expr.ToArray().AsSpan(), _method);
 
         /// <summary>
@@ -1160,8 +1160,6 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
-        /// <param name="_expr"></param>
-        /// <returns></returns>
         public BoolExpr ExactlyOneOf(BoolExpr[] _expr, ExactlyOneOfMethod? _method = null) => ExactlyOneOf(_expr.ToArray().AsSpan(), _method);
 
         /// <summary>
@@ -1169,8 +1167,6 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
-        /// <param name="_expr"></param>
-        /// <returns></returns>
         public BoolExpr ExactlyOneOf(ReadOnlySpan<BoolExpr> _expr, ExactlyOneOfMethod? _method = null)
         {
             var expr = _expr.ToArray().Where(e => !ReferenceEquals(e, False)).ToArray();
@@ -1474,10 +1470,11 @@ namespace SATInterface
         }
 
 
-        //Formulation by Klieber & Kwon: Efficient CNF Encoding for Selecting 1 from N Objects  
-        //- https://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
         private BoolExpr ExactlyOneOfCommander(ReadOnlySpan<BoolExpr> _expr)
         {
+            //Formulation by Klieber & Kwon: Efficient CNF Encoding for Selecting 1 from N Objects  
+            //- https://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
+
             if (_expr.Length <= 5)
                 return ExactlyOneOfPairwise(_expr);
 
@@ -1510,22 +1507,20 @@ namespace SATInterface
         /// <summary>
         /// Sorts the given expressions. True will be returned first, False last.
         /// </summary>
-        /// <param name="_e"></param>
-        /// <returns></returns>
-
-        //Formulation by Bailleux & Boufkhad
-        //- https://pdfs.semanticscholar.org/a948/1bf4ce2b5c20d2e282dd69dcb92bddcc36c9.pdf
-        public BoolExpr[] Sort(BoolExpr[] _e)
+        public BoolExpr[] Sort(BoolExpr[] _elems)
         {
-            var len = _e.Count();
+            //Formulation by Bailleux & Boufkhad
+            //- https://pdfs.semanticscholar.org/a948/1bf4ce2b5c20d2e282dd69dcb92bddcc36c9.pdf
+
+            var len = _elems.Count();
             switch (len)
             {
                 case 0:
                     return new BoolExpr[0];
                 case 1:
-                    return new BoolExpr[] { _e.Single() };
+                    return new BoolExpr[] { _elems.Single() };
                 case 2:
-                    return new BoolExpr[] { OrExpr.Create(_e).Flatten(), AndExpr.Create(_e).Flatten() };
+                    return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
                 default:
                     var R = new BoolExpr[len + 2];
                     R[0] = True;
@@ -1533,8 +1528,8 @@ namespace SATInterface
                         R[i] = AddVar();
                     R[R.Length - 1] = False;
 
-                    var A = new BoolExpr[] { True }.Concat(Sort(_e[..(len / 2)])).Concat(new BoolExpr[] { False }).ToArray();
-                    var B = new BoolExpr[] { True }.Concat(Sort(_e[(len / 2)..])).Concat(new BoolExpr[] { False }).ToArray();
+                    var A = new BoolExpr[] { True }.Concat(Sort(_elems[..(len / 2)])).Concat(new BoolExpr[] { False }).ToArray();
+                    var B = new BoolExpr[] { True }.Concat(Sort(_elems[(len / 2)..])).Concat(new BoolExpr[] { False }).ToArray();
                     for (var a = 0; a < A.Length - 1; a++)
                         for (var b = 0; b < B.Length - 1; b++)
                         {
