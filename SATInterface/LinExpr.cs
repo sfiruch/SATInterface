@@ -15,7 +15,7 @@ namespace SATInterface
     public class LinExpr
     {
         //TODO: tune this threshold
-        private const int BinaryComparisonThreshold = 10;
+        private const int BinaryComparisonThreshold = 30;
 
         private Dictionary<BoolVar, int> Weights;
         private int Offset;
@@ -244,30 +244,54 @@ namespace SATInterface
                 return (UIntCache, UIntCacheOffset);
 
             //convert to all-positive weights
-            var posVar = new List<UIntVar>();
-            var singleVar = new List<BoolExpr>();
+            var posWeights = new List<(int Weight, BoolExpr Var)>();
             var offset = Offset;
             var model = Weights.First().Key.Model;
             foreach (var e in Weights)
-                if (e.Value == 1)
-                {
-                    singleVar.Add(e.Key);
-                }
-                else if (e.Value == -1)
-                {
-                    singleVar.Add(!e.Key);
-                    offset += e.Value;
-                }
-                else if (e.Value > 0)
-                    posVar.Add(e.Key * UIntVar.Const(model, e.Value));
+                if (e.Value > 0)
+                    posWeights.Add((e.Value, e.Key));
                 else
                 {
                     Debug.Assert(e.Value < 0);
-                    posVar.Add(!e.Key * UIntVar.Const(model, -e.Value));
+                    posWeights.Add((-e.Value, !e.Key));
                     offset += e.Value;
                 }
 
-            return (UIntCache, UIntCacheOffset) = (model.SumUInt(singleVar) + model.Sum(posVar), offset);
+
+            var toSum = new List<UIntVar>();
+            while(posWeights.Any())
+            {
+                var minWeight = posWeights.Min(pw => pw.Weight);
+                var minWeightVars = posWeights.Where(pw => pw.Weight == minWeight).Select(pw=>pw.Var).ToArray();
+                posWeights.RemoveAll(pw => pw.Weight==minWeight);
+
+                if (minWeightVars.Length == 1)
+                    toSum.Add(model.ITE(minWeightVars.Single(), model.AddUIntConst(minWeight), model.AddUIntConst(0)));
+                else
+                {
+                    var sum = model.SumUInt(minWeightVars);
+                    if (sum.UB > 0)
+                    {
+                        for (var i = 1; i < sum.Bits.Length; i++)
+                            posWeights.Add((minWeight << i, sum.Bits[i]));
+
+                        toSum.Add(model.ITE(sum.Bits[0], model.AddUIntConst(minWeight), model.AddUIntConst(0)));
+                    }
+                }
+            }
+            return (UIntCache, UIntCacheOffset) = (model.Sum(toSum), offset);
+
+
+            //return (UIntCache, UIntCacheOffset) = (model.Sum(posWeights
+            //    .GroupBy(vw => vw.Weight)
+            //    .Select(g => g.Count() == 1 ?
+            //        model.ITE(g.Single().Var, model.AddUIntConst(g.Key), model.AddUIntConst(0))
+            //        : (model.SumUInt(g.Select(e => e.Var)) * g.Key))
+            //    ), offset);
+
+            //return (UIntCache, UIntCacheOffset) = (model.Sum(posWeights
+            //    .Select(pw => model.ITE(pw.Var, model.AddUIntConst(pw.Weight), model.AddUIntConst(0)))
+            //    ), offset);
         }
 
         private void ClearCached()
@@ -311,7 +335,7 @@ namespace SATInterface
                 return Model.False;
 
             if (rhs == 0)
-                return AndExpr.Create(_a.Weights.Select(x => x.Value>0 ? !x.Key:x.Key));
+                return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key));
 
             if (rhs > BinaryComparisonThreshold)
             {
@@ -381,6 +405,19 @@ namespace SATInterface
                 else
                     Weights[_bv] = value;
             }
+        }
+
+        public void AddTerm(LinExpr _le, int _weight = 1)
+        {
+            if (_weight == 0)
+                return;
+
+            ClearCached();
+
+            Offset += _le.Offset * _weight;
+
+            foreach (var e in _le.Weights)
+                this[e.Key] += e.Value * _weight;
         }
 
         public void AddTerm(BoolExpr _be, int _weight = 1)

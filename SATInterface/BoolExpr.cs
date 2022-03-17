@@ -133,10 +133,8 @@ namespace SATInterface
             lhsS = lhsS.Flatten();
             rhsS = rhsS.Flatten();
             return lhsS.EnumVars().First().Model.ITE(lhsS, rhsS, !rhsS);
-
-            //lhsS = (lhsS.VarCount > 2) ? lhsS.Flatten() : lhsS;
-            //rhsS = (rhsS.VarCount > 2) ? rhsS.Flatten() : rhsS;
             //return ((lhsS & rhsS) | (!lhsS & !rhsS)).Flatten();
+            //return (lhsS & rhsS).Flatten() | (!lhsS & !rhsS).Flatten();
         }
 
         public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);
@@ -147,5 +145,7 @@ namespace SATInterface
         public static BoolExpr operator <=(BoolExpr lhs, BoolExpr rhs) => !lhs | rhs;
 
         public static BoolExpr operator ^(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);
+
+        public UIntVar ToUIntVar(Model _m) => new UIntVar(_m, 1, new[] { this });
     }
 }

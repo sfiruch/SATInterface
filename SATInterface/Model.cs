@@ -269,6 +269,26 @@ namespace SATInterface
             AbortOptimization = true;
         }
 
+        private IEnumerable<bool[]> InvokeSampler(long _timeout, int[]? _assumptions)
+        {
+            try
+            {
+                if (Configuration.ConsoleSolverLines.HasValue && Configuration.Verbosity > 0)
+                    Log.LimitOutputTo(Configuration.ConsoleSolverLines.Value);
+
+                if (Environment.TickCount64 >= _timeout)
+                    yield break;
+
+                foreach (var sol in Configuration.Solver.RandomSample(VariableCount, _timeout, _assumptions))
+                    yield return sol;
+            }
+            finally
+            {
+                if (Configuration.ConsoleSolverLines.HasValue && Configuration.Verbosity > 0)
+                    Log.LimitOutputTo();
+            }
+        }
+
         private (State State, bool[]? Vars) InvokeSolver(long _timeout, int[]? _assumptions)
         {
             try
@@ -291,7 +311,7 @@ namespace SATInterface
         /// <summary>
         /// Enumerates all valid assignment, with differing assignments for _modelVariables
         /// </summary>
-        /// <param name="_modelVariables"></param>
+        /// <param name="_modelVariables">Solutions must differ in this set of variables</param>
         /// <param name="_solutionCallback">Invoked for every valid assignment</param>
         public void EnumerateSolutions(IEnumerable<UIntVar> _modelVariables, Action _solutionCallback)
             => EnumerateSolutions(_modelVariables.SelectMany(v => v.Bits), _solutionCallback);
@@ -299,7 +319,7 @@ namespace SATInterface
         /// <summary>
         /// Enumerates all valid assignment, with differing assignments for _modelVariables
         /// </summary>
-        /// <param name="_modelVariables"></param>
+        /// <param name="_modelVariables">Solutions must differ in this set of variables</param>
         /// <param name="_solutionCallback">Invoked for every valid assignment</param>
         public void EnumerateSolutions(IEnumerable<BoolExpr> _modelVariables, Action _solutionCallback)
         {
@@ -375,6 +395,60 @@ namespace SATInterface
                 InOptimization = false;
             }
         }
+
+
+
+        /// <summary>
+        /// Returns all solutions produced by the solver. Only useful with solvers that actually
+        /// produce multiple solutions directly. Only tested with CMSGen and CryptoMiniSat.
+        /// </summary>
+        /// <param name="_solutionCallback">Invoked for every valid assignment</param>
+        public void MultiSolve(Action _solutionCallback)
+        {
+            //TODO integrate with enumSolutions properly
+
+            if (State == State.Unsatisfiable && !UnsatWithAssumptions)
+                return;
+
+            var timeout = long.MaxValue;
+            if (Configuration.TimeLimit != TimeSpan.Zero)
+                timeout = Environment.TickCount64 + (long)Configuration.TimeLimit.TotalMilliseconds;
+
+            try
+            {
+                InOptimization = true;
+                AbortOptimization = false;
+
+                State = State.Undecided;
+                foreach (var assignment in InvokeSampler(timeout, null))
+                {
+                    for (var i = 0; i < assignment.Length; i++)
+                        vars[i].Value = assignment[i];
+
+                    State = State.Satisfiable;
+
+                    var mClauses = ClauseCount;
+                    _solutionCallback.Invoke();
+
+                    if (State == State.Unsatisfiable)
+                        break;
+
+                    if (AbortOptimization)
+                        break;
+
+                    if (mClauses != ClauseCount)
+                        throw new NotImplementedException("Lazy-added constraints not yet supported in multi sampling");
+                }
+
+                UnsatWithAssumptions = false;
+            }
+            finally
+            {
+                InOptimization = false;
+            }
+        }
+
+
 
         private void Maximize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
         {
@@ -473,7 +547,7 @@ namespace SATInterface
                         AddConstrInternal(objGE == (_obj >= cur));
                     }
 
-                    (var subState, var assignment) = State==State.Unsatisfiable ? (State,null) : InvokeSolver(timeout, new[] { objGE.Id });
+                    (var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, new[] { objGE.Id });
                     if (subState == State.Satisfiable)
                     {
                         Debug.Assert(assignment is not null);
@@ -498,7 +572,7 @@ namespace SATInterface
                         if (AbortOptimization)
                             break;
                     }
-                    else if(subState == State.Unsatisfiable)
+                    else if (subState == State.Unsatisfiable)
                     {
                         ub = cur - 1;
                     }
@@ -666,15 +740,19 @@ namespace SATInterface
         /// <summary>
         /// Returns the sum of the supplied expressions as UIntVar.
         /// </summary>
-        /// <param name="_count"></param>
+        /// <param name="_elems"></param>
         /// <returns></returns>
-        public UIntVar SumUInt(IEnumerable<BoolExpr> _count)
+        public UIntVar SumUInt(IEnumerable<BoolExpr> _elems)
         {
-            var simplified = _count.Where(b => !ReferenceEquals(b, False)).ToArray();
-            var trueCount = simplified.Count(b => ReferenceEquals(b, True));
-            simplified = simplified.Where(b => !ReferenceEquals(b, True)).ToArray();
+            var simplified = new List<BoolExpr>();
+            var trueCount = 0;
+            foreach (var e in _elems)
+                if (ReferenceEquals(e, True))
+                    trueCount++;
+                else if (!ReferenceEquals(e, False))
+                    simplified.Add(e);
 
-            switch (simplified.Length)
+            switch (simplified.Count)
             {
                 case 0:
                     return UIntVar.Const(this, trueCount);
@@ -684,21 +762,20 @@ namespace SATInterface
                     {
                         var res = new UIntVar(this, 2, false);
                         res.bit[0] = Xor(simplified);
-                        res.bit[1] = simplified[0] & simplified[1];
+                        res.bit[1] = (simplified[0] & simplified[1]).Flatten();
                         return res + trueCount;
                     }
                 case 3:
                     {
                         var res = new UIntVar(this, 3, false);
                         res.bit[0] = Xor(simplified);
-                        res.bit[1] = (simplified[0] & simplified[1]) | (simplified[0] & simplified[2]) | (simplified[1] & simplified[2]).Flatten();
+                        res.bit[1] = ((simplified[0] & simplified[1]).Flatten()
+                                | (simplified[0] & simplified[2]).Flatten()
+                                | (simplified[1] & simplified[2]).Flatten()).Flatten();
                         return res + trueCount;
                     }
                 default:
-                    var groupsOfThree = new UIntVar[(simplified.Length + 2) / 3];
-                    for (var i = 0; i < groupsOfThree.Length; i++)
-                        groupsOfThree[i] = SumUInt(simplified.Skip(i * 3).Take(3));
-                    return Sum(groupsOfThree) + trueCount;
+                    return Sum(simplified.Chunk(3).Select(g => SumUInt(g))) + trueCount;
             }
         }
 
@@ -729,8 +806,53 @@ namespace SATInterface
                     return UIntVar.Const(this, 0);
                 case 1:
                     return _elems.Single();
+                case 2:
+                    return _elems.First() + _elems.Last();
                 default:
-                    return Sum(_elems.Take(cnt / 2)) + Sum(_elems.Skip(cnt / 2));
+                    //SLOW
+                    //var vars = _elems.ToList();
+                    //var UB = vars.Any(e => e.UB == UIntVar.Unbounded) ? UIntVar.Unbounded : vars.Sum(e => (long)e.UB);
+                    //var bits = new List<BoolExpr>();
+                    //for (var bit = 0; vars.Any(); bit++)
+                    //{
+                    //    bits.Add(Xor(vars.Select(v => v.Bits[bit])));
+                    //    var lsbs = Sort(vars.Select(v => v.Bits[bit]));
+                    //    var sum = SumUInt(lsbs.Chunk(2).Where(g => g.Length == 2).Select(g => g[0] & g[1]));
+                    //    if (sum.UB > 0)
+                    //        vars.Add(sum << (bit + 1));
+                    //    vars.RemoveAll(v => v.Bits.Length <= bit + 1);
+                    //}
+                    //return new UIntVar(this, UB > UIntVar.MaxUB ? UIntVar.Unbounded : (int)UB, bits.ToArray());
+
+                    var oe = _elems.OrderBy(e => unchecked((uint)e.UB)).ToArray();
+                    return Sum(oe.Take(cnt / 2)) + Sum(oe.Skip(cnt / 2));
+
+                    ////WORKS
+                    //var vars = new PriorityQueue<UIntVar, uint>(_elems.Select(e => (e, unchecked((uint)e.UB))));
+                    //for (; ; )
+                    //{
+                    //    var a = vars.Dequeue();
+                    //    var b = vars.Dequeue();
+                    //    var sum = a+b;
+                    //    if (vars.Count == 0)
+                    //        return sum;
+
+                    //    vars.Enqueue(sum, unchecked((uint)sum.UB));
+                    //}
+
+                    //WORKS
+                    //var vars = _elems.ToList();
+                    //var UB = vars.Any(e => e.UB == UIntVar.Unbounded) ? UIntVar.Unbounded : vars.Sum(e => (long)e.UB);
+                    //var bits = new List<BoolExpr>();
+                    //for (var bit = 0; vars.Any(); bit++)
+                    //{
+                    //    var sum = SumUInt(vars.Select(v => v.Bits[bit]));
+                    //    bits.Add(sum.Bits[0]);
+                    //    if (sum.UB > 0)
+                    //        vars.Add(sum << bit);
+                    //    vars.RemoveAll(v => v.Bits.Length <= bit + 1);
+                    //}
+                    //return new UIntVar(this, UB > UIntVar.MaxUB ? UIntVar.Unbounded : (int)UB, bits.ToArray());
             }
         }
 
@@ -778,14 +900,14 @@ namespace SATInterface
                 return (_if | _else).Flatten();
 
             var x = AddVar();
-            AddConstr(!(_if & _then) | x);
-            AddConstr(!(_if & !_then) | !x);
-            AddConstr(!(!_if & _else) | x);
-            AddConstr(!(!_if & !_else) | !x);
+            AddConstr(OrExpr.Create(!_if, !_then, x));
+            AddConstr(OrExpr.Create(!_if, _then, !x));
+            AddConstr(OrExpr.Create(_if, !_else, x));
+            AddConstr(OrExpr.Create(_if, _else, !x));
 
             //arc-consistency
-            AddConstr(!(_then & _else) | x);
-            AddConstr(!(!_then & !_else) | !x);
+            AddConstr(OrExpr.Create(!_then, !_else, x));
+            AddConstr(OrExpr.Create(_then, _else, !x));
             return x;
         }
 
@@ -798,7 +920,7 @@ namespace SATInterface
         {
             var sum = new LinExpr();
             foreach (var e in _elems)
-                sum += e;
+                sum.AddTerm(e);
             return sum;
         }
 
@@ -1363,7 +1485,8 @@ namespace SATInterface
                             {
                                 var C1 = Or(!A[a], !B[b], R[r]).Flatten();
                                 var C2 = Or(A[a + 1], B[b + 1], !R[r + 1]).Flatten();
-                                AddConstr(C1 & C2);
+                                AddConstr(C1);
+                                AddConstr(C2);
                             }
                         }
 

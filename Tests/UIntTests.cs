@@ -96,6 +96,35 @@ namespace Tests
         }
 
         [TestMethod]
+        public void SumUInt()
+        {
+            var rng = new Random();
+            for (var i = 0; i < 20; i++)
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+
+                var sumUBs = 0;
+
+                var vars = new List<UIntVar>();
+                for (var j = 0; j< 10; j++)
+                {
+                    var ub = rng.Next(100);
+                    sumUBs += ub;
+                    vars.Add(m.AddUIntVar(ub, true));
+                }
+
+                var sumVar = m.Sum(vars);
+                m.Maximize(sumVar);
+
+                Assert.AreEqual(State.Satisfiable, m.State);
+                Assert.AreEqual(sumUBs, sumVar.X);
+            }
+        }
+
+        [TestMethod]
         public void SumBools()
         {
             var RNG = new Random(0);

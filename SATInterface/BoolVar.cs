@@ -73,6 +73,8 @@ namespace SATInterface
             yield return this;
         }
 
+        public UIntVar ToUIntVar() => new UIntVar(Model, 1, new[] { this });
+
         public override int GetHashCode() => Id;
 
         public override bool Equals(object? obj) => (obj is BoolVar bv) && bv.Id == Id;

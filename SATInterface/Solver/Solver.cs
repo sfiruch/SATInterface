@@ -12,6 +12,9 @@ namespace SATInterface.Solver
 
         public abstract (State State,bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null);
 
+        public virtual IEnumerable<bool[]> RandomSample(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
+            => throw new NotImplementedException();
+
         internal abstract void ApplyConfiguration();
 
         protected virtual void DisposeManaged()

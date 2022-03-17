@@ -10,6 +10,49 @@ namespace Tests
     public class EnumerationTests
     {
         [TestMethod]
+        public void BinaryAllTwice()
+        {
+            const int N = 12;
+
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+            var v = m.AddVars(N);
+
+            var cnt = 0;
+            var found = new int[1 << N];
+            m.EnumerateSolutions(v, () =>
+            {
+                cnt++;
+
+                var x = 0;
+                for (var i = 0; i < N; i++)
+                    if (v[i].X)
+                        x |= (1 << i);
+
+                Assert.AreEqual(0, found[x]);
+                found[x]++;
+            });
+            m.EnumerateSolutions(v, () =>
+            {
+                cnt++;
+
+                var x = 0;
+                for (var i = 0; i < N; i++)
+                    if (v[i].X)
+                        x |= (1 << i);
+
+                Assert.AreEqual(1, found[x]);
+                found[x]++;
+            });
+
+            Assert.AreEqual(2 << N, cnt);
+            Assert.IsTrue(found.All(v => v == 2));
+            Assert.AreEqual(State.Satisfiable, m.State);
+        }
+
+        [TestMethod]
         public void BinaryAll()
         {
             const int N = 12;

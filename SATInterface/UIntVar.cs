@@ -3,13 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 
 namespace SATInterface
 {
     public class UIntVar
     {
-        public class UIntVarBits:IEnumerable<BoolExpr>
+        public class UIntVarBits : IEnumerable<BoolExpr>
         {
             private readonly UIntVar Parent;
 
@@ -48,6 +49,7 @@ namespace SATInterface
         public const int Unbounded = -1;
 
         private const int MaxBitsWithUB = 30;
+        public const int MaxUB = (int)((2L << MaxBitsWithUB) - 1);
 
         /// <summary>
         /// Direct access to the bits making up this number. Index 0 is the LSB.
@@ -344,18 +346,18 @@ namespace SATInterface
                 return true;
             if (_v == 0)
                 return OrExpr.Create(_a.bit);
-            if (_a.UB <= _v && _a.UB != Unbounded)
+            if (_a.UB != Unbounded && _a.UB <= _v)
+                return false;
+            if (_a.Bits.Length < BitOperations.Log2((uint)_v + 1) + 1)
                 return false;
 
             var nonZeroes = Log2(_v) + 1;
             Debug.Assert(nonZeroes <= _a.bit.Length);
 
-            var resAny = new BoolExpr[_a.bit.Length - nonZeroes];
-            for (var i = nonZeroes; i < _a.Bits.Length; i++)
-                resAny[i - nonZeroes] = _a.Bits[i];
-            var leadingZeroes = (resAny.Length != 0) ? OrExpr.Create(resAny) : false;
-
             var resOr = new List<BoolExpr>();
+            for (var i = nonZeroes; i < _a.Bits.Length; i++)
+                resOr.Add(_a.Bits[i]);
+
             for (var i = 0; i < nonZeroes; i++)
                 if (((_v >> i) & 1) == 0)
                 {
@@ -364,9 +366,8 @@ namespace SATInterface
                         .Select(j => _a.Bits[j]));
                     resOr.Add((_a.Bits[i] & allesDavorEq).Flatten());
                 }
-            var orExpr = (resOr.Count != 0) ? OrExpr.Create(resOr) : false;
 
-            return (leadingZeroes | orExpr).Flatten();
+            return OrExpr.Create(resOr).Flatten();
         }
 
         public static BoolExpr operator <(int _v, UIntVar _a) => _a > _v;
@@ -448,6 +449,8 @@ namespace SATInterface
                 return Const(_a.Model, 0);
             if (_b == 1)
                 return _a;
+            if (BitOperations.IsPow2(_b))
+                return _a << BitOperations.Log2((uint)_b);
 
             var sum = new List<UIntVar>();
             for (var b = 0; (_b >> b) != 0; b++)
@@ -455,6 +458,8 @@ namespace SATInterface
                     sum.Add(_a << b);
 
             return _a.Model.Sum(sum);
+
+
         }
 
         public static UIntVar operator *(UIntVar _a, UIntVar _b)
@@ -576,7 +581,7 @@ namespace SATInterface
                     carry = OrExpr.Create(aAndB, aAndCarry, bAndCarry).Flatten();
 
                     //unitprop
-                    _a.Model.AddConstr(OrExpr.Create(bits[i], carry, (!_a.Bits[i] & !_b.Bits[i])));
+                    _a.Model.AddConstr(OrExpr.Create(bits[i], carry, (!_a.Bits[i] & !_b.Bits[i]).Flatten()));
                 }
             }
 

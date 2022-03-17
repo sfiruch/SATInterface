@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace SATInterface.Solver
 {
@@ -53,13 +54,28 @@ namespace SATInterface.Solver
                     _out.WriteLine($"{c} 0");
         }
 
+        public override IEnumerable<bool[]> RandomSample(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
+            => InternalSolve(_variableCount, _timeout, _assumptions).Where(s => s.State == State.Satisfiable).Select(s => s.Vars!);
+
         public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
+        {
+            var solutions = InternalSolve(_variableCount, _timeout, _assumptions).ToArray();
+            if (solutions.Length == 0)
+                return (State.Undecided, null);
+
+            return solutions.Single();
+        }
+
+        protected IEnumerable<(State State, bool[]? Vars)> InternalSolve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
         {
             if (FilenameInput is not null)
             {
                 using var fin = File.CreateText(FilenameInput);
                 Write(fin, _variableCount, _assumptions);
             }
+
+            if (FilenameOutput is not null)
+                File.Delete(FilenameOutput);
 
             var p = Process.Start(new ProcessStartInfo()
             {
@@ -87,73 +103,102 @@ namespace SATInterface.Solver
                 satWriterThread.Start();
             }
 
-            var t = Task.Run<(State, bool[]?)>(() =>
+            var timeout = (int)Math.Min(int.MaxValue, _timeout - Environment.TickCount64);
+            if (timeout <= 0)
+                yield break;
+
+            var UNSAT = new bool[0];
+
+            using var cts = timeout == int.MaxValue ? new CancellationTokenSource() : new CancellationTokenSource(timeout);
+            using var bc = new BlockingCollection<bool[]>(1);
+            var t = Task.Run(() =>
             {
                 if (FilenameOutput is not null)
                     p!.WaitForExit();
 
                 var log = new List<string>();
-                var isSat = false;
-                var res = new bool[_variableCount];
+                bool[]? assignments = null;
 
                 using StreamReader output = FilenameOutput is null ? p!.StandardOutput : File.OpenText(FilenameOutput);
                 for (var line = output.ReadLine(); line != null; line = output.ReadLine())
                 {
-                    var tk = line.Split(' ').Where(e => e != "").ToArray();
-                    if (tk.Length == 0)
+                    if (line.StartsWith("v "))
                     {
-                        //skip empty lines
+                        Debug.Assert(assignments is not null);
+                        foreach (var n in line.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(s => int.Parse(s)))
+                        {
+                            if (n == 0)
+                            {
+                                bc.Add(assignments, cts.Token);
+                                assignments = null;
+                                break;
+                            }
+                            if (n > 0)
+                                assignments[n - 1] = true;
+                        }
                     }
-                    else if (tk.Length > 1 && tk[0] == "c" && FilenameOutput is null)
+                    else if (line.StartsWith("s SATISFIABLE"))
                     {
                         if (Model.Configuration.Verbosity > 0)
                             Console.WriteLine(line);
+
+                        assignments = new bool[_variableCount];
                     }
-                    else if (tk.Length == 2 && tk[0] == "s")
+                    else if (line.StartsWith("s UNSATISFIABLE"))
                     {
-                        if (Model.Configuration.Verbosity > 0 && FilenameOutput is null)
+                        if (Model.Configuration.Verbosity > 0)
                             Console.WriteLine(line);
-                        if (tk[1] == "SATISFIABLE")
-                        {
-                            isSat = true;
-                        }
-                        else if (tk[1] == "UNSATISFIABLE")
-                            return (State.Unsatisfiable, null);
-                        else
-                            throw new Exception($"Unexpected status {tk[2]}");
+
+                        bc.Add(UNSAT, cts.Token);
+                        break;
                     }
-                    else if (tk.Length >= 2 && tk[0] == "v")
-                    {
-                        foreach (var n in tk.Skip(1).Select(s => int.Parse(s)))
-                            if (n > 0)
-                                res[n - 1] = true;
-                    }
+                    else if (Model.Configuration.Verbosity > 0)
+                        Console.WriteLine(line);
                 }
 
-                if (!isSat)
-                    return (State.Undecided, null);
-
-                return (State.Satisfiable, res);
+                bc.CompleteAdding();
             });
 
             try
             {
-                if (_timeout == long.MaxValue)
-                    t.Wait();
-                else
-                    for (; ; )
+                for (; ; )
+                {
+                    State s;
+                    bool[]? assignment = null;
+
+                    try
                     {
-                        var timeout = (int)Math.Min(int.MaxValue - 100, _timeout - Environment.TickCount64);
-                        if (timeout <= 0 || !t.Wait(timeout + 100))
-                            return (State.Undecided, null);
+                        assignment = bc.Take(cts.Token);
+
+                        if(ReferenceEquals(assignment, UNSAT))
+                        {
+                            assignment = null;
+                            s = State.Unsatisfiable;
+                        }
+                        else
+                            s = State.Satisfiable;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        s = State.Undecided;
+                    }
+                    catch(InvalidOperationException)
+                    {
+                        //enumeration complete
+                        yield break;
                     }
 
-                return t.Result;
+                    yield return (s, assignment);
+                    if (s == State.Undecided)
+                        yield break;
+                }
             }
             finally
             {
                 p!.Kill(true);
                 p.WaitForExit();
+
+                cts.Cancel();
 
                 if (FilenameInput is null)
                     p.StandardInput.Dispose();
@@ -167,7 +212,7 @@ namespace SATInterface.Solver
                     //let task close the file
                     t.Wait();
                 }
-                catch
+                catch (Exception)
                 {
                 }
 
