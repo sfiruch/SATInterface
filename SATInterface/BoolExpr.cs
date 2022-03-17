@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -52,6 +53,8 @@ namespace SATInterface
         {
             yield break;
         }
+
+        internal abstract Model GetModel();
 
         public override string ToString()
         {
@@ -109,22 +112,21 @@ namespace SATInterface
             //if (rhsS is AndExpr andExpr)
             //{
             //    var other = lhsS.Flatten();
-            //    var ands = new List<BoolExpr>(andExpr.elements.Length + 1);
-            //    ands.Add(OrExpr.Create(andExpr.elements.Select(e => !e).Append(other)).Flatten());
-            //    foreach (var e in andExpr.elements)
+            //    var ands = new List<BoolExpr>(andExpr.Elements.Length + 1);
+            //    ands.Add(OrExpr.Create(andExpr.Elements.Select(e => !e).Append(other).ToArray()).Flatten());
+            //    foreach (var e in andExpr.Elements)
             //        ands.Add(e | !other);
-            //    return AndExpr.Create(ands);
+            //    return AndExpr.Create(ands.ToArray());
             //}
             //if (rhsS is OrExpr orExpr)
             //{
             //    var other = lhsS.Flatten();
-            //    var ands = new List<BoolExpr>(orExpr.elements.Length+1);
-            //    ands.Add(OrExpr.Create(orExpr.elements.Append(!other)).Flatten());
-            //    foreach (var e in orExpr.elements)
+            //    var ands = new List<BoolExpr>(orExpr.Elements.Length + 1);
+            //    ands.Add(OrExpr.Create(orExpr.Elements.Append(!other).ToArray()).Flatten());
+            //    foreach (var e in orExpr.Elements)
             //        ands.Add(!e | other);
-            //    return AndExpr.Create(ands);
+            //    return AndExpr.Create(ands.ToArray());
             //}
-
             //if (!(rhsS is AndExpr) && lhsS is AndExpr)
             //    return (rhsS == lhsS);
             //if (!(rhsS is OrExpr) && lhsS is OrExpr)
@@ -132,9 +134,9 @@ namespace SATInterface
 
             lhsS = lhsS.Flatten();
             rhsS = rhsS.Flatten();
-            return lhsS.EnumVars().First().Model.ITE(lhsS, rhsS, !rhsS);
+            return lhsS.GetModel().ITE(lhsS, rhsS, !rhsS);
             //return ((lhsS & rhsS) | (!lhsS & !rhsS)).Flatten();
-            //return (lhsS & rhsS).Flatten() | (!lhsS & !rhsS).Flatten();
+            //return ((lhsS & rhsS).Flatten() | (!lhsS & !rhsS).Flatten()).Flatten();
         }
 
         public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);

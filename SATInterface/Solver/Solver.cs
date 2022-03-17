@@ -8,7 +8,7 @@ namespace SATInterface.Solver
     {
         internal Model Model = null!;
 
-        public abstract void AddClause(Span<int> _clause);
+        public abstract void AddClause(ReadOnlySpan<int> _clause);
 
         public abstract (State State,bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null);
 

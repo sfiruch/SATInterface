@@ -61,7 +61,7 @@ namespace SATInterface.Solver
                 return (State.Unsatisfiable, null);
         }
 
-        public override void AddClause(Span<int> _clause)
+        public override void AddClause(ReadOnlySpan<int> _clause)
         {
             var maxVar = 0;
             foreach (var v in _clause)

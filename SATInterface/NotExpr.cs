@@ -17,18 +17,28 @@ namespace SATInterface
 
         internal static BoolExpr Create(BoolExpr _inner)
         {
-            if (_inner is NotExpr)
-                return ((NotExpr)_inner).inner;
+            if (_inner is NotExpr ne)
+                return ne.inner;
             else if (ReferenceEquals(_inner, Model.True))
                 return Model.False;
             else if (ReferenceEquals(_inner, Model.False))
                 return Model.True;
-            else if (_inner is BoolVar)
-                return ((BoolVar)_inner).Negated;
-            else if (_inner is AndExpr)
-                return OrExpr.Create(((AndExpr)_inner).elements.Select(e => !e).ToArray());
-            else if (_inner is OrExpr)
-                return AndExpr.Create(((OrExpr)_inner).elements.Select(e => !e).ToArray());
+            else if (_inner is BoolVar bv)
+                return bv.Negated;
+            else if (_inner is AndExpr ae)
+            {
+                var be = new BoolExpr[ae.Elements.Length];
+                for (var i = 0; i < be.Length; i++)
+                    be[i] = !ae.Elements[i];
+                return OrExpr.Create(be);
+            }
+            else if (_inner is OrExpr oe)
+            {
+                var be = new BoolExpr[oe.Elements.Length];
+                for (var i = 0; i < be.Length; i++)
+                    be[i] = !oe.Elements[i];
+                return AndExpr.Create(be);
+            }
             else
                 throw new NotImplementedException();
         }
@@ -39,6 +49,8 @@ namespace SATInterface
         {
             yield return inner;
         }
+
+        internal override Model GetModel() => inner.GetModel();
 
         public override string ToString() => "!" + inner;
 

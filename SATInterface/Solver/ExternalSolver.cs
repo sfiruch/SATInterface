@@ -212,7 +212,7 @@ namespace SATInterface.Solver
                     //let task close the file
                     t.Wait();
                 }
-                catch (Exception)
+                catch
                 {
                 }
 
@@ -223,7 +223,7 @@ namespace SATInterface.Solver
             }
         }
 
-        public override void AddClause(Span<int> _clause)
+        public override void AddClause(ReadOnlySpan<int> _clause)
         {
             clauses.Add(_clause.ToArray());
         }

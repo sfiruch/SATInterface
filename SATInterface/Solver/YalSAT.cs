@@ -101,7 +101,7 @@ namespace SATInterface.Solver
             }
         }
 
-        public override void AddClause(Span<int> _clause)
+        public override void AddClause(ReadOnlySpan<int> _clause)
         {
             foreach(var v in _clause)
                 clauses.Add(v);

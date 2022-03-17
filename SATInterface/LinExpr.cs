@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SATInterface
@@ -205,7 +206,7 @@ namespace SATInterface
         //Intelligence. Springer, Berlin, Heidelberg, 2012.
         //-- http://www.wv.inf.tu-dresden.de/Publications/2012/report12-03.pdf
 
-        private IEnumerable<BoolExpr> ComputeSequential(int _limit)
+        private BoolExpr[] ComputeSequential(int _limit)
         {
             if (SequentialCache is null)
                 SequentialCache = new List<BoolExpr[]>();
@@ -235,7 +236,7 @@ namespace SATInterface
                 }
             }
 
-            return Enumerable.Range(0, _limit).Select(i => SequentialCache[i].Last());
+            return Enumerable.Range(0, _limit).Select(i => SequentialCache[i].Last()).ToArray();
         }
 
         private (UIntVar Var, int Offset) ToUInt()
@@ -279,7 +280,7 @@ namespace SATInterface
                     }
                 }
             }
-            return (UIntCache, UIntCacheOffset) = (model.Sum(toSum), offset);
+            return (UIntCache, UIntCacheOffset) = (model.Sum(CollectionsMarshal.AsSpan(toSum)), offset);
 
 
             //return (UIntCache, UIntCacheOffset) = (model.Sum(posWeights
@@ -335,7 +336,7 @@ namespace SATInterface
                 return Model.False;
 
             if (rhs == 0)
-                return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key));
+                return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key).ToArray());
 
             if (rhs > BinaryComparisonThreshold)
             {
@@ -343,7 +344,7 @@ namespace SATInterface
                 return aui.Var == rhs; // - aui.Offset; offset is already included in RHS computation
             }
 
-            var v = _a.ComputeSequential(rhs + 1).ToArray();
+            var v = _a.ComputeSequential(rhs + 1);
 
             if (rhs == 0)
                 return !v[rhs];

@@ -72,6 +72,7 @@ namespace SATInterface
         {
             yield return this;
         }
+        internal override Model GetModel() => Model;
 
         public UIntVar ToUIntVar() => new UIntVar(Model, 1, new[] { this });
 

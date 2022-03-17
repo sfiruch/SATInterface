@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SATInterface
@@ -363,11 +364,11 @@ namespace SATInterface
                 {
                     var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i)
                         .Where(j => ((_v >> j) & 1) == 1)
-                        .Select(j => _a.Bits[j]));
+                        .Select(j => _a.Bits[j]).ToArray());
                     resOr.Add((_a.Bits[i] & allesDavorEq).Flatten());
                 }
 
-            return OrExpr.Create(resOr).Flatten();
+            return OrExpr.Create(CollectionsMarshal.AsSpan(resOr)).Flatten();
         }
 
         public static BoolExpr operator <(int _v, UIntVar _a) => _a > _v;
@@ -383,10 +384,9 @@ namespace SATInterface
             var nonZeroes = Log2(_v - 1) + 1;
             Debug.Assert(nonZeroes <= _a.bit.Length);
 
-            var resAnd = new BoolExpr[_a.bit.Length - nonZeroes];
+            var resAnd = new BoolExpr[_a.bit.Length - nonZeroes+1];
             for (var i = nonZeroes; i < _a.Bits.Length; i++)
                 resAnd[i - nonZeroes] = !_a.Bits[i];
-            var leadingZeroes = (resAnd.Length != 0) ? AndExpr.Create(resAnd).Flatten() : true;
 
             var resOr = new List<BoolExpr>();
             for (var i = 0; i < nonZeroes; i++)
@@ -394,12 +394,12 @@ namespace SATInterface
                 {
                     var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i - 1)
                         .Where(j => ((_v >> j) & 1) == 0)
-                        .Select(j => !_a.Bits[j]));
+                        .Select(j => !_a.Bits[j]).ToArray());
                     resOr.Add((!_a.Bits[i] & allesDavorEq).Flatten());
                 }
-            var orExpr = (resOr.Count != 0) ? OrExpr.Create(resOr).Flatten() : true;
 
-            return leadingZeroes & orExpr;
+            resAnd[^1] = (resOr.Count != 0) ? OrExpr.Create(CollectionsMarshal.AsSpan(resOr)).Flatten() : true;
+            return AndExpr.Create(resAnd);
         }
 
 
@@ -409,7 +409,7 @@ namespace SATInterface
             var res = new BoolExpr[Math.Max(_a.bit.Length, _b.bit.Length)];
             for (var i = 0; i < _a.bit.Length || i < _b.bit.Length; i++)
             {
-                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => _a.Bits[j] == _b.Bits[j])).Flatten();
+                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => _a.Bits[j] == _b.Bits[j]).ToArray()).Flatten();
                 res[i] = ((_a.Bits[i] < _b.Bits[i]) & allesDavorEq).Flatten();
             }
 
@@ -457,7 +457,7 @@ namespace SATInterface
                 if ((_b & (1 << b)) != 0)
                     sum.Add(_a << b);
 
-            return _a.Model.Sum(sum);
+            return _a.Model.Sum(CollectionsMarshal.AsSpan(sum));
 
 
         }
@@ -470,9 +470,9 @@ namespace SATInterface
             if (_a.Bits.Length > _b.Bits.Length)
                 return _b * _a;
 
-            var sum = new List<UIntVar>();
+            var sum = new UIntVar[_a.bit.Length];
             for (var b = 0; b < _a.bit.Length; b++)
-                sum.Add((_b << b) * _a.Bits[b]);
+                sum[b] = (_b << b) * _a.Bits[b];
 
             var res = _a.Model.Sum(sum);
             res.UB = (_a.UB == Unbounded || _b.UB == Unbounded) ? Unbounded : (_a.UB * _b.UB);

@@ -79,7 +79,7 @@ namespace SATInterface.Solver
             }
         }
 
-        public override void AddClause(Span<int> _clause)
+        public override void AddClause(ReadOnlySpan<int> _clause)
         {
             foreach (var i in _clause)
                 CaDiCaLNative.ccadical_add(Handle, i);

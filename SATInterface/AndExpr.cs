@@ -1,82 +1,93 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace SATInterface
 {
     internal class AndExpr : BoolExpr
     {
-        internal readonly BoolExpr[] elements;
+        internal readonly BoolExpr[] Elements;
 
         private AndExpr(BoolExpr[] _elems)
         {
-            elements = _elems;
+            Elements = _elems;
         }
 
-        internal static BoolExpr Create(params BoolExpr[] _elems) => Create(_elems.AsEnumerable());
-
-        internal static BoolExpr Create(IEnumerable<BoolExpr> _elems)
+        internal static BoolExpr Create(BoolExpr _a, BoolExpr _b)
         {
-            var res = new HashSet<BoolExpr>();
+            var arr = ArrayPool<BoolExpr>.Shared.Rent(2);
+            arr[0] = _a;
+            arr[1] = _b;
+            var result = Create(arr.AsSpan().Slice(0, 2));
+            ArrayPool<BoolExpr>.Shared.Return(arr);
+            return result;
+        }
+
+        internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c)
+        {
+            var arr = ArrayPool<BoolExpr>.Shared.Rent(3);
+            arr[0] = _a;
+            arr[1] = _b;
+            arr[2] = _c;
+            var result = Create(arr.AsSpan().Slice(0, 3));
+            ArrayPool<BoolExpr>.Shared.Return(arr);
+            return result;
+        }
+
+        internal static BoolExpr Create(ReadOnlySpan<BoolExpr> _elems)
+        {
+            if (_elems.Length == 0)
+                return Model.True;
+            if (_elems.Length == 1)
+                return _elems[0];
+
+            var count = 0;
             foreach (var es in _elems)
                 if (ReferenceEquals(es, null))
                     throw new ArgumentNullException();
                 else if (ReferenceEquals(es, Model.False))
                     return Model.False;
                 else if (es is AndExpr ae)
-                    foreach (var e in ae.elements)
-                        res.Add(e);
+                    count += ae.Elements.Length;
                 else if (!ReferenceEquals(es, Model.True))
-                    res.Add(es);
+                    count++;
 
-            //TODO find fast way to solve set cover approximately for CSE
-            //if (res.Count == 0)
-            //    return Model.True;
-            //if (res.Count == 1)
-            //    return res.Single();
-
-            //for (var i = 0; i < res.Count; i++)
-            //    for (var j = 0; j < res.Count; j++)
-            //        if (i != j)
-            //            for (var k = 0; k < res.Count; k++)
-            //            {
-            //                var ei = res.ElementAt(i);
-            //                var ej = res.ElementAt(j);
-            //                var ek = res.ElementAt(k);
-            //                if (i != k && j != k && model.ExprCache.TryGetValue(new AndExpr(new[] { ei, ej, ek }), out var lu) && lu.VarCount <= 1)
-            //                {
-            //                    res.Remove(ei);
-            //                    res.Remove(ej);
-            //                    res.Remove(ek);
-            //                    res.Add(lu);
-            //                    Console.Write("3");
-            //                }
-            //            }
-            //for (var i = 0; i < res.Count; i++)
-            //    for (var j = 0; j < res.Count; j++)
-            //        if (i != j)
-            //        {
-            //            var ei = res.ElementAt(i);
-            //            var ej = res.ElementAt(j);
-            //            if (model.ExprCache.TryGetValue(new AndExpr(new[] { ei, ej }), out var lu) && lu.VarCount <= 1)
-            //            {
-            //                res.Remove(ei);
-            //                res.Remove(ej);
-            //                res.Add(lu);
-            //                Console.Write("2");
-            //            }
-            //        }
-
-            if (res.Count == 0)
+            if (count == 0)
                 return Model.True;
-            if (res.Count == 1)
-                return res.Single();
-            if (res.OfType<NotExpr>().Any(ne => res.Contains(ne.inner)))
-                return Model.False;
 
-            return new AndExpr(res.ToArray());
+            var res = new BoolExpr[count];
+            count = 0;
+            foreach (var es in _elems)
+                if (es is AndExpr ae)
+                    foreach (var e in ae.Elements)
+                        res[count++] = e;
+                else if (!ReferenceEquals(es, Model.True))
+                    res[count++] = es;
+
+            Debug.Assert(count == res.Length);
+
+            if (count == 1)
+                return res[0];
+
+            for (var i = 0; i < res.Length; i++)
+            {
+                if (res[i] is NotExpr ne && res.Contains(ne.inner))
+                    return Model.False;
+
+                for (var j = i + 1; j < res.Length; j++)
+                    if (ReferenceEquals(res[j], res[i]))
+                    {
+                        (res[i], res[0]) = (res[0], res[i]);
+                        return AndExpr.Create(res[1..]);
+                    }
+            }
+
+            return new AndExpr(res);
         }
 
         private BoolExpr? flattenCache;
@@ -85,11 +96,18 @@ namespace SATInterface
             if (!(flattenCache is null))
                 return flattenCache;
 
-            var model = EnumVars().First().Model;
+            var model = GetModel();
 
             flattenCache = model.AddVar();
-            model.AddConstr(OrExpr.Create(elements.Select(e => !e).Append(flattenCache)));
-            foreach (var e in elements)
+
+            var l = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length + 1);
+            for (var i = 0; i < Elements.Length; i++)
+                l[i] = !Elements[i];
+            l[Elements.Length] = flattenCache;
+            model.AddConstr(OrExpr.Create(l.AsSpan().Slice(0, Elements.Length + 1)));
+            ArrayPool<BoolExpr>.Shared.Return(l);
+
+            foreach (var e in Elements)
                 model.AddConstr(e | !flattenCache);
 
             return flattenCache;
@@ -97,16 +115,25 @@ namespace SATInterface
 
         internal override IEnumerable<BoolVar> EnumVars()
         {
-            foreach (var e in elements)
+            foreach (var e in Elements)
                 foreach (var v in e.EnumVars())
                     yield return v;
         }
 
-        public override string ToString() => "(" + string.Join(" & ", elements.Select(e => e.ToString()).ToArray()) + ")";
+        internal override Model GetModel()
+        {
+            foreach (var e in Elements)
+                if (e.GetModel() is Model m)
+                    return m;
 
-        public override bool X => elements.All(e => e.X);
+            throw new InvalidOperationException();
+        }
 
-        public override int VarCount => elements.Length;
+        public override string ToString() => "(" + string.Join(" & ", Elements.Select(e => e.ToString()).ToArray()) + ")";
+
+        public override bool X => Elements.All(e => e.X);
+
+        public override int VarCount => Elements.Length;
 
         public override bool Equals(object? _obj)
         {
@@ -114,15 +141,22 @@ namespace SATInterface
             if (ReferenceEquals(other, null))
                 return false;
 
-            if (elements.Length != other.elements.Length)
+            if (Elements.Length != other.Elements.Length)
                 return false;
 
-            foreach (var a in elements)
-                if (!other.elements.Contains(a))
+            //as elements are distinct by construction, one-sided comparison is enough
+            foreach (var a in Elements)
+            {
+                var found = false;
+                foreach (var b in other.Elements)
+                    if (ReferenceEquals(a, b))
+                    {
+                        found = true;
+                        break;
+                    }
+                if (!found)
                     return false;
-            foreach (var a in other.elements)
-                if (!elements.Contains(a))
-                    return false;
+            }
             return true;
         }
 
@@ -135,7 +169,7 @@ namespace SATInterface
 
                 //deliberatly stupid implementation to produce
                 //order-independent hashcodes
-                foreach (var e in elements)
+                foreach (var e in Elements)
                     hashCode += HashCode.Combine(e);
 
                 if (hashCode == 0)

@@ -14,7 +14,7 @@ namespace SATInterface.Solver
     /// </summary>
     public class NullSolver : Solver
     {
-        public override void AddClause(Span<int> _clause)
+        public override void AddClause(ReadOnlySpan<int> _clause)
         {
         }
 
