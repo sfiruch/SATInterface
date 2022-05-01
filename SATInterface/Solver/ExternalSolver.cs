@@ -213,8 +213,10 @@ namespace SATInterface.Solver
                     t.Wait();
                 }
                 catch
+#pragma warning disable ERP022 // Unobserved exception in generic exception handler
                 {
                 }
+#pragma warning restore ERP022 // Unobserved exception in generic exception handler
 
                 if (FilenameInput is not null)
                     File.Delete(FilenameInput);
