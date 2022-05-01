@@ -75,19 +75,19 @@ namespace SATInterface
                 return res[0];
 
             for (var i = 0; i < res.Length; i++)
-            {
                 if (res[i] is NotExpr ne && res.Contains(ne.inner))
                     return Model.False;
 
-                for (var j = i + 1; j < res.Length; j++)
-                    if (ReferenceEquals(res[j], res[i]))
-                    {
-                        (res[i], res[0]) = (res[0], res[i]);
-                        return AndExpr.Create(res[1..]);
-                    }
+            if (res.Length < 40)
+            {
+                for (var i = 0; i < res.Length; i++)
+                    for (var j = i + 1; j < res.Length; j++)
+                        if (ReferenceEquals(res[j], res[i]))
+                            return new AndExpr(res.Distinct().ToArray());
+                return new AndExpr(res);
             }
-
-            return new AndExpr(res);
+            else
+                return new AndExpr(res.Distinct().ToArray());
         }
 
         private BoolExpr? flattenCache;

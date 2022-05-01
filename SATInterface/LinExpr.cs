@@ -204,8 +204,7 @@ namespace SATInterface
         //Hölldobler, Steffen, Norbert Manthey, and Peter Steinke. "A compact encoding
         //of pseudo-Boolean constraints into SAT." Annual Conference on Artificial
         //Intelligence. Springer, Berlin, Heidelberg, 2012.
-        //-- http://www.wv.inf.tu-dresden.de/Publications/2012/report12-03.pdf
-
+        //-- https://iccl.inf.tu-dresden.de/w/images/c/c3/Steinke%3A11%3AKI.pdf
         private BoolExpr[] ComputeSequential(int _limit)
         {
             if (SequentialCache is null)
@@ -304,15 +303,45 @@ namespace SATInterface
 
         public static BoolExpr operator <=(LinExpr _a, int _b)
         {
+            //TODO: catch cases when UB==_b or LB==_b
+            if (_a.UB <= _b)
+                return Model.True;
+            if (_a.LB > _b)
+                return Model.False;
+
+            if (_a.Weights.Values.All(v => v < 0))
+            {
+                var largest = _a.Weights.Values.Max();
+                if (_b >= largest)
+                    return OrExpr.Create(_a.Weights.Keys.ToArray());
+            }
+
+            if (_a.Weights.Values.All(v => v > 0))
+            {
+                var smallest = _a.Weights.Values.Min();
+                if (_b == smallest)
+                {
+                    var m = _a.Weights.Keys.First().Model;
+                    return m.AtMostOneOf(_a.Weights.Where(w => w.Value == smallest).Select(w => w.Key))
+                        & AndExpr.Create(_a.Weights.Where(w => w.Value > smallest).Select(w => !w.Key).ToArray());
+                }
+            }
+
             var rhs = _b - _a.Offset;
             foreach (var e in _a.Weights)
                 if (e.Value < 0)
                     rhs -= e.Value;
 
-            if (rhs < 0)
-                return Model.False;
-            if (rhs >= _a.Weights.Sum(x => Math.Abs(x.Value)))
-                return Model.True;
+            Debug.Assert(rhs >= 0); //because of the early Model.False abort above
+
+            if (rhs == 0)
+                return AndExpr.Create(_a.Weights.Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
+
+            if (rhs == 1 && _a.Weights.Values.All(v => Math.Abs(v) == 1))
+            {
+                var m = _a.Weights.Keys.First().Model;
+                return m.AtMostOneOf(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key));
+            }
 
             if (rhs > BinaryComparisonThreshold)
             {
@@ -325,6 +354,23 @@ namespace SATInterface
 
         public static BoolExpr operator ==(LinExpr _a, int _b)
         {
+            if (_a.UB < _b || _a.LB > _b)
+                return Model.False;
+
+            if (_a.LB == _a.UB && _a.LB == _b)
+                return Model.True;
+
+            if (_a.Weights.Values.All(v => v > 0) || _a.Weights.Values.All(v => v < 0))
+            {
+                var smallest = _a.Weights.Values.OrderBy(v => Math.Abs(v)).First();
+                if (_b == smallest)
+                {
+                    var m = _a.Weights.First().Key.Model;
+                    return m.ExactlyOneOf(_a.Weights.Where(w => w.Value == smallest).Select(w => w.Key))
+                        & AndExpr.Create(_a.Weights.Where(w => w.Value != smallest).Select(w => w.Key).ToArray());
+                }
+            }
+
             var rhs = _b - _a.Offset;
             foreach (var e in _a.Weights)
                 if (e.Value < 0)
@@ -337,6 +383,12 @@ namespace SATInterface
 
             if (rhs == 0)
                 return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key).ToArray());
+
+            if (rhs == 1 && _a.Weights.Values.All(v => Math.Abs(v) == 1))
+            {
+                var m = _a.Weights.First().Key.Model;
+                return m.ExactlyOneOf(_a.Weights.Select(x => x.Value > 0 ? x.Key : !x.Key).ToArray());
+            }
 
             if (rhs > BinaryComparisonThreshold)
             {
@@ -384,7 +436,37 @@ namespace SATInterface
 
         public static BoolExpr operator !=(LinExpr _a, int _b) => !(_a == _b);
         public static BoolExpr operator >(LinExpr _a, int _b) => -_a < -_b;
-        public static BoolExpr operator >=(LinExpr _a, int _b) => -_a <= -_b;
+        public static BoolExpr operator >=(LinExpr _a, int _b)
+        {
+            //TODO: catch cases when UB==_b or LB==_b
+            if (_a.LB >= _b)
+                return Model.True;
+            if (_a.UB < _b)
+                return Model.False;
+
+            if (_a.Weights.Values.All(v => v < 0))
+            {
+                var largest = _a.Weights.Values.Max();
+                if (_b == largest)
+                {
+                    var m = _a.Weights.Keys.First().Model;
+                    return m.AtMostOneOf(_a.Weights.Where(w => w.Value == largest).Select(w => w.Key))
+                        & AndExpr.Create(_a.Weights.Where(w => w.Value < largest).Select(w => !w.Key).ToArray());
+                }
+            }
+
+            var rhs = _b - _a.Offset;
+            foreach (var e in _a.Weights)
+                if (e.Value < 0)
+                    rhs -= e.Value;
+
+            Debug.Assert(rhs >= 1); //because of the early Model.False abort above
+
+            if (rhs == 1)
+                return OrExpr.Create(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key).ToArray());
+
+            return (-_a) <= -_b;
+        }
 
 
         public static explicit operator LinExpr(int _const) => new LinExpr() { Offset = _const };
