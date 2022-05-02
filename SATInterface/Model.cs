@@ -1193,7 +1193,7 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    if (expr.Length <= 8)
+                    if (expr.Length <= 6)
                         return ExactlyOneOfPairwise(expr);
                     else
                         return ExactlyOneOfCommander(expr);

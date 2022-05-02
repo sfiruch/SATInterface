@@ -268,11 +268,11 @@ namespace SATInterface
         {
             var res = new BoolExpr[_ub - _lb + 1];
             var w = Weights.Select(w => (w.Key, w.Value)).ToArray();
-            for (var x=_lb;x<=_ub;x++)
+            for (var x = _lb; x <= _ub; x++)
                 if (w.Length == 0)
-                    res[x-_lb] = x == Offset ? Model.True : Model.False;
+                    res[x - _lb] = x == Offset ? Model.True : Model.False;
                 else
-                    res[x-_lb] = HasValueX(x, w.Length, w, w[0].Key.Model);
+                    res[x - _lb] = HasValueX(x, w.Length, w, w[0].Key.Model);
 
             return res;
         }
@@ -339,15 +339,33 @@ namespace SATInterface
             if (rhs == 0)
                 return AndExpr.Create(_a.Weights.Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
 
+            //recognize implications
+            if (_a.Weights.Values.Count(v => Math.Abs(v) == rhs) == 1 && _a.Weights.Values.Count(v => Math.Abs(v) == 1) == rhs)
+            {
+                Debug.Assert(_a.Weights.Values.All(v => Math.Abs(v) == 1 || Math.Abs(v) == rhs));
+
+                //a + b + !c + !d + 4e <= 4
+
+                var e = _a.Weights.Single(w => Math.Abs(w.Value) == rhs);
+                var others = _a.Weights.Where(w => Math.Abs(w.Value) == 1).Select(w => w.Value>0 ? w.Key : !w.Key).ToArray();
+
+                return !(e.Value>0 ? e.Key : !e.Key) | !OrExpr.Create(others);
+            }
+
             if (rhs == 1 && _a.Weights.Values.All(v => Math.Abs(v) == 1))
             {
                 var m = _a.Weights.Keys.First().Model;
                 return m.AtMostOneOf(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key));
             }
 
-            if(_a.UB - _a.LB <= BinaryComparisonThreshold)
-                return OrExpr.Create(_a.HasValuesX(_a.LB,_b)).Flatten();
-            
+            if (_a.UB - _a.LB <= BinaryComparisonThreshold)
+            {
+                if (_b - _a.LB < _a.UB - (_b + 1))
+                    return OrExpr.Create(_a.HasValuesX(_a.LB, _b)).Flatten();
+                else
+                    return !(OrExpr.Create(_a.HasValuesX(_b + 1, _a.UB)).Flatten());
+            }
+
             var aui = _a.ToUInt();
             return aui.Var <= rhs; // - aui.Offset; offset is already included in RHS computation
         }
