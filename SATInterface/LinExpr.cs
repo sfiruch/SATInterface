@@ -16,13 +16,13 @@ namespace SATInterface
     public class LinExpr
     {
         //TODO: tune this threshold
-        private const int BinaryComparisonThreshold = 30;
+        private const int BinaryComparisonThreshold = 256;
 
         private Dictionary<BoolVar, int> Weights;
         private int Offset;
 
         private LinExpr? Negated;
-        private List<BoolExpr[]>? SequentialCache;
+        private Dictionary<(int X, int UsingFirst), BoolExpr>? HasValueXCache;
         private UIntVar? UIntCache;
         private int UIntCacheOffset; //offset has to be added to UIntCache value, may be negative
 
@@ -201,43 +201,6 @@ namespace SATInterface
 
         public static BoolExpr operator <(LinExpr _a, int _b) => _a <= (_b - 1);
 
-        //Hölldobler, Steffen, Norbert Manthey, and Peter Steinke. "A compact encoding
-        //of pseudo-Boolean constraints into SAT." Annual Conference on Artificial
-        //Intelligence. Springer, Berlin, Heidelberg, 2012.
-        //-- https://iccl.inf.tu-dresden.de/w/images/c/c3/Steinke%3A11%3AKI.pdf
-        private BoolExpr[] ComputeSequential(int _limit)
-        {
-            if (SequentialCache is null)
-                SequentialCache = new List<BoolExpr[]>();
-
-            if (SequentialCache.Count < _limit)
-            {
-                //convert to all-positive weights
-                var posVar = new List<(BoolExpr be, int Weight)>();
-                foreach (var e in Weights)
-                    if (e.Value > 0)
-                        posVar.Add((be: e.Key, Weight: e.Value));
-                    else
-                        posVar.Add((be: !e.Key, Weight: -e.Value));
-
-                for (var j = SequentialCache.Count; j < _limit; j++)
-                {
-                    if (posVar.Count != 0)
-                    {
-                        var vars = new BoolExpr[posVar.Count];
-                        vars[0] = j < posVar[0].Weight ? posVar[0].be : Model.False;
-                        for (var i = 1; i < posVar.Count; i++)
-                            vars[i] = ((j >= posVar[i].Weight ? (SequentialCache[j - posVar[i].Weight][i - 1] & posVar[i].be) : posVar[i].be) | vars[i - 1]).Flatten();
-                        SequentialCache.Add(vars);
-                    }
-                    else
-                        SequentialCache.Add(new[] { Model.False });
-                }
-            }
-
-            return Enumerable.Range(0, _limit).Select(i => SequentialCache[i].Last()).ToArray();
-        }
-
         private (UIntVar Var, int Offset) ToUInt()
         {
             if (!(UIntCache is null))
@@ -297,13 +260,52 @@ namespace SATInterface
         private void ClearCached()
         {
             Negated = null;
-            SequentialCache = null;
+            HasValueXCache = null;
             UIntCache = null;
         }
 
+        private BoolExpr[] HasValuesX(int _lb, int _ub)
+        {
+            var res = new BoolExpr[_ub - _lb + 1];
+            var w = Weights.Select(w => (w.Key, w.Value)).ToArray();
+            for (var x=_lb;x<=_ub;x++)
+                if (w.Length == 0)
+                    res[x-_lb] = x == Offset ? Model.True : Model.False;
+                else
+                    res[x-_lb] = HasValueX(x, w.Length, w, w[0].Key.Model);
+
+            return res;
+        }
+
+        private BoolExpr HasValueX(int _x)
+        {
+            if (Weights.Count == 0)
+                return _x == Offset ? Model.True : Model.False;
+
+            var w = Weights.OrderBy(w => w.Value).Select(w => (w.Key, w.Value)).ToArray();
+            return HasValueX(_x, w.Length, w, w[0].Key.Model);
+        }
+
+        private BoolExpr HasValueX(int _x, int _cnt, (BoolVar V, int Weight)[] _weights, Model _m)
+        {
+            if (_cnt == 0)
+                return _x == Offset ? Model.True : Model.False;
+
+            if (HasValueXCache is null)
+                HasValueXCache = new();
+
+            if (!HasValueXCache.TryGetValue((_x, _cnt), out var res))
+                HasValueXCache[(_x, _cnt)] = res = _m.ITE(_weights[_cnt - 1].V,
+                    HasValueX(_x - _weights[_cnt - 1].Weight, _cnt - 1, _weights, _m),
+                    HasValueX(_x, _cnt - 1, _weights, _m));
+
+            return res;
+        }
+
+
         public static BoolExpr operator <=(LinExpr _a, int _b)
         {
-            //TODO: catch cases when UB==_b or LB==_b
+            //TODO: catch cases when UB==_b-smallest or LB==_b or LB==_b+smallest
             if (_a.UB <= _b)
                 return Model.True;
             if (_a.LB > _b)
@@ -343,13 +345,11 @@ namespace SATInterface
                 return m.AtMostOneOf(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key));
             }
 
-            if (rhs > BinaryComparisonThreshold)
-            {
-                var aui = _a.ToUInt();
-                return aui.Var <= rhs; // - aui.Offset; offset is already included in RHS computation
-            }
-
-            return !_a.ComputeSequential(rhs + 1).Last();
+            if(_a.UB - _a.LB <= BinaryComparisonThreshold)
+                return OrExpr.Create(_a.HasValuesX(_a.LB,_b)).Flatten();
+            
+            var aui = _a.ToUInt();
+            return aui.Var <= rhs; // - aui.Offset; offset is already included in RHS computation
         }
 
         public static BoolExpr operator ==(LinExpr _a, int _b)
@@ -357,8 +357,8 @@ namespace SATInterface
             if (_a.UB < _b || _a.LB > _b)
                 return Model.False;
 
-            if (_a.LB == _a.UB && _a.LB == _b)
-                return Model.True;
+            if (_a.LB == _a.UB)
+                return _a.LB == _b ? Model.True : Model.False;
 
             if (_a.Weights.Values.All(v => v > 0) || _a.Weights.Values.All(v => v < 0))
             {
@@ -376,32 +376,19 @@ namespace SATInterface
                 if (e.Value < 0)
                     rhs -= e.Value;
 
-            if (rhs < 0)
-                return Model.False;
-            if (rhs > _a.Weights.Sum(x => Math.Abs(x.Value)))
-                return Model.False;
+            Debug.Assert(rhs >= 0);
+            Debug.Assert(rhs <= _a.Weights.Sum(x => Math.Abs(x.Value)));
 
             if (rhs == 0)
                 return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key).ToArray());
 
-            if (rhs == 1 && _a.Weights.Values.All(v => Math.Abs(v) == 1))
+            if (_a.Weights.Values.All(v => Math.Abs(v) == rhs))
             {
                 var m = _a.Weights.First().Key.Model;
                 return m.ExactlyOneOf(_a.Weights.Select(x => x.Value > 0 ? x.Key : !x.Key).ToArray());
             }
 
-            if (rhs > BinaryComparisonThreshold)
-            {
-                var aui = _a.ToUInt();
-                return aui.Var == rhs; // - aui.Offset; offset is already included in RHS computation
-            }
-
-            var v = _a.ComputeSequential(rhs + 1);
-
-            if (rhs == 0)
-                return !v[rhs];
-            else
-                return v[rhs - 1] & !v[rhs];
+            return _a.HasValueX(_b);
         }
 
         public override string ToString()
