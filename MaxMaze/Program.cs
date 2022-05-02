@@ -48,7 +48,7 @@ namespace MaxMaze
         {
             using var m = new Model(new Configuration()
             {
-                OptimizationFocus=OptimizationFocus.Incumbent
+                OptimizationFocus = OptimizationFocus.Incumbent
             });
 
             var free = new BoolExpr[W, H];
