@@ -102,11 +102,11 @@ namespace PCB
                                 sV.Add(vXYLC[x, y, l + 1, c]);
 
                             if (l == 0 && sourceXYC[x, y, c])
-                                    sV.Add(true);
-                                if (l == 0 && sinkXYC[x, y, c])
-                                    sV.Add(true);
+                                sV.Add(true);
+                            if (l == 0 && sinkXYC[x, y, c])
+                                sV.Add(true);
 
-                            m.AddConstr(!vXYLC[x, y, l, c] | m.ExactlyKOf(sV, 2));
+                            m.AddConstr(!vXYLC[x, y, l, c] | m.Sum(sV) == 2);
                         }
 
                         m.AddConstr(m.AtMostOneOf(sum));
@@ -122,7 +122,7 @@ namespace PCB
                         obj3.Add(vXYLC[x, y, 1, c]);
                     }
 
-            var vObj = m.Sum(obj1) + m.Sum(obj3)*3;
+            var vObj = m.Sum(obj1) + m.Sum(obj3) * 3;
 
             m.Minimize(vObj, () =>
             {

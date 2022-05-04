@@ -134,19 +134,25 @@ namespace SATInterface
 
             lhsS = lhsS.Flatten();
             rhsS = rhsS.Flatten();
+
             return lhsS.GetModel().ITE(lhsS, rhsS, !rhsS);
-            //return ((lhsS & rhsS) | (!lhsS & !rhsS)).Flatten();
-            //return ((lhsS & rhsS).Flatten() | (!lhsS & !rhsS).Flatten()).Flatten();
+
+            //var m = lhsS.GetModel();
+            //var r = m.AddVar();
+            //m.AddConstr(OrExpr.Create(lhsS, rhsS, r));
+            //m.AddConstr(OrExpr.Create(lhsS, !rhsS, !r));
+            //m.AddConstr(OrExpr.Create(!lhsS, rhsS, !r));
+            //m.AddConstr(OrExpr.Create(!lhsS, !rhsS, r));
+            //return r;
         }
 
         public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);
+        public static BoolExpr operator ^(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);
 
         public static BoolExpr operator >(BoolExpr lhs, BoolExpr rhs) => lhs & !rhs;
         public static BoolExpr operator <(BoolExpr lhs, BoolExpr rhs) => !lhs & rhs;
         public static BoolExpr operator >=(BoolExpr lhs, BoolExpr rhs) => lhs | !rhs;
         public static BoolExpr operator <=(BoolExpr lhs, BoolExpr rhs) => !lhs | rhs;
-
-        public static BoolExpr operator ^(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);
 
         public UIntVar ToUIntVar(Model _m) => new UIntVar(_m, 1, new[] { this });
     }

@@ -13,7 +13,7 @@ namespace Maximize
         {
             using var m = new Model(new Configuration()
             {
-                Verbosity = 1
+                Verbosity = 0
             });
 
             var x = m.AddUIntVar(1000);

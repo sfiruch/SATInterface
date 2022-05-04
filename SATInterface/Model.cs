@@ -710,31 +710,28 @@ namespace SATInterface
         /// </summary>
         public BoolExpr Xor(params BoolExpr[] _elems)
         {
-            var res = False;
-            //foreach (var v in _elems.Chunk(2))
-            //    if (v.Length == 2)
-            //        res = Xor(res, v[0], v[1]).Flatten();
-            //    else if (v.Length == 1)
-            //res = (res ^ v[0]).Flatten();
+            if (_elems.Length == 0)
+                return False;
 
-            foreach (var v in _elems)
-                res ^= v;
-            return res;
-        }
+            if (_elems.Length == 1)
+                return _elems[0];
 
-        /// <summary>
-        /// Returns an expression equivalent to the exclusive-or of the
-        /// supplied expressions.
-        /// </summary>
-        public BoolExpr Xor(BoolExpr _a, BoolExpr _b, BoolExpr _c)
-        {
-            return _a ^ _b ^ _c;
-            //return OrExpr.Create(
-            //    AndExpr.Create(_a, !_b, !_c).Flatten(),
-            //    AndExpr.Create(!_a, _b, !_c).Flatten(),
-            //    AndExpr.Create(!_a, !_b, _c).Flatten(),
-            //    AndExpr.Create(_a, _b, _c).Flatten()
-            //    );
+            if (_elems.Length == 2)
+                return _elems[0] ^ _elems[1];
+
+            //var res = False;
+            //foreach (var v in _elems)
+            //    res ^= v;
+            //return res;
+
+            var res = new BoolExpr[(_elems.Length + 1) / 2];
+            var i = 0;
+            foreach (var v in _elems.Chunk(2))
+                if (v.Length == 2)
+                    res[i++] = v[0] ^ v[1];
+                else
+                    res[i++] = v[0];
+            return Xor(res);
         }
 
         /// <summary>
@@ -997,7 +994,8 @@ namespace SATInterface
             BinaryCount,
             UnaryCount,
             Pairwise,
-            Sequential
+            Sequential,
+            LinExpr
         }
 
         /// <summary>
@@ -1389,7 +1387,7 @@ namespace SATInterface
         /// <param name="_expr"></param>
         /// <param name="_k"></param>
         /// <returns></returns>
-        public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method = ExactlyKOfMethod.Sequential)
+        public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod _method = ExactlyKOfMethod.LinExpr)
         {
             var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
@@ -1411,6 +1409,9 @@ namespace SATInterface
 
             switch (_method)
             {
+                case ExactlyKOfMethod.LinExpr:
+                    return Sum(expr) == _k;
+
                 case ExactlyKOfMethod.BinaryCount:
                     return SumUInt(expr) == _k;
 
@@ -1432,7 +1433,6 @@ namespace SATInterface
                     return v[_k - 1] & !v[_k];
 
                 case ExactlyKOfMethod.Pairwise:
-
                     if (_k == 1)
                         return ExactlyOneOfPairwise(expr);
                     else if (_k == 2)

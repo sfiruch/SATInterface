@@ -23,7 +23,7 @@ namespace BrentEquations
         const int ARows = 3;
         const int ACols = 3;
         const int BCols = 3;
-        const int NoOfProducts = 23;
+        const int NoOfProducts = 27;
 
         const int BRows = ACols;
         const int CRows = ARows;
