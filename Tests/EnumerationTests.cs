@@ -12,7 +12,7 @@ namespace Tests
         [TestMethod]
         public void BinaryAllTwice()
         {
-            const int N = 12;
+            const int N = 10;
 
             using var m = new Model(new Configuration()
             {
@@ -55,7 +55,7 @@ namespace Tests
         [TestMethod]
         public void BinaryAll()
         {
-            const int N = 12;
+            const int N = 10;
 
             using var m = new Model(new Configuration()
             {

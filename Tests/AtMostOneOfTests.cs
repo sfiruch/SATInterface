@@ -32,8 +32,8 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Binary)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
@@ -48,8 +48,8 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Binary)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
@@ -62,8 +62,8 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Binary)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
@@ -77,8 +77,8 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Binary)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
@@ -92,8 +92,8 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Binary)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
         [DataRow(Model.AtMostOneOfMethod.Pairwise)]
@@ -103,6 +103,71 @@ namespace Tests
         public void PigeonholeSymmetricUNSATDifficult(Model.AtMostOneOfMethod? _method)
         {
             Pigeonhole(9, 10, _method);
+        }
+
+        [DataRow(null)]
+        [DataRow(Model.AtMostOneOfMethod.Binary)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Commander)]
+        [DataRow(Model.AtMostOneOfMethod.OneHot)]
+        [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
+        [DataRow(Model.AtMostOneOfMethod.Sequential)]
+        [DataTestMethod]
+        public void MinimizeToTwo(Model.AtMostOneOfMethod? _method)
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+            var v = m.AddVars(7);
+            m.AddConstr(!m.AtMostOneOf(v, _method));
+
+            m.Minimize(m.Sum(v));
+
+            Assert.AreEqual(State.Satisfiable, m.State);
+            Assert.AreEqual(2, v.Count(v => v.X));
+        }
+
+        [DataRow(null)]
+        [DataRow(Model.AtMostOneOfMethod.Binary)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Commander)]
+        [DataRow(Model.AtMostOneOfMethod.OneHot)]
+        [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
+        [DataRow(Model.AtMostOneOfMethod.Sequential)]
+        [DataTestMethod]
+        public void EfficientNotEncoding(Model.AtMostOneOfMethod? _method)
+        {
+            int amoCC1;
+            int amoCC2;
+
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+                var v = m.AddVars(100);
+                Assert.AreEqual(0, m.ClauseCount);
+
+                m.AddConstr(m.AtMostOneOf(v, _method));
+                amoCC1 = m.ClauseCount;
+            }
+
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+                var v = m.AddVars(100);
+                Assert.AreEqual(0, m.ClauseCount);
+
+                m.AddConstr(m.AtMostOneOf(v.Select((v, i) => i % 3 == 0 ? v : !v), _method));
+                amoCC2 = m.ClauseCount;
+            }
+
+            Assert.AreEqual(amoCC1, amoCC2);
         }
     }
 }

@@ -23,7 +23,7 @@ using var m = new Model(new Configuration()
 
 var v = m.AddVars(9, 9, 9);
 
-//fix the first number to 1
+//instead of a variable, use the constant "True" for first number 1
 v[0, 0, 0] = true;
 
 //here's alternative way to set the second number

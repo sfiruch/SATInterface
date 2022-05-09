@@ -522,7 +522,7 @@ namespace SATInterface
                 var lb = _obj.X;
                 var ub = _obj.UB;
                 int objGELB = 0;
-                BoolVar? objGE = null;
+                int? assumptionGE = null;
                 while (lb != ub && !AbortOptimization)
                 {
                     if (Configuration.Verbosity > 0)
@@ -543,14 +543,19 @@ namespace SATInterface
 
                     //prehaps we already added this GE var, and the current
                     //round is only a repetition with additional lazy constraints?
-                    if (objGE is null || objGELB != cur)
+                    if (assumptionGE is null || objGELB != cur)
                     {
                         objGELB = cur;
-                        objGE = new BoolVar(this);
-                        AddConstrInternal(objGE == (_obj >= cur));
+                        var ge = (_obj >= cur).Flatten();
+                        if (ge is BoolVar v)
+                            assumptionGE = v.Id;
+                        else if (ge is NotExpr ne && ne.inner is BoolVar iv)
+                            assumptionGE = -iv.Id;
+                        else
+                            throw new Exception();
                     }
 
-                    (var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, new[] { objGE.Id });
+                    (var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, new[] { assumptionGE.Value });
                     if (subState == State.Satisfiable)
                     {
                         Debug.Assert(assignment is not null);
@@ -906,6 +911,7 @@ namespace SATInterface
         /// <returns></returns>
         public UIntVar ITE(BoolExpr _if, UIntVar _then, UIntVar _else) => UIntVar.ITE(_if, _then, _else);
 
+
         /// <summary>
         /// If-Then-Else to pick one of two values. If _if is TRUE, _then will be picked, _else otherwise.
         /// </summary>
@@ -914,6 +920,28 @@ namespace SATInterface
         /// <param name="_else"></param>
         /// <returns></returns>
         public BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else)
+        {
+            BoolExpr? res;
+            if (ITECache.TryGetValue((_if, _then, _else), out res))
+                return res;
+
+            if (ITECache.TryGetValue((!_if, _else, _then), out res))
+                return res;
+
+            if (ITECache.TryGetValue((_if, !_then, !_else), out res))
+                return !res;
+
+            if (ITECache.TryGetValue((!_if, !_else, !_then), out res))
+                return !res;
+
+            return ITECache[(_if, _then, _else)] = ITEInternal(_if, _then, _else);
+        }
+
+        private Dictionary<(BoolExpr _i, BoolExpr _t, BoolExpr _e), BoolExpr> ITECache = new();
+        internal Dictionary<OrExpr, BoolExpr> OrCache = new();
+        internal Dictionary<AndExpr, BoolExpr> AndCache = new();
+
+        private BoolExpr ITEInternal(BoolExpr _if, BoolExpr _then, BoolExpr _else)
         {
             if (_then.Equals(_else))
                 return _then;
@@ -1049,10 +1077,10 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    if (expr.Length <= 8)
+                    if (expr.Length <= 5)
                         return AtMostOneOfPairwise(expr);
                     else
-                        return AtMostOneOfCommander(expr);
+                        return AtMostOneOfPairwiseTree(expr);
                 case AtMostOneOfMethod.Commander:
                     return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Pairwise:
@@ -1113,28 +1141,7 @@ namespace SATInterface
             if (_expr.Length <= 5)
                 return AtMostOneOfPairwise(_expr);
 
-            var groups = _expr.ToArray().Chunk(3).ToArray();
-            var commanders = new BoolExpr[groups.Length];
-            var valid = new List<BoolExpr>();
-
-            for (var i = 0; i < commanders.Length; i++)
-                if (groups[i].Length == 1)
-                    commanders[i] = groups[i].Single();
-                else
-                {
-                    commanders[i] = AddVar();
-
-                    //1
-                    for (var j = 0; j < groups[i].Length; j++)
-                        for (var k = j + 1; k < groups[i].Length; k++)
-                            valid.Add(OrExpr.Create(!groups[i][j], !groups[i][k]));
-
-                    //AddConstr((!commanders[i]) | new OrExpr(groups[i])); //2
-                    AddConstr(commanders[i] | !OrExpr.Create(groups[i])); //3
-                }
-
-            valid.Add(ExactlyOneOfCommander(commanders));
-            return AndExpr.Create(CollectionsMarshal.AsSpan(valid));
+            return ExactlyOneOfCommander(_expr) | AndExpr.Create(_expr.ToArray().Select(e => !e).ToArray()).Flatten();
         }
 
         /// <summary>
@@ -1193,8 +1200,10 @@ namespace SATInterface
                 case null:
                     if (expr.Length <= 6)
                         return ExactlyOneOfPairwise(expr);
-                    else
+                    else if (expr.Length <= 50)
                         return ExactlyOneOfCommander(expr);
+                    else
+                        return ExactlyOneOfPairwiseTree(expr);
                 case ExactlyOneOfMethod.UnaryCount:
                     return ExactlyKOf(expr, 1, ExactlyKOfMethod.UnaryCount);
                 case ExactlyOneOfMethod.BinaryCount:
@@ -1479,7 +1488,6 @@ namespace SATInterface
                 return ExactlyOneOfPairwise(_expr);
 
             var groups = _expr.ToArray().Chunk(3).ToArray();
-
             var commanders = new BoolExpr[groups.Length];
             var valid = new List<BoolExpr>();
 
@@ -1500,7 +1508,6 @@ namespace SATInterface
                 }
 
             valid.Add(ExactlyOneOfCommander(commanders));
-
             return AndExpr.Create(CollectionsMarshal.AsSpan(valid));
         }
 

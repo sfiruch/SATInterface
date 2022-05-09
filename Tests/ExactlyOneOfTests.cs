@@ -202,5 +202,76 @@ namespace Tests
             m.Solve();
             Assert.AreEqual(State.Unsatisfiable, m.State);
         }
+
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Binary)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.PairwiseTree)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void MinimizeToTwo(Model.ExactlyOneOfMethod? _method)
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+            var v = m.AddVars(7);
+            m.AddConstr(m.Or(v));
+            m.AddConstr(!m.ExactlyOneOf(v, _method));
+
+            m.Minimize(m.Sum(v));
+
+            Assert.AreEqual(State.Satisfiable, m.State);
+            Assert.AreEqual(2, v.Count(v => v.X));
+        }
+
+
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Binary)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.PairwiseTree)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void EfficientNotEncoding(Model.ExactlyOneOfMethod? _method)
+        {
+            int eoCC1;
+            int eoCC2;
+
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+                var v = m.AddVars(100);
+                Assert.AreEqual(0, m.ClauseCount);
+
+                m.AddConstr(m.ExactlyOneOf(v, _method));
+                eoCC1 = m.ClauseCount;
+            }
+
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+                var v = m.AddVars(100);
+                Assert.AreEqual(0, m.ClauseCount);
+
+                m.AddConstr(m.ExactlyOneOf(v.Select((v, i) => i % 3 == 0 ? v : !v),_method));
+                eoCC2 = m.ClauseCount;
+            }
+
+            Assert.AreEqual(eoCC1, eoCC2);
+        }
     }
 }

@@ -90,27 +90,26 @@ namespace SATInterface
                 return new AndExpr(res.Distinct().ToArray());
         }
 
-        private BoolExpr? flattenCache;
         public override BoolExpr Flatten()
         {
-            if (!(flattenCache is null))
-                return flattenCache;
-
             var model = GetModel();
 
-            flattenCache = model.AddVar();
+            if (model.AndCache.TryGetValue(this, out var res))
+                return res;
+
+            model.AndCache[this] = res  = model.AddVar();
 
             var l = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length + 1);
             for (var i = 0; i < Elements.Length; i++)
                 l[i] = !Elements[i];
-            l[Elements.Length] = flattenCache;
+            l[Elements.Length] = res;
             model.AddConstr(OrExpr.Create(l.AsSpan().Slice(0, Elements.Length + 1)));
             ArrayPool<BoolExpr>.Shared.Return(l);
 
             foreach (var e in Elements)
-                model.AddConstr(e | !flattenCache);
+                model.AddConstr(e | !res);
 
-            return flattenCache;
+            return res;
         }
 
         internal override IEnumerable<BoolVar> EnumVars()

@@ -12,6 +12,80 @@ namespace Tests
     [TestClass]
     public class SudokuTests
     {
+        private void VerifySudoku(BoolExpr[,,] _v)
+        {
+            var r = new int[9, 9];
+            for (var y = 0; y < 9; y++)
+                for (var x = 0; x < 9; x++)
+                    for (var n = 0; n < 9; n++)
+                        if (_v[x, y, n].X)
+                        {
+                            Assert.AreEqual(0, r[x, y]);
+                            r[x, y] = n + 1;
+                        }
+
+            for (var y = 0; y < 9; y++)
+                Assert.AreEqual(1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9, Enumerable.Range(0, 9).Sum(x => r[x, y]));
+
+            for (var x = 0; x < 9; x++)
+                Assert.AreEqual(1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9, Enumerable.Range(0, 9).Sum(y => r[x, y]));
+
+            for (var y = 0; y < 9; y += 3)
+                for (var x = 0; x < 9; x += 3)
+                    Assert.AreEqual(1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9,
+                        r[x + 0, y + 0] + r[x + 1, y + 0] + r[x + 2, y + 0] +
+                        r[x + 0, y + 1] + r[x + 1, y + 1] + r[x + 2, y + 1] +
+                        r[x + 0, y + 2] + r[x + 1, y + 2] + r[x + 2, y + 2]);
+        }
+
+        [TestMethod]
+        public void SimpleSudoku()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVars(9, 9, 9);
+
+            //instead of a variable, use the constant "True" for first number 1
+            v[0, 0, 0] = true;
+
+            //here's alternative way to set the second number
+            m.AddConstr(v[1, 0, 1]);
+
+            //assign one number to each cell
+            for (var y = 0; y < 9; y++)
+                for (var x = 0; x < 9; x++)
+                    m.AddConstr(m.Sum(Enumerable.Range(0, 9).Select(n => v[x, y, n])) == 1);
+
+            //each number occurs once per row (alternative formulation)
+            for (var y = 0; y < 9; y++)
+                for (var n = 0; n < 9; n++)
+                    m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, 9).Select(x => v[x, y, n])));
+
+            //each number occurs once per column (configured formulation)
+            for (var x = 0; x < 9; x++)
+                for (var n = 0; n < 9; n++)
+                    m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, 9).Select(y => v[x, y, n]), Model.ExactlyOneOfMethod.PairwiseTree));
+
+            //each number occurs once per 3x3 block
+            for (var n = 0; n < 9; n++)
+                for (var y = 0; y < 9; y += 3)
+                    for (var x = 0; x < 9; x += 3)
+                        m.AddConstr(m.Sum(
+                            v[x + 0, y + 0, n], v[x + 1, y + 0, n], v[x + 2, y + 0, n],
+                            v[x + 0, y + 1, n], v[x + 1, y + 1, n], v[x + 2, y + 1, n],
+                            v[x + 0, y + 2, n], v[x + 1, y + 2, n], v[x + 2, y + 2, n]) == 1);
+
+            m.Solve();
+
+            Assert.AreEqual(State.Satisfiable, m.State);
+            Assert.AreEqual(true, v[0, 0, 0].X);
+            Assert.AreEqual(true, v[1, 0, 1].X);
+            VerifySudoku(v);
+        }
+
         [TestMethod]
         public void WorldsHardestSudoku()
         {
@@ -64,44 +138,7 @@ namespace Tests
             m.Solve();
 
             Assert.AreEqual(State.Satisfiable, m.State);
-
-            var block = new bool[3, 3][];
-            for (var y = 0; y < 3; y++)
-                for (var x = 0; x < 3; x++)
-                    block[x, y] = new bool[9];
-
-            for (var y = 0; y < 9; y++)
-            {
-                var row = new bool[9];
-                for (var x = 0; x < 9; x++)
-                {
-                    var cnt = 0;
-                    for (var n = 0; n < 9; n++)
-                        if (v[x, y, n].X)
-                        {
-                            cnt++;
-                            row[n] = true;
-                            block[x / 3, y / 3][n] = true;
-                        }
-                    Assert.AreEqual(1, cnt);
-                }
-                Assert.AreEqual(9, row.Count(v => v));
-            }
-
-            for (var y = 0; y < 3; y++)
-                for (var x = 0; x < 3; x++)
-                    Assert.AreEqual(9, block[x, y].Count(v => v));
-
-            for (var y = 0; y < 9; y++)
-            {
-                var col = new bool[9];
-                for (var x = 0; x < 9; x++)
-                    for (var n = 0; n < 9; n++)
-                        if (v[x, y, n].X)
-                            col[n] = true;
-
-                Assert.AreEqual(9, col.Count(v => v));
-            }
+            VerifySudoku(v);
         }
     }
 }

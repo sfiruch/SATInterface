@@ -77,11 +77,11 @@ namespace SATInterface
             if (ReferenceEquals(_v, Model.True))
                 return Model.False;
 
-            if (_v is NotExpr)
-                return ((NotExpr)_v).inner;
+            if (_v is NotExpr ne)
+                return ne.inner;
 
-            if (_v is BoolVar)
-                return ((BoolVar)_v).Negated;
+            if (_v is BoolVar bv)
+                return bv.Negated;
 
             return NotExpr.Create(_v);
         }
