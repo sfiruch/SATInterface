@@ -20,10 +20,10 @@ namespace BrentEquations
         //simple test cases: 1x1x1_1, 1x2x1_2, 1x2x2_4, 2x2x2_7, 2x3x2_11, 3x3x3_27
         //tedious cases: 2x3x3_15, 3x3x3_23
         //research cases: 3x3x3_22, 3x3x3_21
-        const int ARows = 3;
+        const int ARows = 2;
         const int ACols = 3;
-        const int BCols = 3;
-        const int NoOfProducts = 27;
+        const int BCols = 2;
+        const int NoOfProducts = 11;
 
         const int BRows = ACols;
         const int CRows = ARows;
@@ -69,21 +69,14 @@ namespace BrentEquations
                                 {
                                     var triples = new BoolExpr[NoOfProducts];
                                     for (var k = 0; k < NoOfProducts; k++)
-                                        triples[k] = (a[ra, ca, k] & b[rb, cb, k] & c[rc, cc, k]).Flatten();
+                                        triples[k] = m.And(a[ra, ca, k], b[rb, cb, k], c[rc, cc, k]).Flatten();
 
                                     if ((ra == rc) && (ca == rb) && (cb == cc))
                                         //odd
                                         m.AddConstr(m.Xor(triples));
-                                        //m.AddConstr(m.SumUInt(triples).Bits[0]);
                                     else
                                         //even
                                         m.AddConstr(!m.Xor(triples));
-                                        //m.AddConstr(!m.SumUInt(triples).Bits[0]);
-                                        //{
-                                        //    var sum = m.Sum(triples);
-                                        //    m.AddConstr(sum == 2 | sum==0);
-                                        //}
-                                        //m.AddConstr(m.ExactlyKOf(triples,2,Model.ExactlyKOfMethod.UnaryCount).Flatten() | !m.Or(triples).Flatten());
                                 }
 
             Console.WriteLine($"Problem <{ARows}x{ACols}x{BCols}_{NoOfProducts}> setup in {watch.Elapsed.TotalSeconds:F2}s");
