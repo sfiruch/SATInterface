@@ -55,7 +55,7 @@ namespace Tests
         [TestMethod]
         public void BinaryAll()
         {
-            const int N = 10;
+            const int N = 12;
 
             using var m = new Model(new Configuration()
             {

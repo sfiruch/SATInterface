@@ -32,7 +32,6 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
@@ -48,7 +47,6 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
@@ -62,7 +60,6 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
@@ -77,7 +74,6 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
@@ -92,21 +88,19 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
-        [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        //[DataRow(Model.AtMostOneOfMethod.Pairwise)]
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataTestMethod]
         public void PigeonholeSymmetricUNSATDifficult(Model.AtMostOneOfMethod? _method)
         {
-            Pigeonhole(9, 10, _method);
+            Pigeonhole(11, 12, _method);
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]
@@ -130,7 +124,6 @@ namespace Tests
         }
 
         [DataRow(null)]
-        [DataRow(Model.AtMostOneOfMethod.Binary)]
         [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
         [DataRow(Model.AtMostOneOfMethod.Commander)]
         [DataRow(Model.AtMostOneOfMethod.OneHot)]

@@ -34,7 +34,6 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Binary)]
         [DataRow(Model.ExactlyOneOfMethod.Commander)]
         [DataRow(Model.ExactlyOneOfMethod.OneHot)]
         [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
@@ -52,7 +51,6 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Binary)]
         [DataRow(Model.ExactlyOneOfMethod.Commander)]
         [DataRow(Model.ExactlyOneOfMethod.OneHot)]
         [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
@@ -68,7 +66,6 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Binary)]
         [DataRow(Model.ExactlyOneOfMethod.Commander)]
         [DataRow(Model.ExactlyOneOfMethod.OneHot)]
         [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
@@ -85,7 +82,6 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Binary)]
         [DataRow(Model.ExactlyOneOfMethod.Commander)]
         [DataRow(Model.ExactlyOneOfMethod.OneHot)]
         [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
@@ -98,6 +94,21 @@ namespace Tests
         {
             for (var size = 1; size < 9; size++)
                 Pigeonhole(size - 1, size, _method);
+        }
+
+        [DataRow(null)]
+        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        //[DataRow(Model.ExactlyOneOfMethod.OneHot)]
+        //[DataRow(Model.ExactlyOneOfMethod.Pairwise)]
+        [DataRow(Model.ExactlyOneOfMethod.PairwiseTree)]
+        [DataRow(Model.ExactlyOneOfMethod.Sequential)]
+        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
+        [DataTestMethod]
+        public void PigeonholeSymmetricUNSATDifficult(Model.ExactlyOneOfMethod? _method)
+        {
+            Pigeonhole(11, 12, _method);
         }
 
         [TestMethod]
@@ -139,7 +150,6 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Binary)]
         [DataRow(Model.ExactlyOneOfMethod.Commander)]
         [DataRow(Model.ExactlyOneOfMethod.OneHot)]
         [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
@@ -167,7 +177,6 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Binary)]
         [DataRow(Model.ExactlyOneOfMethod.Commander)]
         [DataRow(Model.ExactlyOneOfMethod.OneHot)]
         [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
@@ -205,7 +214,6 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Binary)]
         [DataRow(Model.ExactlyOneOfMethod.Commander)]
         [DataRow(Model.ExactlyOneOfMethod.OneHot)]
         [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
@@ -233,7 +241,6 @@ namespace Tests
 
         [DataRow(null)]
         [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Binary)]
         [DataRow(Model.ExactlyOneOfMethod.Commander)]
         [DataRow(Model.ExactlyOneOfMethod.OneHot)]
         [DataRow(Model.ExactlyOneOfMethod.Pairwise)]
