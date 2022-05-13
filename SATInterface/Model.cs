@@ -939,7 +939,6 @@ namespace SATInterface
 
         private Dictionary<(BoolExpr _i, BoolExpr _t, BoolExpr _e), BoolExpr> ITECache = new();
         internal Dictionary<OrExpr, BoolExpr> OrCache = new();
-        internal Dictionary<AndExpr, BoolExpr> AndCache = new();
 
         private BoolExpr ITEInternal(BoolExpr _if, BoolExpr _then, BoolExpr _else)
         {
@@ -1002,8 +1001,7 @@ namespace SATInterface
             Pairwise,
             PairwiseTree,
             OneHot,
-            Sequential,
-            Binary
+            Sequential
         }
 
         public enum AtMostOneOfMethod
@@ -1013,8 +1011,7 @@ namespace SATInterface
             Commander,
             OneHot,
             Sequential,
-            BinaryCount,
-            Binary
+            BinaryCount
         }
 
         public enum ExactlyKOfMethod
@@ -1077,10 +1074,10 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    if (expr.Length <= 5)
-                        return AtMostOneOfPairwise(expr);
+                    if (_expr.Length <= 3)
+                        return AtMostOneOfPairwise(_expr);
                     else
-                        return AtMostOneOfPairwiseTree(expr);
+                        return AtMostOneOfSequential(expr);
                 case AtMostOneOfMethod.Commander:
                     return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Pairwise:
@@ -1093,44 +1090,19 @@ namespace SATInterface
                     return AtMostOneOfSequential(expr);
                 case AtMostOneOfMethod.BinaryCount:
                     return SumUInt(expr) < 2;
-                case AtMostOneOfMethod.Binary:
-                    return AtMostOneOfBinary(expr);
                 default:
                     throw new ArgumentException();
             }
         }
 
-        private BoolExpr AtMostOneOfBinary(ReadOnlySpan<BoolExpr> _expr)
-        {
-            if (_expr.Length < 4)
-                return AtMostOneOfPairwise(_expr);
-
-            var one = new BoolExpr[(_expr.Length + 1) / 2];
-            var more = new BoolExpr[(_expr.Length + 1) / 2];
-            for (var i = 0; i < one.Length; i++)
-            {
-                if (i * 2 + 1 == _expr.Length)
-                {
-                    one[i] = _expr[i * 2];
-                    more[i] = false;
-                }
-                else
-                {
-                    one[i] = _expr[i * 2] | _expr[i * 2 + 1];
-                    more[i] = _expr[i * 2] & _expr[i * 2 + 1];
-                }
-            }
-
-            return AtMostOneOfBinary(one) & !OrExpr.Create(more).Flatten();
-        }
-
         private BoolExpr AtMostOneOfSequential(BoolExpr[] _expr)
         {
+            var m = _expr.First().GetModel();
             var v0 = False;
             var v1 = False;
             foreach (var e in _expr)
             {
-                v1 = ((v0 & e) | v1).Flatten();
+                v1 = (v1 | (v0 & e)).Flatten();
                 v0 = (v0 | e).Flatten();
             }
             return !v1;
@@ -1141,7 +1113,7 @@ namespace SATInterface
             if (_expr.Length <= 5)
                 return AtMostOneOfPairwise(_expr);
 
-            return ExactlyOneOfCommander(_expr) | AndExpr.Create(_expr.ToArray().Select(e => !e).ToArray()).Flatten();
+            return ExactlyOneOfCommander(_expr).Flatten() | AndExpr.Create(_expr.ToArray().Select(e => !e).ToArray()).Flatten();
         }
 
         /// <summary>
@@ -1198,12 +1170,10 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    if (expr.Length <= 6)
+                    if (expr.Length <= 3)
                         return ExactlyOneOfPairwise(expr);
-                    else if (expr.Length <= 50)
-                        return ExactlyOneOfCommander(expr);
                     else
-                        return ExactlyOneOfPairwiseTree(expr);
+                        return ExactlyKOf(expr, 1, ExactlyKOfMethod.Sequential);
                 case ExactlyOneOfMethod.UnaryCount:
                     return ExactlyKOf(expr, 1, ExactlyKOfMethod.UnaryCount);
                 case ExactlyOneOfMethod.BinaryCount:
@@ -1216,8 +1186,6 @@ namespace SATInterface
                     return ExactlyOneOfTwoFactor(expr);
                 case ExactlyOneOfMethod.Pairwise:
                     return ExactlyOneOfPairwise(expr);
-                case ExactlyOneOfMethod.Binary:
-                    return ExactlyOneOfBinary(expr);
                 case ExactlyOneOfMethod.PairwiseTree:
                     return ExactlyOneOfPairwiseTree(expr);
                 case ExactlyOneOfMethod.OneHot:
@@ -1273,30 +1241,6 @@ namespace SATInterface
         private BoolExpr ExactlyOneOfPairwise(ReadOnlySpan<BoolExpr> _expr)
         {
             return OrExpr.Create(_expr).Flatten() & AtMostOneOfPairwise(_expr);
-        }
-
-        private BoolExpr ExactlyOneOfBinary(ReadOnlySpan<BoolExpr> _expr)
-        {
-            if (_expr.Length < 4)
-                return ExactlyOneOfPairwise(_expr);
-
-            var one = new BoolExpr[(_expr.Length + 1) / 2];
-            var more = new BoolExpr[(_expr.Length + 1) / 2];
-            for (var i = 0; i < one.Length; i++)
-            {
-                if (i * 2 + 1 == _expr.Length)
-                {
-                    one[i] = _expr[i * 2];
-                    more[i] = false;
-                }
-                else
-                {
-                    one[i] = _expr[i * 2] | _expr[i * 2 + 1];
-                    more[i] = _expr[i * 2] & _expr[i * 2 + 1];
-                }
-            }
-
-            return ExactlyOneOfBinary(one) & !OrExpr.Create(more).Flatten();
         }
 
         private BoolExpr AtMostOneOfPairwiseTree(ReadOnlySpan<BoolExpr> _expr)

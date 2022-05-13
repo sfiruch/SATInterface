@@ -122,5 +122,13 @@ namespace SATInterface
         /// Default: ExpectedOutcome.Unknown
         /// </summary>
         public ExpectedOutcome ExpectedOutcome = ExpectedOutcome.Unknown;
+
+        /// <summary>
+        /// When LinExpr contains more variables than this threshold, use
+        /// binary arithmetic for comparisons. Improved sequence counters
+        /// will be used below this threshold.
+        /// Default: 12
+        /// </summary>
+        public int LinExprBinaryComparisonThreshold = 12;
     }
 }

@@ -7,17 +7,11 @@ using System.Text;
 
 namespace SATInterface
 {
-#pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
-#pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
-
     /// <summary>
     /// A LinExpr is a linear combination of BoolVars with integer weights.
     /// </summary>
     public class LinExpr
     {
-        //TODO: tune this threshold
-        private const int BinaryComparisonThreshold = 16;
-
         private Dictionary<BoolVar, int> Weights;
         private int Offset;
 
@@ -352,13 +346,6 @@ namespace SATInterface
             if (_a.LB > _b)
                 return Model.False;
 
-            /*if (_a.Weights.Values.All(v => v < 0))
-            {
-                var largest = _a.Weights.Values.Max();
-                if (_b - _a.Offset >= largest)
-                    return OrExpr.Create(_a.Weights.Keys.ToArray());
-            }*/
-
             var rhs = _b - _a.Offset;
             var ub = 0;
             foreach (var e in _a.Weights)
@@ -373,13 +360,12 @@ namespace SATInterface
             if (rhs == 0)
                 return AndExpr.Create(_a.Weights.Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
 
+            var m = _a.Weights.Keys.First().Model;
+
             var smallest = _a.Weights.Values.Min(v => Math.Abs(v));
             if (rhs == smallest)
-            {
-                var m = _a.Weights.Keys.First().Model;
                 return m.AtMostOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == smallest).Select(w => w.Value > 0 ? w.Key : !w.Key))
                     & AndExpr.Create(_a.Weights.Where(w => Math.Abs(w.Value) > smallest).Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
-            }
 
             //recognize implications
             if (_a.Weights.Values.Count(v => Math.Abs(v) == rhs) == 1 && _a.Weights.Values.Count(v => Math.Abs(v) == 1) == rhs)
@@ -391,19 +377,16 @@ namespace SATInterface
                 var e = _a.Weights.Single(w => Math.Abs(w.Value) == rhs);
                 var others = _a.Weights.Where(w => Math.Abs(w.Value) == 1).Select(w => w.Value > 0 ? w.Key : !w.Key).ToArray();
 
-                return !(e.Value > 0 ? e.Key : !e.Key) | !OrExpr.Create(others);
+                return (e.Value > 0 ? !e.Key : e.Key) | !OrExpr.Create(others).Flatten();
             }
 
             if (rhs == 1 && _a.Weights.Values.All(v => Math.Abs(v) == 1))
-            {
-                var m = _a.Weights.Keys.First().Model;
                 return m.AtMostOneOf(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key));
-            }
 
             if (rhs > ub / 2)
                 return !(-_a <= (-_b - 1));
 
-            if (_a.Weights.Count <= BinaryComparisonThreshold)
+            if (_a.Weights.Count <= m.Configuration.LinExprBinaryComparisonThreshold)
                 return !_a.HasValueAtLeastX(rhs + 1);
             else
                 return _a.ToUInt().Var <= rhs;
@@ -428,21 +411,14 @@ namespace SATInterface
             if (rhs == 0)
                 return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key).ToArray());
 
+            var m = _a.Weights.First().Key.Model;
+
             var smallest = _a.Weights.Values.OrderBy(v => Math.Abs(v)).First();
             if (rhs == smallest)
-            {
-                var m = _a.Weights.First().Key.Model;
                 return m.ExactlyOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == smallest).Select(w => w.Value > 0 ? w.Key : !w.Key))
                     & AndExpr.Create(_a.Weights.Where(w => Math.Abs(w.Value) != smallest).Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
-            }
 
-            /*if (_a.Weights.Values.All(v => Math.Abs(v) == rhs))
-            {
-                var m = _a.Weights.First().Key.Model;
-                return m.ExactlyOneOf(_a.Weights.Select(x => x.Value > 0 ? x.Key : !x.Key).ToArray());
-            }*/
-
-            if (_a.Weights.Count <= BinaryComparisonThreshold)
+            if (_a.Weights.Count <= m.Configuration.LinExprBinaryComparisonThreshold)
                 return _a.HasValueX(rhs);
             else
                 return _a.ToUInt().Var == rhs;
@@ -569,6 +545,31 @@ namespace SATInterface
             }
             else
                 throw new Exception();
+        }
+
+        public override int GetHashCode()
+        {
+            var hc = new HashCode();
+
+            hc.Add(Offset);
+            foreach (var e in Weights.OrderBy(e => e.Key.Id))
+            {
+                hc.Add(e.Key.Id);
+                hc.Add(e.Value);
+            }
+
+            return hc.ToHashCode();
+        }
+
+        public override bool Equals(object? _o)
+        {
+            if (_o is not LinExpr le)
+                return false;
+
+            if (Offset != le.Offset)
+                return false;
+
+            return Weights.OrderBy(e => e.Key.Id).SequenceEqual(le.Weights.OrderBy(e => e.Key.Id));
         }
     }
 }

@@ -88,17 +88,40 @@ namespace SATInterface
             if (count == 1)
                 return res[0];
 
-            for (var i = 0; i < res.Length; i++)
-            {
-                if (res[i] is NotExpr ne && res.Contains(ne.inner))
-                    return Model.True;
+            if (res.Length < 40)
+                for (var i = 0; i < res.Length; i++)
+                {
+                    if (res[i] is NotExpr ne && res.Contains(ne.inner))
+                        return Model.True;
 
-                for (var j = i + 1; j < res.Length; j++)
-                    if (ReferenceEquals(res[i], res[j]))
+                    for (var j = i + 1; j < res.Length; j++)
+                        if (ReferenceEquals(res[i], res[j]))
+                        {
+                            (res[i], res[0]) = (res[0], res[i]);
+                            return OrExpr.Create(res[1..]);
+                        }
+                }
+            else
+            {
+                var posVars = new HashSet<BoolExpr>(res.Length);
+                var negVars = new HashSet<BoolExpr>(res.Length);
+                foreach (var v in res)
+                    if (v is NotExpr ne)
                     {
-                        (res[i], res[0]) = (res[0], res[i]);
-                        return OrExpr.Create(res[1..]);
+                        if (posVars.Contains(ne.inner))
+                            return Model.True;
+                        negVars.Add(ne.inner);
                     }
+                    else
+                    {
+                        if (negVars.Contains(v))
+                            return Model.True;
+                        posVars.Add(v);
+                    }
+
+                var distinct = res.Distinct().ToArray();
+                if (distinct.Length != res.Length)
+                    return OrExpr.Create(distinct);
             }
 
             return new OrExpr(res);
@@ -112,6 +135,14 @@ namespace SATInterface
 
             if (model.OrCache.TryGetValue(this, out var res))
                 return res;
+
+            //{
+            //    var be = new BoolExpr[Elements.Length];
+            //    for (var i = 0; i < Elements.Length; i++)
+            //        be[i] = !Elements[i];
+            //    if (model.AndCache.TryGetValue((AndExpr)AndExpr.Create(be), out var resi))
+            //        return !resi;
+            //}
 
             model.OrCache[this] = res = model.AddVar();
 

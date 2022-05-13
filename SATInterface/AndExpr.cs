@@ -92,24 +92,30 @@ namespace SATInterface
 
         public override BoolExpr Flatten()
         {
-            var model = GetModel();
-
-            if (model.AndCache.TryGetValue(this, out var res))
-                return res;
-
-            model.AndCache[this] = res  = model.AddVar();
-
-            var l = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length + 1);
+            var be = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length);
             for (var i = 0; i < Elements.Length; i++)
-                l[i] = !Elements[i];
-            l[Elements.Length] = res;
-            model.AddConstr(OrExpr.Create(l.AsSpan().Slice(0, Elements.Length + 1)));
-            ArrayPool<BoolExpr>.Shared.Return(l);
-
-            foreach (var e in Elements)
-                model.AddConstr(e | !res);
-
+                be[i] = !Elements[i];
+            var res = !(OrExpr.Create(be.AsSpan().Slice(0, Elements.Length)).Flatten());
+            ArrayPool<BoolExpr>.Shared.Return(be);
             return res;
+
+            //var model = GetModel();
+            //if (model.AndCache.TryGetValue(this, out var res))
+            //    return res;
+
+            //model.AndCache[this] = res = model.AddVar();
+
+            //var l = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length + 1);
+            //for (var i = 0; i < Elements.Length; i++)
+            //    l[i] = !Elements[i];
+            //l[Elements.Length] = res;
+            //model.AddConstr(OrExpr.Create(l.AsSpan().Slice(0, Elements.Length + 1)));
+            //ArrayPool<BoolExpr>.Shared.Return(l);
+
+            //foreach (var e in Elements)
+            //    model.AddConstr(e | !res);
+
+            //return res;
         }
 
         internal override IEnumerable<BoolVar> EnumVars()
