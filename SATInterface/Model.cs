@@ -1001,7 +1001,8 @@ namespace SATInterface
             Pairwise,
             PairwiseTree,
             OneHot,
-            Sequential
+            Sequential,
+            SequentialUnary
         }
 
         public enum AtMostOneOfMethod
@@ -1011,6 +1012,7 @@ namespace SATInterface
             Commander,
             OneHot,
             Sequential,
+            SequentialUnary,
             BinaryCount
         }
 
@@ -1088,6 +1090,8 @@ namespace SATInterface
                     return AtMostOneOfOneHot(expr);
                 case AtMostOneOfMethod.Sequential:
                     return AtMostOneOfSequential(expr);
+                case AtMostOneOfMethod.SequentialUnary:
+                    return AtMostOneOfSequentialUnary(expr);
                 case AtMostOneOfMethod.BinaryCount:
                     return SumUInt(expr) < 2;
                 default:
@@ -1178,6 +1182,8 @@ namespace SATInterface
                     return ExactlyKOf(expr, 1, ExactlyKOfMethod.UnaryCount);
                 case ExactlyOneOfMethod.BinaryCount:
                     return ExactlyKOf(expr, 1, ExactlyKOfMethod.BinaryCount);
+                case ExactlyOneOfMethod.SequentialUnary:
+                    return ExactlyOneOfSequentialUnary(expr);
                 case ExactlyOneOfMethod.Sequential:
                     return ExactlyKOf(expr, 1, ExactlyKOfMethod.Sequential);
                 case ExactlyOneOfMethod.Commander:
@@ -1453,6 +1459,35 @@ namespace SATInterface
 
             valid.Add(ExactlyOneOfCommander(commanders));
             return AndExpr.Create(CollectionsMarshal.AsSpan(valid));
+        }
+
+        private BoolExpr ExactlyOneOfSequentialUnary(ReadOnlySpan<BoolExpr> _expr)
+        {
+            var prev = False;
+            var valid = new List<BoolExpr>(_expr.Length + 1);
+            foreach (var be in _expr)
+            {
+                prev = prev.Flatten();
+
+                valid.Add(!be | !prev);
+                prev = be | prev;
+            }
+            valid.Add(prev);
+            return And(valid);
+        }
+
+        private BoolExpr AtMostOneOfSequentialUnary(ReadOnlySpan<BoolExpr> _expr)
+        {
+            var prev = False;
+            var valid = new List<BoolExpr>(_expr.Length);
+            foreach (var be in _expr)
+            {
+                prev = prev.Flatten();
+
+                valid.Add(!be | !prev);
+                prev = be | prev;
+            }
+            return And(valid);
         }
 
         /// <summary>
