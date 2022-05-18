@@ -93,11 +93,12 @@ namespace MaxMaze
 
             m.Maximize(m.Sum(free.Cast<BoolExpr>()), () =>
             {
+                var sb = new StringBuilder();
                 for (int y = 0; y < H; y++)
                 {
                     for (int x = 0; x < W; x++)
-                        Console.Write(free[x, y].X ? "." : ReferenceEquals(free[x, y], Model.False) ? "█" : "▒");
-                    Console.WriteLine();
+                        sb.Append(free[x, y].X ? "." : ReferenceEquals(free[x, y], Model.False) ? "█" : "▒");
+                    sb.AppendLine();
                 }
 
                 var notVisited = new bool[W, H];
@@ -145,7 +146,8 @@ namespace MaxMaze
                         if (notVisited[x, y])
                             Visit(x, y, new Stack<(int X, int Y)>());
 
-                Console.WriteLine($"Eliminated {elimLoops} loops");
+                sb.AppendLine($"Eliminated {elimLoops} loops");
+                Console.WriteLine(sb.ToString());
             });
 
             Console.ReadLine();
