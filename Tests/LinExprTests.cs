@@ -32,6 +32,21 @@ namespace Tests
         }
 
         [TestMethod]
+        public void ToUIntPerformance()
+        {
+            using var m = new Model();
+            var rng = new Random(0);
+            var le = new LinExpr();
+            for (var i = 0; i < 5000; i++)
+            {
+                var w = rng.Next(10) + 1;
+                for (var bit = 0; bit < 8; bit++)
+                    le.AddTerm(m.AddVar(), w * (1 << bit));
+            }
+            var x = (le == 5000);
+        }
+
+        [TestMethod]
         public void GETest()
         {
             for (var j = 0; j < 25; j++)

@@ -1,11 +1,8 @@
-﻿using SATInterface.Solver;
-using System;
+﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -97,27 +94,32 @@ namespace SATInterface
             }
             else if (_c is OrExpr orExpr)
             {
-                Span<int> sb = stackalloc int[orExpr.Elements.Length];
-                for (var i = 0; i < sb.Length; i++)
-                    if (orExpr.Elements[i] is BoolVar bv)
-                    {
-                        sb[i] = bv.Id;
+                if (OrCache.TryGetValue(orExpr, out var res))
+                    AddConstrInternal(res);
+                else
+                {
+                    Span<int> sb = stackalloc int[orExpr.Elements.Length];
+                    for (var i = 0; i < sb.Length; i++)
+                        if (orExpr.Elements[i] is BoolVar bv)
+                        {
+                            sb[i] = bv.Id;
 
-                        if (!ReferenceEquals(bv.Model, this))
-                            throw new ArgumentException("Mixing variables from different models is not supported.");
-                    }
-                    else if (orExpr.Elements[i] is NotExpr ne)
-                    {
-                        sb[i] = -ne.inner.Id;
+                            if (!ReferenceEquals(bv.Model, this))
+                                throw new ArgumentException("Mixing variables from different models is not supported.");
+                        }
+                        else if (orExpr.Elements[i] is NotExpr ne)
+                        {
+                            sb[i] = -ne.inner.Id;
 
-                        if (!ReferenceEquals(ne.inner.Model, this))
-                            throw new ArgumentException("Mixing variables from different models is not supported.");
-                    }
-                    else
-                        throw new Exception();
+                            if (!ReferenceEquals(ne.inner.Model, this))
+                                throw new ArgumentException("Mixing variables from different models is not supported.");
+                        }
+                        else
+                            throw new Exception();
 
-                AddClauseToSolver(sb);
-                ClauseCount++;
+                    AddClauseToSolver(sb);
+                    ClauseCount++;
+                }
             }
             else
                 throw new NotImplementedException(_c.GetType().ToString());
@@ -151,7 +153,13 @@ namespace SATInterface
         /// </summary>
         /// <param name="_c">The constant value</param>
         /// <returns></returns>
-        public UIntVar AddUIntConst(int _c) => UIntVar.Const(this, _c);
+        public UIntVar AddUIntConst(int _c)
+        {
+            if (UIntConstCache.TryGetValue(_c, out var u))
+                return u;
+            return UIntConstCache[_c] = UIntVar.Const(this, _c);
+        }
+        private Dictionary<int, UIntVar> UIntConstCache = new();
 
         /// <summary>
         /// Creates a new unsigned integer variable from the supplied bits
@@ -713,6 +721,20 @@ namespace SATInterface
         /// Returns an expression equivalent to the exclusive-or of the
         /// supplied expressions.
         /// </summary>
+        public BoolExpr Xor(BoolExpr _a, BoolExpr _b)
+            => _a ^ _b;
+
+        /// <summary>
+        /// Returns an expression equivalent to the exclusive-or of the
+        /// supplied expressions.
+        /// </summary>
+        public BoolExpr Xor(BoolExpr _a, BoolExpr _b, BoolExpr _c)
+            => _a ^ _b ^ _c;
+
+        /// <summary>
+        /// Returns an expression equivalent to the exclusive-or of the
+        /// supplied expressions.
+        /// </summary>
         public BoolExpr Xor(params BoolExpr[] _elems)
         {
             if (_elems.Length == 0)
@@ -724,19 +746,10 @@ namespace SATInterface
             if (_elems.Length == 2)
                 return _elems[0] ^ _elems[1];
 
-            //var res = False;
-            //foreach (var v in _elems)
-            //    res ^= v;
-            //return res;
-
-            var res = new BoolExpr[(_elems.Length + 1) / 2];
-            var i = 0;
-            foreach (var v in _elems.Chunk(2))
-                if (v.Length == 2)
-                    res[i++] = v[0] ^ v[1];
-                else
-                    res[i++] = v[0];
-            return Xor(res);
+            var res = False;
+            foreach (var v in _elems)
+                res ^= v;
+            return res;
         }
 
         /// <summary>
@@ -758,59 +771,88 @@ namespace SATInterface
         /// <summary>
         /// Returns the sum of the supplied expressions as UIntVar.
         /// </summary>
-        public UIntVar SumUInt(params BoolExpr[] _elems)
+        public UIntVar SumUInt(params BoolExpr[] _elems) => SumUInt(_elems.AsSpan());
+
+        /// <summary>
+        /// Returns the sum of the supplied expressions as UIntVar.
+        /// </summary>
+        public UIntVar SumUInt(Span<BoolExpr> _elems)
         {
             UIntVar SumTwo(BoolExpr _a, BoolExpr _b)
-            {
-                var res = new UIntVar(this, 2, false);
-                res.bit[0] = (_a ^ _b).Flatten();
-                res.bit[1] = (_a & _b).Flatten();
-                return res;
-            }
+                => new UIntVar(this, 2, new[]
+                    {
+                        (_a ^ _b).Flatten(),
+                        (_a & _b).Flatten()
+                    }, false);
 
             UIntVar SumThree(BoolExpr _a, BoolExpr _b, BoolExpr _c)
-            {
-                var res = new UIntVar(this, 3, false);
-                res.bit[0] = Xor(_a, _b, _c).Flatten();
-                res.bit[1] = OrExpr.Create(
-                        (_a & _b).Flatten(),
-                        (_a & _c).Flatten(),
-                        (_b & _c).Flatten()).Flatten();
-                return res;
-            }
+                => new UIntVar(this, 3, new[]
+                    {
+                        (_a ^ _b ^ _c).Flatten(),
+                        !(AtMostOneOf(new[]{_a, _b, _c }, AtMostOneOfMethod.Pairwise).Flatten())
+                    }, false);
 
-
-            var simplified = new List<BoolExpr>(_elems.Length);
+            var beCount = 0;
             var trueCount = 0;
             foreach (var e in _elems)
                 if (ReferenceEquals(e, True))
                     trueCount++;
                 else if (!ReferenceEquals(e, False))
-                    simplified.Add(e);
+                    beCount++;
 
-            switch (simplified.Count)
+            BoolExpr[]? arr = null;
+            if (beCount != _elems.Length)
+            {
+                arr = ArrayPool<BoolExpr>.Shared.Rent(beCount);
+                var i = 0;
+                foreach (var e in _elems)
+                    if (!ReferenceEquals(e, True) && !ReferenceEquals(e, False))
+                        arr[i++] = e;
+                _elems = arr.AsSpan().Slice(0, beCount);
+            }
+
+            UIntVar res;
+            switch (_elems.Length)
             {
                 case 0:
-                    return UIntVar.Const(this, trueCount);
+                    res = AddUIntConst(trueCount);
+                    trueCount = 0;
+                    break;
                 case 1:
-                    return UIntVar.ITE(simplified[0], UIntVar.Const(this, trueCount + 1), UIntVar.Const(this, trueCount));
+                    res = UIntVar.ITE(_elems[0], AddUIntConst(trueCount + 1), AddUIntConst(trueCount));
+                    trueCount = 0;
+                    break;
                 case 2:
-                    return SumTwo(simplified[0], simplified[1]) + trueCount;
+                    res = SumTwo(_elems[0], _elems[1]);
+                    break;
                 case 3:
-                    return SumThree(simplified[0], simplified[1], simplified[2]) + trueCount;
+                    res = SumThree(_elems[0], _elems[1], _elems[2]);
+                    break;
                 default:
                     {
-                        var vars = new UIntVar[(simplified.Count + 2) / 3];
-                        for (var i = 0; i < vars.Length; i++)
-                            if (i * 3 + 2 < simplified.Count)
-                                vars[i] = SumThree(simplified[i * 3], simplified[i * 3 + 1], simplified[i * 3 + 2]);
-                            else if (i * 3 + 1 < simplified.Count)
-                                vars[i] = SumTwo(simplified[i * 3], simplified[i * 3 + 1]);
+                        var cnt = (_elems.Length + 2) / 3;
+                        var vars = ArrayPool<UIntVar>.Shared.Rent(cnt);
+                        for (var i = 0; i < cnt; i++)
+                            if (i * 3 + 2 < _elems.Length)
+                                vars[i] = SumThree(_elems[i * 3], _elems[i * 3 + 1], _elems[i * 3 + 2]);
+                            else if (i * 3 + 1 < _elems.Length)
+                                vars[i] = SumTwo(_elems[i * 3], _elems[i * 3 + 1]);
                             else
-                                vars[i] = UIntVar.ITE(simplified[i * 3], UIntVar.Const(this, 1), UIntVar.Const(this, 0));
-                        return Sum(vars) + trueCount;
+                            {
+                                vars[i] = UIntVar.ITE(_elems[i * 3], AddUIntConst(trueCount + 1), AddUIntConst(trueCount));
+                                trueCount = 0;
+                            }
+                        res = Sum(vars.AsSpan().Slice(0, cnt));
+
+                        ArrayPool<UIntVar>.Shared.Return(vars);
                     }
+                    break;
             }
+
+            if (arr is not null)
+                ArrayPool<BoolExpr>.Shared.Return(arr);
+
+            return res + trueCount;
         }
 
         /// <summary>
@@ -847,58 +889,13 @@ namespace SATInterface
             switch (_elems.Length)
             {
                 case 0:
-                    return UIntVar.Const(this, 0);
+                    return AddUIntConst(0);
                 case 1:
                     return _elems[0];
                 case 2:
                     return _elems[0] + _elems[1];
                 default:
-                    //SLOW
-                    //var vars = _elems.ToList();
-                    //var UB = vars.Any(e => e.UB == UIntVar.Unbounded) ? UIntVar.Unbounded : vars.Sum(e => (long)e.UB);
-                    //var bits = new List<BoolExpr>();
-                    //for (var bit = 0; vars.Any(); bit++)
-                    //{
-                    //    bits.Add(Xor(vars.Select(v => v.Bits[bit])));
-                    //    var lsbs = Sort(vars.Select(v => v.Bits[bit]));
-                    //    var sum = SumUInt(lsbs.Chunk(2).Where(g => g.Length == 2).Select(g => g[0] & g[1]));
-                    //    if (sum.UB > 0)
-                    //        vars.Add(sum << (bit + 1));
-                    //    vars.RemoveAll(v => v.Bits.Length <= bit + 1);
-                    //}
-                    //return new UIntVar(this, UB > UIntVar.MaxUB ? UIntVar.Unbounded : (int)UB, bits.ToArray());
-
-                    //var oe = _elems.ToArray().OrderBy(e => unchecked((uint)e.UB)).ToArray();
-                    //return Sum(oe[..(_elems.Length / 2)]) + Sum(oe[(_elems.Length / 2)..]);
-
                     return Sum(_elems[..(_elems.Length / 2)]) + Sum(_elems[(_elems.Length / 2)..]);
-
-                    ////WORKS
-                    //var vars = new PriorityQueue<UIntVar, uint>(_elems.Select(e => (e, unchecked((uint)e.UB))));
-                    //for (; ; )
-                    //{
-                    //    var a = vars.Dequeue();
-                    //    var b = vars.Dequeue();
-                    //    var sum = a+b;
-                    //    if (vars.Count == 0)
-                    //        return sum;
-
-                    //    vars.Enqueue(sum, unchecked((uint)sum.UB));
-                    //}
-
-                    //WORKS
-                    //var vars = _elems.ToList();
-                    //var UB = vars.Any(e => e.UB == UIntVar.Unbounded) ? UIntVar.Unbounded : vars.Sum(e => (long)e.UB);
-                    //var bits = new List<BoolExpr>();
-                    //for (var bit = 0; vars.Any(); bit++)
-                    //{
-                    //    var sum = SumUInt(vars.Select(v => v.Bits[bit]));
-                    //    bits.Add(sum.Bits[0]);
-                    //    if (sum.UB > 0)
-                    //        vars.Add(sum << bit);
-                    //    vars.RemoveAll(v => v.Bits.Length <= bit + 1);
-                    //}
-                    //return new UIntVar(this, UB > UIntVar.MaxUB ? UIntVar.Unbounded : (int)UB, bits.ToArray());
             }
         }
 
@@ -921,20 +918,19 @@ namespace SATInterface
         /// <returns></returns>
         public BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else)
         {
-            BoolExpr? res;
-            if (ITECache.TryGetValue((_if, _then, _else), out res))
+            _if = _if.Flatten();
+            _then = _then.Flatten();
+            _else = _else.Flatten();
+
+            if (ITECache.TryGetValue((_if, _then, _else), out var res))
                 return res;
 
-            if (ITECache.TryGetValue((!_if, _else, _then), out res))
-                return res;
-
-            if (ITECache.TryGetValue((_if, !_then, !_else), out res))
-                return !res;
-
-            if (ITECache.TryGetValue((!_if, !_else, !_then), out res))
-                return !res;
-
-            return ITECache[(_if, _then, _else)] = ITEInternal(_if, _then, _else);
+            res = ITEInternal(_if, _then, _else);
+            ITECache[(_if, _then, _else)] = res;
+            ITECache[(!_if, _else, _then)] = res;
+            ITECache[(_if, !_then, !_else)] = !res;
+            ITECache[(!_if, !_else, !_then)] = !res;
+            return res;
         }
 
         private Dictionary<(BoolExpr _i, BoolExpr _t, BoolExpr _e), BoolExpr> ITECache = new();
@@ -1076,10 +1072,7 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    if (_expr.Length <= 3)
-                        return AtMostOneOfPairwise(_expr);
-                    else
-                        return AtMostOneOfSequential(expr);
+                    return AtMostOneOfSequential(expr);
                 case AtMostOneOfMethod.Commander:
                     return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Pairwise:
@@ -1101,22 +1094,20 @@ namespace SATInterface
 
         private BoolExpr AtMostOneOfSequential(BoolExpr[] _expr)
         {
-            var m = _expr.First().GetModel();
             var v0 = False;
             var v1 = False;
-            foreach (var e in _expr)
+            for (var i = 0; i < _expr.Length; i++)
             {
-                v1 = (v1 | (v0 & e)).Flatten();
-                v0 = (v0 | e).Flatten();
+                var v0Old = v0;
+                if (i < _expr.Length - 1)
+                    v0 = (_expr[i] | v0).Flatten();
+                v1 = ((v0Old & _expr[i]) | v1).Flatten();
             }
             return !v1;
         }
 
         private BoolExpr AtMostOneOfCommander(ReadOnlySpan<BoolExpr> _expr)
         {
-            if (_expr.Length <= 5)
-                return AtMostOneOfPairwise(_expr);
-
             return ExactlyOneOfCommander(_expr).Flatten() | AndExpr.Create(_expr.ToArray().Select(e => !e).ToArray()).Flatten();
         }
 
@@ -1174,18 +1165,18 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    if (expr.Length <= 3)
-                        return ExactlyOneOfPairwise(expr);
-                    else
-                        return ExactlyKOf(expr, 1, ExactlyKOfMethod.Sequential);
+                    //if (expr.Length <= 3)
+                    //    return ExactlyOneOfPairwise(expr);
+                    //else
+                    return ExactlyOneOfSequentialUnary(expr);
                 case ExactlyOneOfMethod.UnaryCount:
                     return ExactlyKOf(expr, 1, ExactlyKOfMethod.UnaryCount);
                 case ExactlyOneOfMethod.BinaryCount:
-                    return ExactlyKOf(expr, 1, ExactlyKOfMethod.BinaryCount);
+                    return SumUInt(expr) == 1;
                 case ExactlyOneOfMethod.SequentialUnary:
                     return ExactlyOneOfSequentialUnary(expr);
                 case ExactlyOneOfMethod.Sequential:
-                    return ExactlyKOf(expr, 1, ExactlyKOfMethod.Sequential);
+                    return ExactlyOneOfSequential(expr);
                 case ExactlyOneOfMethod.Commander:
                     return ExactlyOneOfCommander(expr);
                 case ExactlyOneOfMethod.TwoFactor:
@@ -1211,7 +1202,7 @@ namespace SATInterface
                     ands[j] = (i == j) ? _expr[j] : !_expr[j];
                 ors[i] = AndExpr.Create(ands).Flatten();
             }
-            return OrExpr.Create(ors);
+            return OrExpr.Create(ors).Flatten();
         }
 
         private BoolExpr AtMostOneOfOneHot(ReadOnlySpan<BoolExpr> _expr)
@@ -1241,12 +1232,12 @@ namespace SATInterface
 
                 ors.Add(AndExpr.Create(CollectionsMarshal.AsSpan(ands)).Flatten());
             }
-            return OrExpr.Create(CollectionsMarshal.AsSpan(ors));
+            return OrExpr.Create(CollectionsMarshal.AsSpan(ors)).Flatten();
         }
 
         private BoolExpr ExactlyOneOfPairwise(ReadOnlySpan<BoolExpr> _expr)
         {
-            return OrExpr.Create(_expr).Flatten() & AtMostOneOfPairwise(_expr);
+            return OrExpr.Create(_expr).Flatten() & AtMostOneOfPairwise(_expr).Flatten();
         }
 
         private BoolExpr AtMostOneOfPairwiseTree(ReadOnlySpan<BoolExpr> _expr)
@@ -1284,7 +1275,7 @@ namespace SATInterface
             }
 
             ok[0] = ExactlyOneOfPairwiseTree(any);
-            return AndExpr.Create(ok);
+            return AndExpr.Create(ok).Flatten();
         }
 
         private BoolExpr AtMostOneOfPairwise(ReadOnlySpan<BoolExpr> _expr)
@@ -1292,9 +1283,9 @@ namespace SATInterface
             var pairs = new List<BoolExpr>(_expr.Length * (_expr.Length - 1) / 2);
             for (var i = 0; i < _expr.Length; i++)
                 for (var j = i + 1; j < _expr.Length; j++)
-                    pairs.Add(OrExpr.Create(!_expr[i], !_expr[j]));
+                    pairs.Add(OrExpr.Create(!_expr[i], !_expr[j]).Flatten());
 
-            return AndExpr.Create(CollectionsMarshal.AsSpan(pairs));
+            return AndExpr.Create(CollectionsMarshal.AsSpan(pairs)).Flatten();
         }
 
 
@@ -1334,8 +1325,7 @@ namespace SATInterface
                 rows[x] = OrExpr.Create(CollectionsMarshal.AsSpan(c)).Flatten();
             }
 
-            return ExactlyOneOfTwoFactor(rows) &
-                ExactlyOneOfTwoFactor(cols);
+            return ExactlyOneOfTwoFactor(rows).Flatten() & ExactlyOneOfTwoFactor(cols).Flatten();
         }
 
         /// <summary>
@@ -1409,8 +1399,8 @@ namespace SATInterface
                             for (var j = i + 1; j < expr.Length; j++)
                                 or.Add(expr[i] & expr[j]);
 
-                        and.Add(OrExpr.Create(CollectionsMarshal.AsSpan(or)));
-                        return AndExpr.Create(CollectionsMarshal.AsSpan(and));
+                        and.Add(OrExpr.Create(CollectionsMarshal.AsSpan(or)).Flatten());
+                        return AndExpr.Create(CollectionsMarshal.AsSpan(and)).Flatten();
                     }
                     else
                     {
@@ -1457,8 +1447,21 @@ namespace SATInterface
                     AddConstr(commanders[i] | (!OrExpr.Create(groups[i]))); //3
                 }
 
-            valid.Add(ExactlyOneOfCommander(commanders));
-            return AndExpr.Create(CollectionsMarshal.AsSpan(valid));
+            valid.Add(ExactlyOneOfCommander(commanders).Flatten());
+            return AndExpr.Create(CollectionsMarshal.AsSpan(valid)).Flatten();
+        }
+
+        private BoolExpr ExactlyOneOfSequential(ReadOnlySpan<BoolExpr> _expr)
+        {
+            var v0 = False;
+            var v1 = False;
+            foreach (var e in _expr)
+            {
+                var v0Old = v0;
+                v0 = (e | v0).Flatten();
+                v1 = ((v0Old & e) | v1).Flatten();
+            }
+            return v0 & !v1;
         }
 
         private BoolExpr ExactlyOneOfSequentialUnary(ReadOnlySpan<BoolExpr> _expr)
@@ -1469,11 +1472,11 @@ namespace SATInterface
             {
                 prev = prev.Flatten();
 
-                valid.Add(!be | !prev);
+                valid.Add((!be | !prev).Flatten());
                 prev = be | prev;
             }
             valid.Add(prev);
-            return And(valid);
+            return And(valid).Flatten();
         }
 
         private BoolExpr AtMostOneOfSequentialUnary(ReadOnlySpan<BoolExpr> _expr)
@@ -1484,10 +1487,10 @@ namespace SATInterface
             {
                 prev = prev.Flatten();
 
-                valid.Add(!be | !prev);
+                valid.Add((!be | !prev).Flatten());
                 prev = be | prev;
             }
-            return And(valid);
+            return And(valid).Flatten();
         }
 
         /// <summary>
@@ -1512,7 +1515,7 @@ namespace SATInterface
                     R[0] = True;
                     for (var i = 1; i < R.Length - 1; i++)
                         R[i] = AddVar();
-                    R[R.Length - 1] = False;
+                    R[^1] = False;
 
                     var A = new BoolExpr[] { True }.Concat(Sort(_elems[..(len / 2)])).Concat(new BoolExpr[] { False }).ToArray();
                     var B = new BoolExpr[] { True }.Concat(Sort(_elems[(len / 2)..])).Concat(new BoolExpr[] { False }).ToArray();
@@ -1527,7 +1530,7 @@ namespace SATInterface
                             }
                         }
 
-                    return R[1..^2];
+                    return R[1..^1];
             }
         }
 

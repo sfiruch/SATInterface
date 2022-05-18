@@ -40,7 +40,7 @@ namespace Tests
                     else if (x == _n - 1 && y == _n - 1)
                         m.AddConstr(a != c);
                     else if (!ReferenceEquals(free[x, y], Model.False))
-                        m.AddConstr(!free[x, y] | m.ExactlyKOf(new[] { a, b, c, d }, 2));
+                        m.AddConstr(!free[x, y] | m.Sum(a, b, c, d) == 2);
                 }
 
             //cut: quad

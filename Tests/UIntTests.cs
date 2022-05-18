@@ -31,6 +31,13 @@ namespace Tests
         }
 
         [TestMethod]
+        public void UIntSumPerformance()
+        {
+            using var m = new Model();
+            m.SumUInt(Enumerable.Range(0, 40000).Select(i => m.AddVar()).ToArray());
+        }
+
+        [TestMethod]
         public void UIntGreaterEqual()
         {
             foreach (var strategy in Enum.GetValues(typeof(OptimizationFocus)).Cast<OptimizationFocus>())
@@ -98,8 +105,8 @@ namespace Tests
         [TestMethod]
         public void SumUInt()
         {
-            var rng = new Random();
-            for (var i = 0; i < 20; i++)
+            var rng = new Random(0);
+            for (var i = 0; i < 100; i++)
             {
                 using var m = new Model(new Configuration()
                 {

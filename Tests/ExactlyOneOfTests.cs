@@ -10,11 +10,12 @@ namespace Tests
     [TestClass]
     public class ExactlyOneOfTests
     {
-        void Pigeonhole(int _holes, int _pigeons, Model.ExactlyOneOfMethod? _method)
+        void Pigeonhole(int _holes, int _pigeons, int _seed, Model.ExactlyOneOfMethod? _method)
         {
             using var m = new Model(new Configuration()
             {
-                Verbosity = 0
+                Verbosity = 0,
+                RandomSeed = _seed
             });
             var assignment = m.AddVars(_holes, _pigeons);
 
@@ -45,9 +46,9 @@ namespace Tests
         [DataTestMethod]
         public void PigeonholeRandom(Model.ExactlyOneOfMethod? _method)
         {
-            var RNG = new Random(1);
-            for (var i = 0; i < 30; i++)
-                Pigeonhole(RNG.Next(0, 11), RNG.Next(0, 11), _method);
+            var RNG = new Random(2);
+            for (var i = 0; i < 100; i++)
+                Pigeonhole(RNG.Next(0, 11), RNG.Next(0, 11), RNG.Next(), _method);
         }
 
         [DataRow(null)]
@@ -63,7 +64,7 @@ namespace Tests
         [DataTestMethod]
         public void PigeonholeSingle(Model.ExactlyOneOfMethod? _method)
         {
-            Pigeonhole(100, 1, _method);
+            Pigeonhole(100, 1, 0, _method);
         }
 
         [DataRow(null)]
@@ -80,7 +81,7 @@ namespace Tests
         public void PigeonholeSymmetricSAT(Model.ExactlyOneOfMethod? _method)
         {
             for (var size = 1; size < 18; size++)
-                Pigeonhole(size, size, _method);
+                Pigeonhole(size, size, 0, _method);
         }
 
         [DataRow(null)]
@@ -97,23 +98,30 @@ namespace Tests
         public void PigeonholeSymmetricUNSAT(Model.ExactlyOneOfMethod? _method)
         {
             for (var size = 1; size < 9; size++)
-                Pigeonhole(size - 1, size, _method);
+                Pigeonhole(size - 1, size, 0, _method);
         }
 
         [DataRow(null)]
-        [DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyOneOfMethod.Commander)]
+        //[DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
+        //[DataRow(Model.ExactlyOneOfMethod.Commander)]
         //[DataRow(Model.ExactlyOneOfMethod.OneHot)]
         //[DataRow(Model.ExactlyOneOfMethod.Pairwise)]
         [DataRow(Model.ExactlyOneOfMethod.PairwiseTree)]
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
-        [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
+        //[DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
         [DataRow(Model.ExactlyOneOfMethod.UnaryCount)]
         [DataTestMethod]
         public void PigeonholeSymmetricUNSATDifficult(Model.ExactlyOneOfMethod? _method)
         {
-            Pigeonhole(11, 12, _method);
+            for (var seed = 0; seed < 4; seed++)
+            {
+                Pigeonhole(8, 9, seed, _method);
+                Pigeonhole(9, 10, seed + 1000, _method);
+                Pigeonhole(10, 11, seed + 2000, _method);
+                Pigeonhole(11, 12, seed + 3000, _method);
+                //Pigeonhole(12, 13, seed + 4000, _method);
+            }
         }
 
         [TestMethod]
@@ -201,7 +209,7 @@ namespace Tests
                 Verbosity = 0
             });
             var v = m.AddVars(N);
-            m.AddConstr(m.ExactlyOneOf(v,_method));
+            m.AddConstr(m.ExactlyOneOf(v, _method));
 
             for (var i = 0; i < N; i++)
             {
@@ -283,7 +291,7 @@ namespace Tests
                 var v = m.AddVars(100);
                 Assert.AreEqual(0, m.ClauseCount);
 
-                m.AddConstr(m.ExactlyOneOf(v.Select((v, i) => i % 3 == 0 ? v : !v),_method));
+                m.AddConstr(m.ExactlyOneOf(v.Select((v, i) => i % 3 == 0 ? v : !v), _method));
                 eoCC2 = m.ClauseCount;
             }
 
