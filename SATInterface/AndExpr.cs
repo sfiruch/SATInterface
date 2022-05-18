@@ -78,7 +78,7 @@ namespace SATInterface
                 if (res[i] is NotExpr ne && res.Contains(ne.inner))
                     return Model.False;
 
-            if (res.Length < 40)
+            if (res.Length < 10)
             {
                 for (var i = 0; i < res.Length; i++)
                     for (var j = i + 1; j < res.Length; j++)

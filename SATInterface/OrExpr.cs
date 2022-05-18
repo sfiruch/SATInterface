@@ -88,7 +88,7 @@ namespace SATInterface
             if (count == 1)
                 return res[0];
 
-            if (res.Length < 40)
+            if (res.Length < 10)
                 for (var i = 0; i < res.Length; i++)
                 {
                     if (res[i] is NotExpr ne && res.Contains(ne.inner))
@@ -135,14 +135,6 @@ namespace SATInterface
 
             if (model.OrCache.TryGetValue(this, out var res))
                 return res;
-
-            //{
-            //    var be = new BoolExpr[Elements.Length];
-            //    for (var i = 0; i < Elements.Length; i++)
-            //        be[i] = !Elements[i];
-            //    if (model.AndCache.TryGetValue((AndExpr)AndExpr.Create(be), out var resi))
-            //        return !resi;
-            //}
 
             model.OrCache[this] = res = model.AddVar();
 
