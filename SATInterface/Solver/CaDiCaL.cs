@@ -103,6 +103,11 @@ namespace SATInterface.Solver
             if (Model.Configuration.InitialPhase.HasValue)
                 CaDiCaLNative.ccadical_set_option(Handle, "phase", Model.Configuration.InitialPhase.Value ? 1 : 0);
 
+            var verbosity = Math.Max(0, Model.Configuration.Verbosity - 1);
+            CaDiCaLNative.ccadical_set_option(Handle, "quiet", verbosity == 0 ? 1 : 0);
+            CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
+            CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
+
             switch (Model.Configuration.ExpectedOutcome)
             {
                 case ExpectedOutcome.Sat:
