@@ -127,8 +127,8 @@ namespace SATInterface
         /// When LinExpr contains more variables than this threshold, use
         /// binary arithmetic for comparisons. Improved sequence counters
         /// will be used below this threshold.
-        /// Default: 12
+        /// Default: 3
         /// </summary>
-        public int LinExprBinaryComparisonThreshold = 12;
+        public int LinExprBinaryComparisonThreshold = 3;
     }
 }
