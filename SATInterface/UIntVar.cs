@@ -64,7 +64,8 @@ namespace SATInterface
             UB = _ub;
             bit = _bits;
 
-            Debug.Assert(UB == Unbounded || _bits.Length <= MaxBitsWithUB);
+            if (!(UB == Unbounded || _bits.Length <= MaxBitsWithUB))
+                Debug.Assert(UB == Unbounded || _bits.Length <= MaxBitsWithUB);
 
             if (_bits.Length <= MaxBitsWithUB)
             {
@@ -439,7 +440,7 @@ namespace SATInterface
                 sum[b] = (_b << b) * _a.Bits[b];
 
             var res = _a.Model.Sum(sum);
-            res.UB = (_a.UB == Unbounded || _b.UB == Unbounded) ? Unbounded : (_a.UB * _b.UB);
+            res.UB = (_a.UB == Unbounded || _b.UB == Unbounded || checked(_a.UB * (long)_b.UB) > MaxUB) ? Unbounded : checked(_a.UB * _b.UB);
             return res;
         }
 
@@ -530,7 +531,7 @@ namespace SATInterface
                 return _a;
 
             var bits = new BoolExpr[
-                (_a.UB == Unbounded || _b.UB == Unbounded || ((_a.UB + (long)_b.UB) > MaxUB))
+                (_a.UB == Unbounded || _b.UB == Unbounded || (checked(_a.UB + (long)_b.UB) > MaxUB))
                 ? (Math.Max(_a.Bits.Length, _b.Bits.Length) + 1)
                 : RequiredBitsForUB(_a.UB + _b.UB)];
 
@@ -542,7 +543,7 @@ namespace SATInterface
                     carry = !(_a.Model.AtMostOneOf(new[] { carry, _a.Bits[i], _b.Bits[i] }, Model.AtMostOneOfMethod.Pairwise).Flatten());
             }
 
-            return new UIntVar(_a.Model, (_a.UB == Unbounded || _b.UB == Unbounded || (_a.UB + (long)_b.UB) >= MaxUB) ? Unbounded : (_a.UB + _b.UB), bits);
+            return new UIntVar(_a.Model, (_a.UB == Unbounded || _b.UB == Unbounded || checked(_a.UB + (long)_b.UB) > MaxUB) ? Unbounded : checked(_a.UB + _b.UB), bits);
         }
     }
 }
