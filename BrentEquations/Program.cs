@@ -99,7 +99,6 @@ namespace BrentEquations
                 Console.WriteLine("No solution found.");
 
             Console.WriteLine("");
-            watch.Stop();
             Console.WriteLine($"Elapsed: {watch.Elapsed.TotalSeconds:F2}s");
             Console.WriteLine("");
             Console.WriteLine("Ciao!");
