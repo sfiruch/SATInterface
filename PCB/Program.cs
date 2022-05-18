@@ -112,22 +112,19 @@ namespace PCB
                         m.AddConstr(m.AtMostOneOf(sum));
                     }
 
-            var obj1 = new List<BoolExpr>();
-            var obj3 = new List<BoolExpr>();
+            var obj = new LinExpr();
             for (var y = 0; y < H; y++)
                 for (var x = 0; x < W; x++)
                     for (var c = 0; c < C; c++)
                     {
-                        obj1.Add(vXYLC[x, y, 0, c]);
-                        obj3.Add(vXYLC[x, y, 1, c]);
+                        obj.AddTerm(vXYLC[x, y, 0, c],1);
+                        obj.AddTerm(vXYLC[x, y, 1, c],3);
                     }
 
-            var vObj = m.Sum(obj1) + m.Sum(obj3) * 3;
-
-            m.Minimize(vObj, () =>
+            m.Minimize(obj, () =>
             {
                 Console.WriteLine();
-                Console.WriteLine($"Obj={vObj.X}");
+                Console.WriteLine($"Obj={obj.X}");
                 Console.WriteLine();
                 for (var y = H - 1; y >= 0; y--)
                 {
