@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -77,6 +78,11 @@ namespace SATInterface
                 }
             }
         }
+
+        /// <summary>
+        /// Returns the number of variables.
+        /// </summary>
+        public int Size => Weights.Count;
 
         /// <summary>
         /// Returns the value of this expression in a SAT model.
@@ -187,12 +193,12 @@ namespace SATInterface
         public static BoolExpr operator >=(LinExpr _a, LinExpr _b) => (_a - _b) >= 0;
         public static BoolExpr operator ==(LinExpr _a, LinExpr _b) => (_a - _b) == 0;
 
-        public static BoolExpr operator <(int _a, LinExpr _b) => (_a - _b) < 0;
-        public static BoolExpr operator <=(int _a, LinExpr _b) => (_a - _b) <= 0;
-        public static BoolExpr operator !=(int _a, LinExpr _b) => (_a - _b) != 0;
-        public static BoolExpr operator >(int _a, LinExpr _b) => (_a - _b) > 0;
-        public static BoolExpr operator >=(int _a, LinExpr _b) => (_a - _b) >= 0;
-        public static BoolExpr operator ==(int _a, LinExpr _b) => (_a - _b) == 0;
+        public static BoolExpr operator <(int _a, LinExpr _b) => _b > _a;
+        public static BoolExpr operator <=(int _a, LinExpr _b) => _b >= _a;
+        public static BoolExpr operator !=(int _a, LinExpr _b) => _b != _a;
+        public static BoolExpr operator >(int _a, LinExpr _b) => _b < _a;
+        public static BoolExpr operator >=(int _a, LinExpr _b) => _b <= _a;
+        public static BoolExpr operator ==(int _a, LinExpr _b) => _b == _a;
 
         public static BoolExpr operator <(LinExpr _a, int _b) => _a <= (_b - 1);
 
@@ -204,7 +210,7 @@ namespace SATInterface
             //convert to all-positive weights
             var posWeights = new List<(int Weight, BoolExpr Var)>();
             var offset = Offset;
-            var model = Weights.First().Key.Model;
+            var m = Weights.First().Key.Model;
             foreach (var e in Weights)
                 if (e.Value > 0)
                     posWeights.Add((e.Value, e.Key));
@@ -215,41 +221,39 @@ namespace SATInterface
                     offset += e.Value;
                 }
 
-
             var toSum = new List<UIntVar>();
+            var minWeightVars = new List<BoolExpr>();
             while (posWeights.Any())
             {
-                var minWeight = posWeights.Min(pw => pw.Weight);
-                var minWeightVars = posWeights.Where(pw => pw.Weight == minWeight).Select(pw => pw.Var).ToArray();
+                var minWeight = int.MaxValue;
+                foreach(var pw in posWeights)
+                {
+                    if(pw.Weight<minWeight)
+                    {
+                        minWeight=pw.Weight;
+                        minWeightVars.Clear();
+                    }
+                    if (pw.Weight == minWeight)
+                        minWeightVars.Add(pw.Var);
+                }
+
                 posWeights.RemoveAll(pw => pw.Weight == minWeight);
 
-                if (minWeightVars.Length == 1)
-                    toSum.Add(model.ITE(minWeightVars.Single(), model.AddUIntConst(minWeight), model.AddUIntConst(0)));
+                if (minWeightVars.Count == 1)
+                    toSum.Add(m.ITE(minWeightVars.Single(), m.AddUIntConst(minWeight), m.AddUIntConst(0)));
                 else
                 {
-                    var sum = model.SumUInt(minWeightVars);
+                    var sum = m.SumUInt(minWeightVars);
                     if (sum.UB > 0)
                     {
                         for (var i = 1; i < sum.Bits.Length; i++)
                             posWeights.Add((minWeight << i, sum.Bits[i]));
 
-                        toSum.Add(model.ITE(sum.Bits[0], model.AddUIntConst(minWeight), model.AddUIntConst(0)));
+                        toSum.Add(m.ITE(sum.Bits[0], m.AddUIntConst(minWeight), m.AddUIntConst(0)));
                     }
                 }
             }
-            return (UIntCache, UIntCacheOffset) = (model.Sum(CollectionsMarshal.AsSpan(toSum)), offset);
-
-
-            //return (UIntCache, UIntCacheOffset) = (model.Sum(posWeights
-            //    .GroupBy(vw => vw.Weight)
-            //    .Select(g => g.Count() == 1 ?
-            //        model.ITE(g.Single().Var, model.AddUIntConst(g.Key), model.AddUIntConst(0))
-            //        : (model.SumUInt(g.Select(e => e.Var)) * g.Key))
-            //    ), offset);
-
-            //return (UIntCache, UIntCacheOffset) = (model.Sum(posWeights
-            //    .Select(pw => model.ITE(pw.Var, model.AddUIntConst(pw.Weight), model.AddUIntConst(0)))
-            //    ), offset);
+            return (UIntCache, UIntCacheOffset) = (m.Sum(CollectionsMarshal.AsSpan(toSum)), offset);
         }
 
         private void ClearCached()
