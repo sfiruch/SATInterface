@@ -38,7 +38,7 @@ namespace BrentEquations
 
             watch.Start();
 
-            using var m = new Model();
+            using var m = new Model(new Configuration() { Solver = new SATInterface.Solver.Kissat() });
 
             var a = m.AddVars(ARows, ACols, NoOfProducts);
             var b = m.AddVars(BRows, BCols, NoOfProducts);
