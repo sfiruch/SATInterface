@@ -10,6 +10,40 @@ namespace Tests
     public class UIntTests
     {
         [TestMethod]
+        public void UIntGeLe()
+        {
+            var rng = new Random(123);
+            for (var i = 0; i < 1000; i++)
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+
+                var UB = rng.Next(100000) + 1;
+                var v = m.AddUIntVar(UB, true);
+
+                var cLB = rng.Next(UB + 20) - 10;
+                m.AddConstr(v >= cLB);
+
+                var cUB = rng.Next(UB + 20) - 10;
+                m.AddConstr(v <= cUB);
+
+                m.Solve();
+
+                if (cLB <= cUB && cLB <= UB && cUB >= 0)
+                {
+                    Assert.AreEqual(State.Satisfiable, m.State,$"UB={UB},{cLB}<=x<={cUB}");
+                    Assert.IsTrue(v.X >= cLB, $"UB={UB},{cLB}<=x<={cUB}");
+                    Assert.IsTrue(v.X <= cUB, $"UB={UB},{cLB}<=x<={cUB}");
+                    Assert.IsTrue(v.X <= UB, $"UB={UB},{cLB}<=x<={cUB}");
+                }
+                else
+                    Assert.AreEqual(State.Unsatisfiable, m.State, $"UB={UB},{cLB}<=x<={cUB}");
+            }
+        }
+
+        [TestMethod]
         public void UIntLessEqual()
         {
             foreach (var strategy in Enum.GetValues(typeof(OptimizationFocus)).Cast<OptimizationFocus>())
@@ -116,7 +150,7 @@ namespace Tests
                 var sumUBs = 0;
 
                 var vars = new List<UIntVar>();
-                for (var j = 0; j< 10; j++)
+                for (var j = 0; j < 10; j++)
                 {
                     var ub = rng.Next(100);
                     sumUBs += ub;
