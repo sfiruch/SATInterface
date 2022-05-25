@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <Version>4.7.2</Version>
+    <Version>4.8.0</Version>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -15,7 +15,7 @@
     <IncludeSource>true</IncludeSource>
     <PackageId>deiruch.SATInterface</PackageId>
     <Authors>Simon Felix</Authors>
-    <Description>Library to formulate and solve SAT problems in .NET. Includes CaDiCaL, Kissat and CryptoMiniSat as solvers.</Description>
+    <Description>Library to formulate and solve SAT problems in .NET. Includes CaDiCaL, Kissat, CryptoMiniSat and YalSAT as solvers.</Description>
     <Copyright>Copyright 2022 Simon Felix</Copyright>
   </PropertyGroup>
   <ItemGroup>
