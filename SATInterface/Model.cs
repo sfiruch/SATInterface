@@ -255,7 +255,7 @@ namespace SATInterface
         /// <param name="_obj"></param>
         /// <param name="_solutionCallback">Invoked for every incumbent solution.</param>
         public void Minimize(LinExpr _obj, Action? _solutionCallback = null)
-            => Maximize(-_obj, _solutionCallback, _minimization: true);
+            => Optimize(-_obj, _solutionCallback, _minimization: true);
 
         /// <summary>
         /// Maximizes the supplied LinExpr by solving multiple models sequentially.
@@ -263,7 +263,7 @@ namespace SATInterface
         /// <param name="_obj"></param>
         /// <param name="_solutionCallback">Invoked for every incumbent solution.</param>
         public void Maximize(LinExpr _obj, Action? _solutionCallback = null)
-            => Maximize(_obj, _solutionCallback, _minimization: false);
+            => Optimize(_obj, _solutionCallback, _minimization: false);
 
         /// <summary>
         /// This method can be called from a callback during optimization or enumeration to abort
@@ -460,7 +460,7 @@ namespace SATInterface
 
 
 
-        private void Maximize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
+        private void Optimize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
         {
             if (State == State.Unsatisfiable && !UnsatWithAssumptions)
                 return;
@@ -528,8 +528,8 @@ namespace SATInterface
                 //start search
                 var lb = _obj.X;
                 var ub = _obj.UB;
-                int objGELB = 0;
-                int? assumptionGE = null;
+                int objGELB = _obj.LB;
+                var assumptionGE = new List<int>();
                 while (lb != ub && !AbortOptimization)
                 {
                     if (Configuration.Verbosity > 0)
@@ -548,21 +548,21 @@ namespace SATInterface
                         _ => throw new NotImplementedException()
                     };
 
-                    //prehaps we already added this GE var, and the current
+                    //perhaps we already added this GE constraint, and the current
                     //round is only a repetition with additional lazy constraints?
-                    if (assumptionGE is null || objGELB != cur)
+                    if (assumptionGE.Count == 0 || objGELB != cur)
                     {
                         objGELB = cur;
                         var ge = (_obj >= cur).Flatten();
                         if (ge is BoolVar v)
-                            assumptionGE = v.Id;
+                            assumptionGE.Add(v.Id);
                         else if (ge is NotExpr ne && ne.inner is BoolVar iv)
-                            assumptionGE = -iv.Id;
+                            assumptionGE.Add(-iv.Id);
                         else
                             throw new Exception();
                     }
 
-                    (var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, new[] { assumptionGE.Value });
+                    (var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, assumptionGE.ToArray());
                     if (subState == State.Satisfiable)
                     {
                         Debug.Assert(assignment is not null);
@@ -590,6 +590,7 @@ namespace SATInterface
                     else if (subState == State.Unsatisfiable)
                     {
                         ub = cur - 1;
+                        assumptionGE.Clear();
                     }
                     else
                     {
@@ -768,7 +769,7 @@ namespace SATInterface
         public LinExpr Sum(IEnumerable<LinExpr> _elems)
         {
             var le = new LinExpr();
-            foreach(var l in _elems)
+            foreach (var l in _elems)
                 le.AddTerm(l);
             return le;
         }
