@@ -127,8 +127,11 @@ namespace Tests
             var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
+            m.Or(v).Flatten();
+            var orFlattened = m.ClauseCount;
+
             m.AddConstr(m.Sum(v) >= 1);
-            Assert.AreEqual(1, m.ClauseCount);
+            Assert.IsTrue(m.ClauseCount == orFlattened * 2 || m.ClauseCount == orFlattened + 1);
         }
 
         [TestMethod]
@@ -141,8 +144,11 @@ namespace Tests
             var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
+            m.Or(v).Flatten();
+            var orFlattened = m.ClauseCount;
+
             m.AddConstr(-m.Sum(v) <= -1);
-            Assert.AreEqual(1, m.ClauseCount);
+            Assert.IsTrue(m.ClauseCount == orFlattened * 2 + 1 || m.ClauseCount == orFlattened + 1);
         }
 
         [TestMethod]
@@ -155,8 +161,11 @@ namespace Tests
             var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
+            m.Or(v).Flatten();
+            var orFlattened = m.ClauseCount;
+
             m.AddConstr(m.Sum(v) != 0);
-            Assert.AreEqual(1, m.ClauseCount);
+            Assert.IsTrue(m.ClauseCount == orFlattened * 2 + 1 || m.ClauseCount == orFlattened + 1);
         }
 
         [TestMethod]
@@ -169,8 +178,11 @@ namespace Tests
             var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
+            m.Or(v).Flatten();
+            var orFlattened = m.ClauseCount;
+
             m.AddConstr(m.Sum(v.Select((v, i) => i % 3 == 0 ? v : !v)) != 0);
-            Assert.AreEqual(1, m.ClauseCount);
+            Assert.IsTrue(m.ClauseCount == orFlattened * 2 + 1 || m.ClauseCount == orFlattened + 1);
         }
 
         [TestMethod]
@@ -183,8 +195,11 @@ namespace Tests
             var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
+            m.Or(v).Flatten();
+            var orFlattened = m.ClauseCount;
+
             m.AddConstr(m.Sum(v.Select((v, i) => i % 3 == 0 ? v : !v)) >= 1);
-            Assert.AreEqual(1, m.ClauseCount);
+            Assert.IsTrue(m.ClauseCount == orFlattened * 2 + 1 || m.ClauseCount == orFlattened + 1);
         }
 
         [TestMethod]
