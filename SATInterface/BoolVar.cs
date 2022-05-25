@@ -12,8 +12,7 @@ namespace SATInterface
     {
         internal readonly int Id;
         internal bool Value;
-        internal readonly Model Model;
-        private readonly string? Name;
+        internal readonly Model? Model;
         private BoolExpr? negated;
 
         internal BoolExpr Negated
@@ -28,10 +27,9 @@ namespace SATInterface
 
         public override BoolExpr Flatten() => this;
 
-        internal BoolVar(Model _model, string? _name = null)
+        internal BoolVar(Model _model)
         {
             Model = _model;
-            Name = _name;
             Id = _model.VariableCount + 1;
             Model.RegisterVariable(this);
         }
@@ -40,15 +38,13 @@ namespace SATInterface
         /// This is only used for the global True and False constants which should be
         /// short-circuited away anyway before hitting the solver.
         /// </summary>
-        /// <param name="_name"></param>
-        internal BoolVar(string _name, int _id)
+        internal BoolVar(int _id)
         {
-            Name = _name;
             Model = null!;
             Id = _id;
         }
 
-        public override string ToString() => Name ?? $"b{Id}";
+        public override string ToString() => $"b{Id}";
 
         public override bool X
         {
@@ -59,7 +55,7 @@ namespace SATInterface
                 if (ReferenceEquals(this, Model.False))
                     return false;
 
-                if (Model.State == State.Unsatisfiable)
+                if (Model!.State == State.Unsatisfiable)
                     throw new InvalidOperationException("Model is UNSAT");
 
                 return Value;
@@ -72,9 +68,7 @@ namespace SATInterface
         {
             yield return this;
         }
-        internal override Model GetModel() => Model;
-
-        public UIntVar ToUIntVar() => new UIntVar(Model, 1, new[] { this });
+        internal override Model? GetModel() => Model;
 
         public override int GetHashCode() => Id;
 

@@ -15,12 +15,9 @@ namespace SATInterface
     {
         private Dictionary<BoolVar, int> Weights;
         private int Offset;
-
+        
+        private Model? Model;
         private LinExpr? Negated;
-        private Dictionary<int, BoolExpr>[]? HasValueXCache;
-        private Dictionary<int, BoolExpr>[]? HasValueAtLeastXCache;
-        private UIntVar? UIntCache;
-        private int UIntCacheOffset; //offset has to be added to UIntCache value, may be negative
 
         public LinExpr(int _c = 0)
         {
@@ -33,11 +30,12 @@ namespace SATInterface
             if (_src.UB == UIntVar.Unbounded)
                 throw new ArgumentException($"Only bounded variables supported");
 
+            Model = _src.Model;
+
             Weights = new Dictionary<BoolVar, int>();
             Offset = 0;
             for (var i = 0; i < _src.Bits.Length; i++)
                 AddTerm(_src.bit[i], 1 << i);
-            UIntCache = _src;
         }
 
         /// <summary>
@@ -47,9 +45,6 @@ namespace SATInterface
         {
             get
             {
-                if (!(UIntCache is null) && UIntCache.UB != UIntVar.Unbounded)
-                    return UIntCache.UB;
-
                 checked
                 {
                     var res = Offset;
@@ -202,15 +197,15 @@ namespace SATInterface
 
         public static BoolExpr operator <(LinExpr _a, int _b) => _a <= (_b - 1);
 
-        private (UIntVar Var, int Offset) ToUInt()
+        private UIntVar ToUInt()
         {
-            if (!(UIntCache is null))
-                return (UIntCache, UIntCacheOffset);
+            Debug.Assert(Model is not null);
+
+            if (Model.UIntCache.TryGetValue(this, out var res))
+                return res;
 
             //convert to all-positive weights
             var posWeights = new List<(int Weight, BoolExpr Var)>();
-            var offset = Offset;
-            var m = Weights.First().Key.Model;
             foreach (var e in Weights)
                 if (e.Value > 0)
                     posWeights.Add((e.Value, e.Key));
@@ -218,7 +213,6 @@ namespace SATInterface
                 {
                     Debug.Assert(e.Value < 0);
                     posWeights.Add((-e.Value, !e.Key));
-                    offset += e.Value;
                 }
 
             var toSum = new List<UIntVar>();
@@ -226,11 +220,11 @@ namespace SATInterface
             while (posWeights.Any())
             {
                 var minWeight = int.MaxValue;
-                foreach(var pw in posWeights)
+                foreach (var pw in posWeights)
                 {
-                    if(pw.Weight<minWeight)
+                    if (pw.Weight < minWeight)
                     {
-                        minWeight=pw.Weight;
+                        minWeight = pw.Weight;
                         minWeightVars.Clear();
                     }
                     if (pw.Weight == minWeight)
@@ -240,28 +234,26 @@ namespace SATInterface
                 posWeights.RemoveAll(pw => pw.Weight == minWeight);
 
                 if (minWeightVars.Count == 1)
-                    toSum.Add(m.ITE(minWeightVars.Single(), m.AddUIntConst(minWeight), m.AddUIntConst(0)));
+                    toSum.Add(Model.ITE(minWeightVars.Single(), Model.AddUIntConst(minWeight), Model.AddUIntConst(0)));
                 else
                 {
-                    var sum = m.SumUInt(minWeightVars);
+                    var sum = Model.SumUInt(minWeightVars);
                     if (sum.UB > 0)
                     {
                         for (var i = 1; i < sum.Bits.Length; i++)
                             posWeights.Add((minWeight << i, sum.Bits[i]));
 
-                        toSum.Add(m.ITE(sum.Bits[0], m.AddUIntConst(minWeight), m.AddUIntConst(0)));
+                        toSum.Add(Model.ITE(sum.Bits[0], Model.AddUIntConst(minWeight), Model.AddUIntConst(0)));
                     }
                 }
             }
-            return (UIntCache, UIntCacheOffset) = (m.Sum(CollectionsMarshal.AsSpan(toSum)), offset);
+
+            return Model.UIntCache[this] = Model.Sum(CollectionsMarshal.AsSpan(toSum));
         }
 
         private void ClearCached()
         {
             Negated = null;
-            HasValueXCache = null;
-            HasValueAtLeastXCache = null;
-            UIntCache = null;
         }
 
         private BoolExpr HasValueAtLeastX(int _x)
@@ -272,13 +264,22 @@ namespace SATInterface
             if (Weights.Count == 0)
                 return Model.False;
 
+            Debug.Assert(Model is not null);
+
             var w = Weights.Select(w => (Var: w.Value > 0 ? w.Key : !w.Key, Weight: Math.Abs(w.Value))).OrderByDescending(e => e.Weight).ToArray();
-            return HasValueAtLeastX(_x, 0, w.Sum(e => e.Weight), w, Weights.First().Key.Model);
+            if (!Model.LinExprHasValueAtLeastXCache.TryGetValue(this, out var cache))
+            {
+                Model.LinExprHasValueAtLeastXCache[this] = cache = new Dictionary<int, BoolExpr>[w.Length];
+                for (var i = 0; i < w.Length; i++)
+                    cache[i] = new();
+            }
+            return HasValueAtLeastX(_x, 0, w.Sum(e => e.Weight), w, cache);
         }
 
-        private BoolExpr HasValueAtLeastX(int _x, int _i, int _ub, (BoolExpr Var, int Weight)[] _weights, Model _m)
+        private BoolExpr HasValueAtLeastX(int _x, int _i, int _ub, (BoolExpr Var, int Weight)[] _weights, Dictionary<int, BoolExpr>[] _cache)
         {
             Debug.Assert(_ub >= 0);
+            Debug.Assert(Model is not null);
 
             if (_x <= 0)
                 return Model.True;
@@ -286,22 +287,13 @@ namespace SATInterface
             if (_x > _ub || _i >= _weights.Length)
                 return Model.False;
 
-            if (HasValueAtLeastXCache is null)
-            {
-                HasValueAtLeastXCache = new Dictionary<int, BoolExpr>[_weights.Length];
-                for (var i = 0; i < _weights.Length; i++)
-                    HasValueAtLeastXCache[i] = new();
-            }
-
-            if (!HasValueAtLeastXCache[_i].TryGetValue(_x, out var res))
-                HasValueAtLeastXCache[_i][_x] = res = _m.ITE(_weights[_i].Var,
-                    HasValueAtLeastX(_x - _weights[_i].Weight, _i + 1, _ub - _weights[_i].Weight, _weights, _m),
-                    HasValueAtLeastX(_x, _i + 1, _ub - _weights[_i].Weight, _weights, _m));
+            if (!_cache[_i].TryGetValue(_x, out var res))
+                _cache[_i][_x] = res = Model.ITE(_weights[_i].Var,
+                    HasValueAtLeastX(_x - _weights[_i].Weight, _i + 1, _ub - _weights[_i].Weight, _weights, _cache),
+                    HasValueAtLeastX(_x, _i + 1, _ub - _weights[_i].Weight, _weights, _cache));
 
             return res;
         }
-
-
 
 
         private BoolExpr HasValueX(int _x)
@@ -312,13 +304,24 @@ namespace SATInterface
             if (Weights.Count == 0)
                 return _x == 0 ? Model.True : Model.False;
 
+            Debug.Assert(Model is not null);
+
             var w = Weights.Select(w => (Var: w.Value > 0 ? w.Key : !w.Key, Weight: Math.Abs(w.Value))).OrderByDescending(e => e.Weight).ToArray();
-            return HasValueX(_x, 0, w.Sum(e => e.Weight), w, Weights.First().Key.Model);
+
+            if (!Model.LinExprHasValueXCache.TryGetValue(this, out var cache))
+            {
+                Model.LinExprHasValueXCache[this] = cache = new Dictionary<int, BoolExpr>[w.Length];
+                for (var i = 0; i < w.Length; i++)
+                    cache[i] = new();
+            }
+
+            return HasValueX(_x, 0, w.Sum(e => e.Weight), w, cache);
         }
 
-        private BoolExpr HasValueX(int _x, int _i, int _ub, (BoolExpr Var, int Weight)[] _weights, Model _m)
+        private BoolExpr HasValueX(int _x, int _i, int _ub, (BoolExpr Var, int Weight)[] _weights, Dictionary<int, BoolExpr>[] _cache)
         {
             Debug.Assert(_ub >= 0);
+            Debug.Assert(Model is not null);
 
             if (_x < 0 || _x > _ub)
                 return Model.False;
@@ -326,29 +329,25 @@ namespace SATInterface
             if (_i >= _weights.Length)
                 return _x == 0 ? Model.True : Model.False;
 
-            if (HasValueXCache is null)
-            {
-                HasValueXCache = new Dictionary<int, BoolExpr>[_weights.Length];
-                for (var i = 0; i < _weights.Length; i++)
-                    HasValueXCache[i] = new();
-            }
-
-            if (!HasValueXCache[_i].TryGetValue(_x, out var res))
-                HasValueXCache[_i][_x] = res = _m.ITE(_weights[_i].Var,
-                    HasValueX(_x - _weights[_i].Weight, _i + 1, _ub - _weights[_i].Weight, _weights, _m),
-                    HasValueX(_x, _i + 1, _ub - _weights[_i].Weight, _weights, _m));
+            if (!_cache[_i].TryGetValue(_x, out var res))
+                _cache[_i][_x] = res = Model.ITE(_weights[_i].Var,
+                    HasValueX(_x - _weights[_i].Weight, _i + 1, _ub - _weights[_i].Weight, _weights, _cache),
+                    HasValueX(_x, _i + 1, _ub - _weights[_i].Weight, _weights, _cache));
 
             return res;
         }
 
 
+        private static int GCD(int a, int b) => b == 0 ? a : GCD(b, a % b);
+
         public static BoolExpr operator <=(LinExpr _a, int _b)
         {
-            //TODO: catch cases when UB==_b-smallest or LB==_b or LB==_b+smallest
             if (_a.UB <= _b)
                 return Model.True;
             if (_a.LB > _b)
                 return Model.False;
+
+            Debug.Assert(_a.Model is not null);
 
             var rhs = _b - _a.Offset;
             var ub = 0;
@@ -364,11 +363,24 @@ namespace SATInterface
             if (rhs == 0)
                 return AndExpr.Create(_a.Weights.Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
 
-            var m = _a.Weights.Keys.First().Model;
+            if (_a.Weights.Any(w => Math.Abs(w.Value) > rhs))
+            {
+                var vWithout = new LinExpr();
+                foreach (var w in _a.Weights)
+                    if (w.Value > 0 && w.Value <= rhs)
+                        vWithout.AddTerm(w.Key, w.Value);
+                    else if (w.Value < 0 && -w.Value <= rhs)
+                        vWithout.AddTerm(!w.Key, -w.Value);
+
+                return _a.Model.And(_a.Weights
+                    .Where(w => Math.Abs(w.Value) > rhs)
+                    .Select(w => w.Value > 0 ? !w.Key : w.Key)
+                    .Append(vWithout <= rhs));
+            }
 
             var smallest = _a.Weights.Values.Min(v => Math.Abs(v));
             if (rhs == smallest)
-                return m.AtMostOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == smallest).Select(w => w.Value > 0 ? w.Key : !w.Key))
+                return _a.Model.AtMostOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == smallest).Select(w => w.Value > 0 ? w.Key : !w.Key))
                     & AndExpr.Create(_a.Weights.Where(w => Math.Abs(w.Value) > smallest).Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
 
             //recognize implications
@@ -385,15 +397,48 @@ namespace SATInterface
             }
 
             if (rhs == 1 && _a.Weights.Values.All(v => Math.Abs(v) == 1))
-                return m.AtMostOneOf(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key));
+                return _a.Model.AtMostOneOf(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key));
+
+            var gcd = _a.Weights.Values.Select(w => Math.Abs(w)).Where(w => w < rhs).Aggregate(GCD);
+            if (gcd > 1)
+            {
+                var vDiv = new LinExpr();
+                foreach (var w in _a.Weights)
+                    if (w.Value > 0)
+                        vDiv.AddTerm(w.Key, Math.Min(rhs, w.Value) / gcd);
+                    else if (w.Value < 0)
+                        vDiv.AddTerm(!w.Key, Math.Min(rhs, -w.Value) / gcd);
+                return vDiv <= rhs / gcd;
+            }
+
+            if (_a.Weights.Values.Count(v => Math.Abs(v) == rhs) >= 2)
+            {
+                var vWithout = new LinExpr();
+                foreach (var w in _a.Weights)
+                    if (w.Value > 0 && w.Value != rhs)
+                        vWithout.AddTerm(w.Key, w.Value);
+                    else if (w.Value < 0 && -w.Value != rhs)
+                        vWithout.AddTerm(!w.Key, -w.Value);
+
+                var vRHS = _a.Weights.Where(v => Math.Abs(v.Value) == rhs)
+                    .Select(v => v.Value > 0 ? v.Key : !v.Key).ToArray();
+
+                if (vWithout.Weights.Any())
+                    return _a.Model.And(
+                        _a.Model.AtMostOneOf(vRHS),
+                        vWithout <= rhs,
+                        !_a.Model.Or(vRHS) | vWithout == 0);
+                else
+                    return _a.Model.AtMostOneOf(vRHS);
+            }
 
             if (rhs > ub / 2)
                 return !(-_a <= (-_b - 1));
 
-            if (_a.Weights.Count <= m.Configuration.LinExprBinaryComparisonThreshold)
+            if (_a.Weights.Count <= _a.Model.Configuration.LinExprBinaryComparisonThreshold)
                 return !_a.HasValueAtLeastX(rhs + 1);
             else
-                return _a.ToUInt().Var <= rhs;
+                return _a.ToUInt() <= rhs;
         }
 
         public static BoolExpr operator ==(LinExpr _a, int _b)
@@ -404,10 +449,16 @@ namespace SATInterface
             if (_a.LB == _a.UB)
                 return _a.LB == _b ? Model.True : Model.False;
 
+            Debug.Assert(_a.Model is not null);
+
+            var ub = 0;
             var rhs = _b - _a.Offset;
             foreach (var e in _a.Weights)
+            {
+                ub += Math.Abs(e.Value);
                 if (e.Value < 0)
                     rhs -= e.Value;
+            }
 
             Debug.Assert(rhs >= 0);
             Debug.Assert(rhs <= _a.Weights.Sum(x => Math.Abs(x.Value)));
@@ -415,17 +466,75 @@ namespace SATInterface
             if (rhs == 0)
                 return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key).ToArray());
 
-            var m = _a.Weights.First().Key.Model;
+            if (_a.Weights.Any(w => Math.Abs(w.Value) > rhs))
+            {
+                var vWithout = new LinExpr();
+                foreach (var w in _a.Weights)
+                    if (w.Value > 0 && w.Value <= rhs)
+                        vWithout.AddTerm(w.Key, w.Value);
+                    else if (w.Value < 0 && -w.Value <= rhs)
+                        vWithout.AddTerm(!w.Key, -w.Value);
 
-            var smallest = _a.Weights.Values.OrderBy(v => Math.Abs(v)).First();
+                return _a.Model.And(_a.Weights
+                    .Where(w => Math.Abs(w.Value) > rhs)
+                    .Select(w => w.Value > 0 ? !w.Key : w.Key)
+                    .Append(vWithout == rhs));
+            }
+
+            var smallest = _a.Weights.Values.Min(v => Math.Abs(v));
             if (rhs == smallest)
-                return m.ExactlyOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == smallest).Select(w => w.Value > 0 ? w.Key : !w.Key))
+                return _a.Model.ExactlyOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == smallest).Select(w => w.Value > 0 ? w.Key : !w.Key))
                     & AndExpr.Create(_a.Weights.Where(w => Math.Abs(w.Value) != smallest).Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
 
-            if (_a.Weights.Count <= m.Configuration.LinExprBinaryComparisonThreshold)
+            var gcd = _a.Weights.Values.Select(w => Math.Abs(w)).Aggregate(GCD);
+            if (rhs % gcd != 0)
+                return Model.False;
+
+            if (gcd > 1)
+            {
+                var vDiv = new LinExpr();
+                foreach (var w in _a.Weights)
+                    if (w.Value > 0)
+                        vDiv.AddTerm(w.Key, w.Value / gcd);
+                    else if (w.Value < 0)
+                        vDiv.AddTerm(!w.Key, -w.Value / gcd);
+                return vDiv == rhs / gcd;
+            }
+
+            if (_a.Weights.Values.Count(v => Math.Abs(v) == rhs) >= 2)
+            {
+                var vWithout = new LinExpr();
+                foreach (var w in _a.Weights)
+                    if (w.Value > 0 && w.Value != rhs)
+                        vWithout.AddTerm(w.Key, w.Value);
+                    else if (w.Value < 0 && -w.Value != rhs)
+                        vWithout.AddTerm(!w.Key, -w.Value);
+
+                var vRHS = _a.Weights.Where(v => Math.Abs(v.Value) == rhs)
+                    .Select(v => v.Value > 0 ? v.Key : !v.Key).ToArray();
+
+                if (vWithout.Weights.Any())
+                    return _a.Model.Or(
+_a.Model.ExactlyOneOf(vRHS) & vWithout == 0,
+                        !_a.Model.Or(vRHS) & vWithout == rhs);
+                else
+                    return _a.Model.ExactlyOneOf(vRHS);
+            }
+
+            if (rhs > ub / 2)
+            {
+                var pos = new LinExpr();
+                foreach (var e in _a.Weights)
+                    pos.AddTerm(e.Key, -Math.Abs(e.Value));
+
+                return pos == -rhs;
+            }
+
+            //Console.WriteLine(_a.Weights.Count + $"\t{_a} = {rhs}");
+            if (_a.Weights.Count <= _a.Model.Configuration.LinExprBinaryComparisonThreshold)
                 return _a.HasValueX(rhs);
             else
-                return _a.ToUInt().Var == rhs;
+                return _a.ToUInt() == rhs;
         }
 
         public override string ToString()
@@ -460,41 +569,7 @@ namespace SATInterface
 
         public static BoolExpr operator !=(LinExpr _a, int _b) => !(_a == _b);
         public static BoolExpr operator >(LinExpr _a, int _b) => -_a < -_b;
-        public static BoolExpr operator >=(LinExpr _a, int _b)
-        {
-            //TODO: catch cases when UB==_b or LB==_b
-            /*if (_a.LB >= _b)
-                return Model.True;
-            if (_a.UB < _b)
-                return Model.False;
-
-            if (_a.Weights.Values.All(v => v < 0))
-            {
-                var largest = _a.Weights.Values.Max();
-                if (_b - _a.Offset == largest)
-                {
-                    var m = _a.Weights.Keys.First().Model;
-                    return m.AtMostOneOf(_a.Weights.Where(w => w.Value == largest).Select(w => w.Key))
-                        & AndExpr.Create(_a.Weights.Where(w => w.Value < largest).Select(w => !w.Key).ToArray());
-                }
-            }
-
-            var rhs = _b - _a.Offset;
-            foreach (var e in _a.Weights)
-                if (e.Value < 0)
-                    rhs -= e.Value;
-
-            Debug.Assert(rhs >= 1); //because of the early Model.False abort above
-
-            if (rhs == 1)
-                return OrExpr.Create(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key).ToArray());
-            
-            return (-_a) <= -_b;*/
-
-            return !(_a <= (_b - 1));
-        }
-
-
+        public static BoolExpr operator >=(LinExpr _a, int _b) => !(_a <= (_b - 1));
         public static explicit operator LinExpr(int _const) => new LinExpr() { Offset = _const };
 
         public static explicit operator LinExpr(BoolExpr _be)
@@ -509,6 +584,9 @@ namespace SATInterface
             get => Weights.TryGetValue(_bv, out var weight) ? weight : 0;
             set
             {
+                if (_bv.Model is not null)
+                    Model = _bv.Model;
+
                 if (value == 0)
                     Weights.Remove(_bv);
                 else
@@ -541,9 +619,16 @@ namespace SATInterface
                 //do nothing
             }
             else if (be is BoolVar bv)
+            {
+                if (bv.Model is not null)
+                    Model = bv.Model;
                 this[bv] += _weight;
+            }
             else if (be is NotExpr ne)
             {
+                if (ne.inner.Model is not null)
+                    Model = ne.inner.Model;
+
                 Offset += _weight;
                 this[ne.inner] -= _weight;
             }

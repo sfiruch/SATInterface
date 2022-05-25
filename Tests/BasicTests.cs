@@ -69,7 +69,7 @@ namespace Tests
                 Verbosity = 0,
                 OptimizationFocus = _focus
             });
-            m.Maximize((LinExpr)0);
+            m.Maximize(new LinExpr());
             Assert.AreEqual(State.Satisfiable, m.State);
         }
     }

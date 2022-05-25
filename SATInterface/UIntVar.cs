@@ -40,7 +40,7 @@ namespace SATInterface
             IEnumerator IEnumerable.GetEnumerator() => Parent.bit.GetEnumerator();
         }
 
-        private Model Model;
+        internal Model Model;
         internal BoolExpr[] bit;
         internal int UB;
 
@@ -148,14 +148,20 @@ namespace SATInterface
 
         public override bool Equals(object? obj)
         {
-            var other = obj as UIntVar;
-            if (ReferenceEquals(other, null))
+            if (obj is not UIntVar other)
                 return false;
 
             return other.UB == UB && ReferenceEquals(other.Model, Model) && other.bit.SequenceEqual(bit);
         }
 
-        public override int GetHashCode() => bit.Select(be => be.GetHashCode()).Aggregate((a, b) => a ^ b) ^ (1 << 26) ^ UB;
+        public override int GetHashCode()
+        {
+            var hc = new HashCode();
+            hc.Add(UB);
+            foreach (var be in bit)
+                hc.Add(be.GetHashCode());
+            return hc.ToHashCode();
+        }
 
         /// <summary>
         /// Allocates a unsigned integer constant. Most operations with such a constant will be short-
@@ -451,6 +457,7 @@ namespace SATInterface
                 return _a;
 
             var bits = new BoolExpr[(_a.UB == Unbounded) ? _a.Bits.Length + 1 : RequiredBitsForUB(_a.UB + 1)];
+            var m = _a.Model;
 
             var carry = _b;
             for (var i = 0; i < bits.Length; i++)
@@ -459,10 +466,22 @@ namespace SATInterface
 
                 if (i < bits.Length - 1)
                 {
+                    var oldCarry = carry;
                     carry = (_a.Bits[i] & carry).Flatten();
 
                     //unitprop
-                    _a.Model.AddConstr(OrExpr.Create(bits[i], carry, !_a.Bits[i]));
+                    if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.PartialArith))
+                    {
+                        m.AddConstr(OrExpr.Create(carry, bits[i], !(i == 0 ? _b : Model.False)));
+                        m.AddConstr(OrExpr.Create(!carry, !bits[i], i == 0 ? _b : Model.False));
+                    }
+                    if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
+                    {
+                        m.AddConstr(OrExpr.Create(carry, bits[i], !_a.Bits[i]));
+                        m.AddConstr(OrExpr.Create(carry, bits[i], !oldCarry));
+                        m.AddConstr(OrExpr.Create(!carry, !bits[i], _a.Bits[i]));
+                        m.AddConstr(OrExpr.Create(!carry, !bits[i], oldCarry));
+                    }
                 }
             }
 
@@ -530,6 +549,13 @@ namespace SATInterface
             if (_b.UB == 0)
                 return _a;
 
+            var m = _a.Model;
+
+            if (m.UIntSumCache.TryGetValue((_a, _b), out var res))
+                return res;
+            if (m.UIntSumCache.TryGetValue((_b, _a), out res))
+                return res;
+
             var bits = new BoolExpr[
                 (_a.UB == Unbounded || _b.UB == Unbounded || (checked(_a.UB + (long)_b.UB) > MaxUB))
                 ? (Math.Max(_a.Bits.Length, _b.Bits.Length) + 1)
@@ -540,10 +566,36 @@ namespace SATInterface
             {
                 bits[i] = (carry ^ _a.Bits[i] ^ _b.Bits[i]).Flatten();
                 if (i < bits.Length - 1)
-                    carry = !(_a.Model.AtMostOneOf(new[] { carry, _a.Bits[i], _b.Bits[i] }, Model.AtMostOneOfMethod.Pairwise).Flatten());
+                {
+                    var oldCarry = carry;
+                    carry = !(m.AtMostOneOf(new[] { carry, _a.Bits[i], _b.Bits[i] }, Model.AtMostOneOfMethod.Pairwise).Flatten());
+
+                    //unitprop
+                    if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
+                    {
+                        m.AddConstr(OrExpr.Create(!carry, !bits[i], _a.Bits[i]));
+                        m.AddConstr(OrExpr.Create(!carry, !bits[i], _b.Bits[i]));
+                        m.AddConstr(OrExpr.Create(!carry, !bits[i], oldCarry));
+                        m.AddConstr(OrExpr.Create(carry, bits[i], !_b.Bits[i]));
+                        m.AddConstr(OrExpr.Create(carry, bits[i], !_a.Bits[i]));
+                        m.AddConstr(OrExpr.Create(carry, bits[i], !oldCarry));
+                    }
+                    else if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.PartialArith))
+                    {
+                        if (ReferenceEquals(_a.Bits[i], Model.False) |
+                            ReferenceEquals(_b.Bits[i], Model.False) |
+                            ReferenceEquals(oldCarry, Model.False))
+                            m.AddConstr(OrExpr.Create(!carry, !bits[i]));
+
+                        if (ReferenceEquals(_a.Bits[i], Model.True) |
+                            ReferenceEquals(_b.Bits[i], Model.True) |
+                            ReferenceEquals(oldCarry, Model.True))
+                            m.AddConstr(OrExpr.Create(carry, bits[i]));
+                    }
+                }
             }
 
-            return new UIntVar(_a.Model, (_a.UB == Unbounded || _b.UB == Unbounded || checked(_a.UB + (long)_b.UB) > MaxUB) ? Unbounded : checked(_a.UB + _b.UB), bits);
+            return m.UIntSumCache[(_a, _b)] = new UIntVar(m, (_a.UB == Unbounded || _b.UB == Unbounded || checked(_a.UB + (long)_b.UB) > MaxUB) ? Unbounded : checked(_a.UB + _b.UB), bits);
         }
     }
 }

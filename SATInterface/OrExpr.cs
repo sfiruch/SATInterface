@@ -85,7 +85,7 @@ namespace SATInterface
 
             Debug.Assert(count == res.Length);
 
-            if (count == 1)
+            if (res.Length == 1)
                 return res[0];
 
             if (res.Length < 10)
@@ -124,6 +124,20 @@ namespace SATInterface
                     return OrExpr.Create(distinct);
             }
 
+            var m = res[0].GetModel()!;
+
+            //work around O(n^2)-algorithms in SAT solvers
+            if (res.Length > m.Configuration.MaxClauseSize)
+            {
+                var chunkSize = m.Configuration.MaxClauseSize - 1;
+                var l = new BoolExpr[(count + chunkSize - 1) / chunkSize];
+                for (var i = 0; i < l.Length; i++)
+                    l[i] = OrExpr.Create(res.AsSpan()[(i * chunkSize)..Math.Min(res.Length, (i + 1) * chunkSize)]).Flatten();
+
+                return OrExpr.Create(l);
+            }
+
+
             return new OrExpr(res);
         }
 
@@ -131,22 +145,24 @@ namespace SATInterface
 
         public override BoolExpr Flatten()
         {
-            var model = GetModel();
+            if (Elements.Length == 0)
+                return Model.False;
 
-            if (model.OrCache.TryGetValue(this, out var res))
+            var m = GetModel()!;
+            if (m.OrCache.TryGetValue(this, out var res))
                 return res;
 
-            model.OrCache[this] = res = model.AddVar();
+            m.OrCache[this] = res = m.AddVar();
 
             var l = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length + 1);
             for (var i = 0; i < Elements.Length; i++)
                 l[i] = Elements[i];
             l[Elements.Length] = !res;
-            model.AddConstr(OrExpr.Create(l.AsSpan().Slice(0, Elements.Length + 1)));
+            m.AddConstr(OrExpr.Create(l.AsSpan().Slice(0, Elements.Length + 1)));
             ArrayPool<BoolExpr>.Shared.Return(l);
 
             foreach (var e in Elements)
-                model.AddConstr(!e | res);
+                m.AddConstr(!e | res);
 
             return res;
         }
@@ -158,13 +174,13 @@ namespace SATInterface
                     yield return v;
         }
 
-        internal override Model GetModel()
+        internal override Model? GetModel()
         {
             foreach (var e in Elements)
                 if (e.GetModel() is Model m)
                     return m;
 
-            throw new InvalidOperationException();
+            return null;
         }
 
         public override bool X => Elements.Any(e => e.X);

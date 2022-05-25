@@ -48,6 +48,35 @@ namespace SATInterface
         //RandomSampledAssignment
     }
 
+    [Flags]
+    public enum ArcConstistencyClauses
+    {
+        /// <summary>
+        /// Do not add clauses for arc-consistency
+        /// </summary>
+        None = 0,
+
+        /// <summary>
+        /// Add arc-consistency for ITE
+        /// </summary>
+        ITE = 1,
+
+        /// <summary>
+        /// Add partial arc-consistency for UInt arithmetic
+        /// </summary>
+        PartialArith = 2,
+
+        /// <summary>
+        /// Add full arc-consistency for UInt arithmetic
+        /// </summary>
+        FullArith = 6,
+
+        /// <summary>
+        /// Add arc-consistency for UInt arithmetic and ITE
+        /// </summary>
+        All = 7
+    }
+
     public class Configuration
     {
         /// <summary>
@@ -127,8 +156,21 @@ namespace SATInterface
         /// When LinExpr contains more variables than this threshold, use
         /// binary arithmetic for comparisons. Improved sequence counters
         /// will be used below this threshold.
-        /// Default: 3
+        /// Default: 4
         /// </summary>
-        public int LinExprBinaryComparisonThreshold = 3;
+        public int LinExprBinaryComparisonThreshold = 4;
+
+        /// <summary>
+        /// Break large clauses into multiple smaller clauses. This helps
+        /// to work around O(n^2)-algorithms in some solvers.
+        /// Default: 64
+        /// </summary>
+        public int MaxClauseSize = 64;
+
+        /// <summary>
+        /// Controls which redundant clauses are added for arc-consistency.
+        /// Default: ArcConstistencyClauses.PartialArith
+        /// </summary>
+        public ArcConstistencyClauses AddArcConstistencyClauses = ArcConstistencyClauses.None;
     }
 }

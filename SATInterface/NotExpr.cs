@@ -50,7 +50,7 @@ namespace SATInterface
             yield return inner;
         }
 
-        internal override Model GetModel() => inner.GetModel();
+        internal override Model? GetModel() => inner.GetModel();
 
         public override string ToString() => "!" + inner;
 

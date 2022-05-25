@@ -40,6 +40,17 @@ namespace SATInterface
             }
         }
 
+        public static LinExpr operator +(BoolExpr _a, BoolExpr _b)
+        {
+            var le = new LinExpr();
+            le.AddTerm(_a);
+            le.AddTerm(_b);
+            return le;
+        }
+
+        public static LinExpr operator +(int _a, BoolExpr _b) => (LinExpr)_b + _a;
+        public static LinExpr operator +(BoolExpr _b, int _a) => (LinExpr)_b + _a;
+
         public static LinExpr operator *(int _a, BoolExpr _b) => (LinExpr)_b * _a;
         public static LinExpr operator *(BoolExpr _b, int _a) => (LinExpr)_b * _a;
 
@@ -54,7 +65,7 @@ namespace SATInterface
             yield break;
         }
 
-        internal abstract Model GetModel();
+        internal abstract Model? GetModel();
 
         public override string ToString()
         {
@@ -134,7 +145,7 @@ namespace SATInterface
 
             lhsS = lhsS.Flatten();
             rhsS = rhsS.Flatten();
-            return lhsS.GetModel().ITE(lhsS, rhsS, !rhsS);
+            return lhsS.GetModel()!.ITE(lhsS, rhsS, !rhsS);
         }
 
         public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);

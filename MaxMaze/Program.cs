@@ -58,7 +58,7 @@ namespace MaxMaze
                     switch (input[30 * y + x])
                     {
                         case '.':
-                            free[x, y] = m.AddVar($"f{x},{y}");
+                            free[x, y] = m.AddVar();
                             break;
                         case ' ':
                             free[x, y] = true;

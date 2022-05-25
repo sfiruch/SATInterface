@@ -32,6 +32,35 @@ namespace Tests
         }
 
         [TestMethod]
+        public void NegateModel()
+        {
+            using var m = new Model();
+            var le = new LinExpr();
+
+            var v = m.AddVar();
+            le.AddTerm(v, 1);
+
+            for (var i = 0; i <= 1; i++)
+            {
+                m.AddConstr(le == i);
+                m.AddConstr(le <= i);
+                m.AddConstr(le >= i);
+                m.AddConstr(le < i);
+                m.AddConstr(le > i);
+            }
+
+            le = -le;
+            for (var i = 0; i <= 1; i++)
+            {
+                m.AddConstr(le == i);
+                m.AddConstr(le <= i);
+                m.AddConstr(le >= i);
+                m.AddConstr(le < i);
+                m.AddConstr(le > i);
+            }
+        }
+
+        [TestMethod]
         public void ToUIntPerformance()
         {
             using var m = new Model();
@@ -95,7 +124,7 @@ namespace Tests
             {
                 Verbosity = 0
             });
-            var v = m.AddVars(100);
+            var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
             m.AddConstr(m.Sum(v) >= 1);
@@ -109,7 +138,7 @@ namespace Tests
             {
                 Verbosity = 0
             });
-            var v = m.AddVars(100);
+            var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
             m.AddConstr(-m.Sum(v) <= -1);
@@ -123,7 +152,7 @@ namespace Tests
             {
                 Verbosity = 0
             });
-            var v = m.AddVars(100);
+            var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
             m.AddConstr(m.Sum(v) != 0);
@@ -137,7 +166,7 @@ namespace Tests
             {
                 Verbosity = 0
             });
-            var v = m.AddVars(100);
+            var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
             m.AddConstr(m.Sum(v.Select((v, i) => i % 3 == 0 ? v : !v)) != 0);
@@ -151,7 +180,7 @@ namespace Tests
             {
                 Verbosity = 0
             });
-            var v = m.AddVars(100);
+            var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
             Assert.AreEqual(0, m.ClauseCount);
 
             m.AddConstr(m.Sum(v.Select((v, i) => i % 3 == 0 ? v : !v)) >= 1);
