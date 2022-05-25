@@ -154,8 +154,7 @@ namespace SATInterface
 
         /// <summary>
         /// When LinExpr contains more variables than this threshold, use
-        /// binary arithmetic for comparisons. Improved sequence counters
-        /// will be used below this threshold.
+        /// binary arithmetic for comparisons. BDDs will be used otherwise.
         /// Default: 4
         /// </summary>
         public int LinExprBinaryComparisonThreshold = 4;
@@ -169,8 +168,8 @@ namespace SATInterface
 
         /// <summary>
         /// Controls which redundant clauses are added for arc-consistency.
-        /// Default: ArcConstistencyClauses.PartialArith
+        /// Default: ArcConstistencyClauses.ITE
         /// </summary>
-        public ArcConstistencyClauses AddArcConstistencyClauses = ArcConstistencyClauses.None;
+        public ArcConstistencyClauses AddArcConstistencyClauses = ArcConstistencyClauses.ITE;
     }
 }
