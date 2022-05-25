@@ -763,6 +763,17 @@ namespace SATInterface
         public LinExpr Sum(IEnumerable<BoolExpr> _elems) => Sum(_elems.ToArray());
 
         /// <summary>
+        /// Returns the sum of the supplied expressions.
+        /// </summary>
+        public LinExpr Sum(IEnumerable<LinExpr> _elems)
+        {
+            var le = new LinExpr();
+            foreach(var l in _elems)
+                le.AddTerm(l);
+            return le;
+        }
+
+        /// <summary>
         /// Returns the sum of the supplied expressions as UIntVar.
         /// </summary>
         public UIntVar SumUInt(IEnumerable<BoolExpr> _elems) => SumUInt(_elems.ToArray());
@@ -901,9 +912,8 @@ namespace SATInterface
         internal Dictionary<(UIntVar, UIntVar), UIntVar> UIntSumCache = new();
         internal Dictionary<LinExpr, UIntVar> UIntCache = new();
         private Dictionary<int, UIntVar> UIntConstCache = new();
-        internal Dictionary<LinExpr, Dictionary<int, BoolExpr>[]> LinExprHasValueXCache=new ();
-        internal Dictionary<LinExpr, Dictionary<int, BoolExpr>[]> LinExprHasValueAtLeastXCache=new();
-
+        internal Dictionary<(LinExpr, int), BoolExpr> LinExprEqCache = new();
+        internal Dictionary<(LinExpr, int), BoolExpr> LinExprLECache = new();
 
         /// <summary>
         /// Returns the count of the supplied expressions.
