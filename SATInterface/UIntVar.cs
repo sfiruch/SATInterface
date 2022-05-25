@@ -267,9 +267,9 @@ namespace SATInterface
         public static BoolExpr operator ==(UIntVar _a, int _v)
         {
             if (_v < 0)
-                return false;
+                return Model.False;
             if (_v > _a.UB && _a.UB != Unbounded)
-                return false;
+                return Model.False;
 
             var res = new BoolExpr[_a.bit.Length];
             for (var i = 0; i < res.Length; i++)
@@ -282,9 +282,9 @@ namespace SATInterface
         public static BoolExpr operator !=(UIntVar _a, int _v)
         {
             if (_v < 0)
-                return true;
+                return Model.True;
             if (_v > _a.UB && _a.UB != Unbounded)
-                return true;
+                return Model.True;
 
             var res = new BoolExpr[_a.bit.Length];
             for (var i = 0; i < res.Length; i++)
@@ -315,13 +315,13 @@ namespace SATInterface
         public static BoolExpr operator >(UIntVar _a, int _v)
         {
             if (_v < 0)
-                return true;
+                return Model.True;
             if (_v == 0)
                 return OrExpr.Create(_a.bit);
             if (_a.UB != Unbounded && _a.UB <= _v)
-                return false;
+                return Model.False;
             if (_a.Bits.Length < BitOperations.Log2((uint)_v + 1) + 1)
-                return false;
+                return Model.False;
 
             var nonZeroes = BitOperations.Log2((ulong)_v) + 1;
             Debug.Assert(nonZeroes <= _a.bit.Length);
@@ -346,11 +346,11 @@ namespace SATInterface
         public static BoolExpr operator <(UIntVar _a, int _v)
         {
             if (_v <= 0)
-                return false;
+                return Model.False;
             if (_v == 1)
                 return !OrExpr.Create(_a.bit);
             if (_v > _a.UB && _a.UB != Unbounded)
-                return true;
+                return Model.True;
 
             var nonZeroes = BitOperations.Log2((ulong)(_v - 1)) + 1;
             Debug.Assert(nonZeroes <= _a.bit.Length);
