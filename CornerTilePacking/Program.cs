@@ -17,7 +17,11 @@ namespace CornerTilePacking
             const int W = C * C;
             const int H = C * C;
 
-            using var m = new Model();
+            using var m = new Model(new Configuration()
+            {
+                Solver = new SATInterface.Solver.Kissat()
+            });
+
             var vXYC = m.AddVars(W, H, C);
 
             //symmetry breaking
@@ -29,7 +33,7 @@ namespace CornerTilePacking
 
             for (var y = 0; y < H; y++)
                 for (var x = 0; x < W; x++)
-                    m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, C).Select(c => vXYC[x, y, c])));
+                    m.AddConstr(m.Sum(Enumerable.Range(0, C).Select(c => vXYC[x, y, c])) == 1);
 
             for (var n = 0; n < N; n++)
             {
@@ -42,7 +46,7 @@ namespace CornerTilePacking
                     for (var x = 0; x < W; x++)
                         l.Add((vXYC[x, y, c1] & vXYC[(x + 1) % W, y, c2] & vXYC[x, (y + 1) % H, c3] & vXYC[(x + 1) % W, (y + 1) % H, c4]).Flatten());
 
-                m.AddConstr(m.ExactlyOneOf(l));
+                m.AddConstr(m.Sum(l) == 1);
             }
 
             m.Solve();
@@ -55,9 +59,6 @@ namespace CornerTilePacking
                             Console.Write(c);
                 Console.WriteLine();
             }
-
-            Console.ReadLine();
-            Console.ReadLine();
         }
     }
 }

@@ -26,17 +26,20 @@ namespace Superpermutation
             const int N = 4;
             const int LEN = 33;
 
-            using var m = new Model();
+            using var m = new Model(new Configuration()
+            { 
+                Solver = new SATInterface.Solver.Kissat()
+            });
 
             var v = m.AddVars(N, LEN);
 
             for (var x = 0; x < LEN; x++)
-                m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, N).Select(n => v[n, x])));
+                m.AddConstr(m.Sum(Enumerable.Range(0, N).Select(n => v[n, x])) == 1);
 
             foreach (var permutation in Permutate(Enumerable.Range(0, N)))
             {
                 var pos = m.AddVars(LEN - N + 1);
-                m.AddConstr(m.ExactlyOneOf(pos));
+                m.AddConstr(m.Sum(pos) == 1);
 
                 for (var x = 0; x < LEN - N + 1; x++)
                     for (var i = 0; i < N; i++)
