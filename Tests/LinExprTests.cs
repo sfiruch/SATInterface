@@ -203,6 +203,41 @@ namespace Tests
         }
 
         [TestMethod]
+        public void EfficientSetCoverEncodingTest6()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+            var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
+            Assert.AreEqual(0, m.ClauseCount);
+
+            m.Or(v).Flatten();
+            var orFlattened = m.ClauseCount;
+
+            m.AddConstr(m.Sum(v) * 2 >= 2);
+            Assert.IsTrue(m.ClauseCount == orFlattened * 2 || m.ClauseCount == orFlattened + 1);
+        }
+
+        [TestMethod]
+        public void EfficientSetCoverEncodingTest7()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+            var v = m.AddVars(m.Configuration.MaxClauseSize - 1);
+            Assert.AreEqual(0, m.ClauseCount);
+
+            m.Or(v).Flatten();
+            var orFlattened = m.ClauseCount;
+
+            m.AddConstr(m.Sum(v) * 3 >= 2);
+            Assert.IsTrue(m.ClauseCount == orFlattened * 2 || m.ClauseCount == orFlattened + 1);
+        }
+
+
+        [TestMethod]
         public void EfficientSetPackingEncodingTest1()
         {
             int amoCC1;
@@ -335,6 +370,39 @@ namespace Tests
         }
 
         [TestMethod]
+        public void EfficientSetPackingEncodingTest5()
+        {
+            int amoCC1;
+            int amoCC2;
+
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+                var v = m.AddVars(100);
+                Assert.AreEqual(0, m.ClauseCount);
+
+                m.AddConstr(m.AtMostOneOf(v));
+                amoCC1 = m.ClauseCount;
+            }
+
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+                var v = m.AddVars(100);
+                Assert.AreEqual(0, m.ClauseCount);
+
+                m.AddConstr(m.Sum(v) * 2 <= 2);
+                amoCC2 = m.ClauseCount;
+            }
+
+            Assert.AreEqual(amoCC1, amoCC2);
+        }
+
+        [TestMethod]
         public void EfficientSetPartitioningEncodingTest1()
         {
             int eoCC1;
@@ -381,6 +449,38 @@ namespace Tests
 
             m.AddConstr(m.Sum(v.Select((v, i) => i % 3 == 0 ? v : !v)) == 1);
             Assert.AreEqual(eoCC * 2, m.ClauseCount);
+        }
+
+        [TestMethod]
+        public void EfficientSetPartitioningEncodingTest3()
+        {
+            int eoCC1;
+            int eoCC2;
+
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+                var v = m.AddVars(100);
+                Assert.AreEqual(0, m.ClauseCount);
+
+                m.AddConstr(m.ExactlyOneOf(v));
+                eoCC1 = m.ClauseCount;
+            }
+
+            {
+                using var m = new Model(new Configuration()
+                {
+                    Verbosity = 0
+                });
+                var v = m.AddVars(100);
+                Assert.AreEqual(0, m.ClauseCount);
+
+                m.AddConstr(m.Sum(v) * 2 == 2);
+                eoCC2 = m.ClauseCount;
+            }
+            Assert.AreEqual(eoCC1, eoCC2);
         }
     }
 }
