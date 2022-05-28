@@ -177,5 +177,106 @@ namespace Tests
 
             Assert.AreEqual(amoCC1, amoCC2);
         }
+
+
+
+
+        [DataRow(null)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Commander)]
+        [DataRow(Model.AtMostOneOfMethod.OneHot)]
+        [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
+        [DataRow(Model.AtMostOneOfMethod.Sequential)]
+        [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataTestMethod]
+        public void NQueensSAT(Model.AtMostOneOfMethod? _method)
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            const int N = 30;
+
+            var v = m.AddVars(N, N);
+
+            for (var y = 0; y < N; y++)
+                m.AddConstr(m.AtMostOneOf(Enumerable.Range(0, N).Select(x => v[x, y]), _method));
+            for (var x = 0; x < N; x++)
+                m.AddConstr(m.AtMostOneOf(Enumerable.Range(0, N).Select(y => v[x, y]), _method));
+
+            for (var x = -N; x < N; x++)
+            {
+                var l = new List<BoolExpr>();
+                for (var i = 0; i < N; i++)
+                    if (x + i >= 0 && x + i < N)
+                        l.Add(v[x + i, i]);
+                m.AddConstr(m.AtMostOneOf(l, _method));
+            }
+            for (var x = -N; x < N; x++)
+            {
+                var l = new List<BoolExpr>();
+                for (var i = 0; i < N; i++)
+                    if (x + i >= 0 && x + i < N)
+                        l.Add(v[x + i, N - 1 - i]);
+                m.AddConstr(m.AtMostOneOf(l, _method));
+            }
+
+            m.AddConstr(m.Sum(v.Cast<BoolExpr>()) == N);
+
+            m.Solve();
+
+            Assert.AreEqual(State.Satisfiable, m.State);
+        }
+
+        [DataRow(null)]
+        [DataRow(Model.AtMostOneOfMethod.BinaryCount)]
+        [DataRow(Model.AtMostOneOfMethod.Commander)]
+        [DataRow(Model.AtMostOneOfMethod.OneHot)]
+        [DataRow(Model.AtMostOneOfMethod.Pairwise)]
+        [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
+        [DataRow(Model.AtMostOneOfMethod.Sequential)]
+        [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataTestMethod]
+        public void NQueensUNSAT(Model.AtMostOneOfMethod? _method)
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            const int N = 30;
+
+            var v = m.AddVars(N, N);
+
+            for (var y = 0; y < N; y++)
+                m.AddConstr(m.AtMostOneOf(Enumerable.Range(0, N).Select(x => v[x, y]), _method));
+            for (var x = 0; x < N; x++)
+                m.AddConstr(m.AtMostOneOf(Enumerable.Range(0, N).Select(y => v[x, y]), _method));
+
+            for (var x = -N; x < N; x++)
+            {
+                var l = new List<BoolExpr>();
+                for (var i = 0; i < N; i++)
+                    if (x + i >= 0 && x + i < N)
+                        l.Add(v[x + i, i]);
+                m.AddConstr(m.AtMostOneOf(l, _method));
+            }
+            for (var x = -N; x < N; x++)
+            {
+                var l = new List<BoolExpr>();
+                for (var i = 0; i < N; i++)
+                    if (x + i >= 0 && x + i < N)
+                        l.Add(v[x + i, N - 1 - i]);
+                m.AddConstr(m.AtMostOneOf(l, _method));
+            }
+
+            m.AddConstr(m.Sum(v.Cast<BoolExpr>()) == N+1);
+
+            m.Solve();
+
+            Assert.AreEqual(State.Unsatisfiable, m.State);
+        }
     }
 }
