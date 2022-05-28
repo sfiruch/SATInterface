@@ -44,7 +44,16 @@ namespace SATInterface
             Id = _id;
         }
 
-        public override string ToString() => $"b{Id}";
+        public override string ToString()
+        {
+            if (ReferenceEquals(this, Model.True))
+                return "true";
+            if (ReferenceEquals(this, Model.False))
+                return "false";
+
+            return $"b{Id}";
+        }
+
 
         public override bool X
         {
