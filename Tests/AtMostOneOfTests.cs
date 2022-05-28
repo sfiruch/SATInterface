@@ -108,7 +108,7 @@ namespace Tests
                 Pigeonhole(8, 9, seed, _method);
                 Pigeonhole(9, 10, seed + 1000, _method);
                 Pigeonhole(10, 11, seed + 2000, _method);
-                Pigeonhole(11, 12, seed + 3000, _method);
+                //Pigeonhole(11, 12, seed + 3000, _method);
                 //Pigeonhole(12, 13, seed + 4000, _method);
             }
         }
