@@ -437,18 +437,21 @@ namespace Tests
         [TestMethod]
         public void EfficientSetPartitioningEncodingTest2()
         {
-            using var m = new Model(new Configuration()
+            using var m1 = new Model(new Configuration()
             {
                 Verbosity = 0
             });
-            var v = m.AddVars(100);
-            Assert.AreEqual(0, m.ClauseCount);
+            var v1 = m1.AddVars(100);
+            m1.AddConstr(m1.ExactlyOneOf(v1).Flatten());
 
-            m.AddConstr(m.ExactlyOneOf(v));
-            var eoCC = m.ClauseCount;
+            using var m2 = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+            var v2 = m2.AddVars(100);
+            m2.AddConstr(m2.Sum(v2.Select((v, i) => i % 3 == 0 ? v : !v)) == 1);
 
-            m.AddConstr(m.Sum(v.Select((v, i) => i % 3 == 0 ? v : !v)) == 1);
-            Assert.AreEqual(eoCC * 2, m.ClauseCount);
+            Assert.AreEqual(m1.ClauseCount, m2.ClauseCount);
         }
 
         [TestMethod]
