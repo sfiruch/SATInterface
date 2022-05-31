@@ -38,7 +38,6 @@ namespace Maximize
                     }
 
             Console.WriteLine($"Exhaustive search found: {best.X} + 7*{best.Y} = {best.X + 7 * best.Y}, x*y = {best.X * best.Y}");
-            Console.ReadLine();
         }
     }
 }
