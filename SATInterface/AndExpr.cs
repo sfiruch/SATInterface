@@ -39,6 +39,31 @@ namespace SATInterface
             return result;
         }
 
+        internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c, BoolExpr _d)
+        {
+            var arr = ArrayPool<BoolExpr>.Shared.Rent(4);
+            arr[0] = _a;
+            arr[1] = _b;
+            arr[2] = _c;
+            arr[3] = _d;
+            var result = Create(arr.AsSpan().Slice(0, 4));
+            ArrayPool<BoolExpr>.Shared.Return(arr);
+            return result;
+        }
+
+        internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c, BoolExpr _d, BoolExpr _e)
+        {
+            var arr = ArrayPool<BoolExpr>.Shared.Rent(5);
+            arr[0] = _a;
+            arr[1] = _b;
+            arr[2] = _c;
+            arr[3] = _d;
+            arr[4] = _e;
+            var result = Create(arr.AsSpan().Slice(0, 5));
+            ArrayPool<BoolExpr>.Shared.Return(arr);
+            return result;
+        }
+
         internal static BoolExpr Create(ReadOnlySpan<BoolExpr> _elems)
         {
             if (_elems.Length == 0)
