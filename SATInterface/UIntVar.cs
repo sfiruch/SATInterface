@@ -163,13 +163,6 @@ namespace SATInterface
             return hc.ToHashCode();
         }
 
-        /// <summary>
-        /// Allocates a unsigned integer constant. Most operations with such a constant will be short-
-        /// circuited by the framework.
-        /// </summary>
-        /// <param name="_model">The model containing this variable</param>
-        /// <param name="_c">The constant value</param>
-        /// <returns></returns>
         internal static UIntVar Const(Model _model, int _c)
         {
             if (_c < 0)
@@ -323,23 +316,7 @@ namespace SATInterface
             if (_a.Bits.Length < BitOperations.Log2((uint)_v + 1) + 1)
                 return Model.False;
 
-            var nonZeroes = BitOperations.Log2((ulong)_v) + 1;
-            Debug.Assert(nonZeroes <= _a.bit.Length);
-
-            var resOr = new List<BoolExpr>();
-            for (var i = nonZeroes; i < _a.Bits.Length; i++)
-                resOr.Add(_a.Bits[i]);
-
-            for (var i = 0; i < nonZeroes; i++)
-                if (((_v >> i) & 1) == 0)
-                {
-                    var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i)
-                        .Where(j => ((_v >> j) & 1) == 1)
-                        .Select(j => _a.Bits[j]).ToArray());
-                    resOr.Add((_a.Bits[i] & allesDavorEq).Flatten());
-                }
-
-            return OrExpr.Create(CollectionsMarshal.AsSpan(resOr)).Flatten();
+            return _a > _a.Model.AddUIntConst(_v);
         }
 
         public static BoolExpr operator <(int _v, UIntVar _a) => _a > _v;
@@ -352,25 +329,7 @@ namespace SATInterface
             if (_v > _a.UB && _a.UB != Unbounded)
                 return Model.True;
 
-            var nonZeroes = BitOperations.Log2((ulong)(_v - 1)) + 1;
-            Debug.Assert(nonZeroes <= _a.bit.Length);
-
-            var resAnd = new BoolExpr[_a.bit.Length - nonZeroes + 1];
-            for (var i = nonZeroes; i < _a.Bits.Length; i++)
-                resAnd[i - nonZeroes] = !_a.Bits[i];
-
-            var resOr = new List<BoolExpr>();
-            for (var i = 0; i < nonZeroes; i++)
-                if (((_v >> i) & 1) == 1)
-                {
-                    var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, nonZeroes - i - 1)
-                        .Where(j => ((_v >> j) & 1) == 0)
-                        .Select(j => !_a.Bits[j]).ToArray());
-                    resOr.Add((!_a.Bits[i] & allesDavorEq).Flatten());
-                }
-
-            resAnd[^1] = (resOr.Count != 0) ? OrExpr.Create(CollectionsMarshal.AsSpan(resOr)).Flatten() : true;
-            return AndExpr.Create(resAnd);
+            return _a < _a.Model.AddUIntConst(_v);
         }
 
 
@@ -378,10 +337,18 @@ namespace SATInterface
         public static BoolExpr operator <(UIntVar _a, UIntVar _b)
         {
             var res = new BoolExpr[Math.Max(_a.bit.Length, _b.bit.Length)];
-            for (var i = 0; i < _a.bit.Length || i < _b.bit.Length; i++)
+            var allesDavorEq = Model.True;
+            for (var i = res.Length - 1; i >= 0; i--)
             {
-                var allesDavorEq = AndExpr.Create(Enumerable.Range(i + 1, res.Length - i - 1).Select(j => _a.Bits[j] == _b.Bits[j]).ToArray()).Flatten();
-                res[i] = ((_a.Bits[i] < _b.Bits[i]) & allesDavorEq).Flatten();
+                if (ReferenceEquals(allesDavorEq, Model.False))
+                    res[i] = Model.False;
+                else if (ReferenceEquals(allesDavorEq, Model.True))
+                    res[i] = AndExpr.Create(!_a.Bits[i], _b.Bits[i]);
+                else
+                    res[i] = AndExpr.Create(allesDavorEq, !_a.Bits[i], _b.Bits[i]);
+
+                if (i != 0)
+                    allesDavorEq = (allesDavorEq & _a.Bits[i] == _b.Bits[i]).Flatten();
             }
 
             return OrExpr.Create(res).Flatten();
@@ -394,8 +361,8 @@ namespace SATInterface
 
         public static BoolExpr operator >=(int _v, UIntVar _a) => _a < (_v + 1);
         public static BoolExpr operator <=(int _v, UIntVar _a) => _a > (_v - 1);
-        public static BoolExpr operator >=(UIntVar _a, UIntVar _b) => (_a > _b) | (_a == _b);
-        public static BoolExpr operator <=(UIntVar _a, UIntVar _b) => (_a < _b) | (_a == _b);
+        public static BoolExpr operator >=(UIntVar _a, UIntVar _b) => !(_a < _b);
+        public static BoolExpr operator <=(UIntVar _a, UIntVar _b) => !(_b < _a);
 
         public static UIntVar operator *(BoolExpr _b, UIntVar _a) => _a * _b;
         public static UIntVar operator *(UIntVar _a, BoolExpr _b)
@@ -429,8 +396,6 @@ namespace SATInterface
                     sum.Add(_a << b);
 
             return _a.Model.Sum(CollectionsMarshal.AsSpan(sum));
-
-
         }
 
         public static UIntVar operator *(UIntVar _a, UIntVar _b)
