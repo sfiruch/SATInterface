@@ -86,7 +86,6 @@ namespace SATInterface
                 Debug.Assert(boolVar.Id > 0);
 
                 AddClauseToSolver(stackalloc[] { boolVar.Id });
-                ClauseCount++;
             }
             else if (_c is NotExpr notExpr)
             {
@@ -96,7 +95,6 @@ namespace SATInterface
                 Debug.Assert(notExpr.inner.Id > 0);
 
                 AddClauseToSolver(stackalloc[] { -notExpr.inner.Id });
-                ClauseCount++;
             }
             else if (_c is OrExpr orExpr)
             {
@@ -128,7 +126,6 @@ namespace SATInterface
                             throw new Exception();
 
                     AddClauseToSolver(sb);
-                    ClauseCount++;
                 }
             }
             else
@@ -138,6 +135,7 @@ namespace SATInterface
         private void AddClauseToSolver(ReadOnlySpan<int> _x)
         {
             Configuration.Solver.AddClause(_x);
+            ClauseCount++;
             if (DIMACSOutput is not null)
                 DIMACSOutput.WriteLine(string.Join(' ', _x.ToArray().Append(0)));
         }
@@ -956,7 +954,8 @@ namespace SATInterface
                 case 2:
                     return _elems[0] + _elems[1];
                 default:
-                    return Sum(_elems[..(_elems.Length / 2)]) + Sum(_elems[(_elems.Length / 2)..]);
+                    var mid = _elems.Length / 2;
+                    return Sum(_elems[..mid]) + Sum(_elems[mid..]);
             }
         }
 
@@ -1150,10 +1149,7 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    if (expr.Length <= 4)
-                        return AtMostOneOfPairwise(expr);
-                    else
-                        return AtMostOneOfSequential(expr);
+                    return AtMostOneOfPairwiseTree(expr);
                 case AtMostOneOfMethod.Commander:
                     return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Pairwise:
@@ -1235,6 +1231,7 @@ namespace SATInterface
 
             var expr = _expr;
 
+            if (trueCount + falseCount > 0)
             {
                 var newExpr = new BoolExpr[_expr.Length - trueCount - falseCount].AsSpan();
                 var i = 0;
@@ -1262,10 +1259,7 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    //if (expr.Length <= 3)
-                    //    return ExactlyOneOfPairwise(expr);
-                    //else
-                    return ExactlyOneOfSequentialUnary(expr);
+                    return ExactlyOneOfPairwiseTree(expr);
                 case ExactlyOneOfMethod.UnaryCount:
                     return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.UnaryCount);
                 case ExactlyOneOfMethod.BinaryCount:
@@ -1334,45 +1328,85 @@ namespace SATInterface
 
         private BoolExpr ExactlyOneOfPairwise(ReadOnlySpan<BoolExpr> _expr)
         {
-            return OrExpr.Create(_expr).Flatten() & AtMostOneOfPairwise(_expr).Flatten();
+            var pairs = new List<BoolExpr>(_expr.Length * (_expr.Length - 1) / 2 + 1);
+            for (var i = 0; i < _expr.Length; i++)
+                for (var j = i + 1; j < _expr.Length; j++)
+                    pairs.Add(OrExpr.Create(!_expr[i], !_expr[j]).Flatten());
+
+            pairs.Add(OrExpr.Create(_expr).Flatten());
+            return AndExpr.Create(CollectionsMarshal.AsSpan(pairs)).Flatten();
         }
 
         private BoolExpr AtMostOneOfPairwiseTree(ReadOnlySpan<BoolExpr> _expr)
         {
-            const int Fanout = 4;
-
-            if (_expr.Length <= Fanout)
+            if (_expr.Length <= 4)
                 return AtMostOneOfPairwise(_expr);
 
-            var ok = new BoolExpr[1 + (_expr.Length + Fanout - 1) / Fanout];
-            var any = new BoolExpr[(_expr.Length + Fanout - 1) / Fanout];
-            for (var i = 0; i < any.Length; i++)
-            {
-                ok[1 + i] = AtMostOneOfPairwise(_expr[(i * Fanout)..Math.Min(_expr.Length, (i + 1) * Fanout)]);
-                any[i] = OrExpr.Create(_expr[(i * Fanout)..Math.Min(_expr.Length, (i + 1) * Fanout)]).Flatten();
-            }
+            var ia = (int)(1 * _expr.Length / 4);
+            var ib = (int)(2 * _expr.Length / 4);
+            var ic = (int)(3 * _expr.Length / 4);
+            var a = _expr[..ia];
+            var b = _expr[ia..ib];
+            var c = _expr[ib..ic];
+            var d = _expr[ic..];
 
-            ok[0] = AtMostOneOfPairwiseTree(any);
-            return AndExpr.Create(ok).Flatten();
+            return AndExpr.Create(
+                AtMostOneOfPairwise(new[] {
+                    OrExpr.Create(a).Flatten(),
+                    OrExpr.Create(b).Flatten(),
+                    OrExpr.Create(c).Flatten(),
+                    OrExpr.Create(d).Flatten() }),
+                AtMostOneOfPairwiseTree(a),
+                AtMostOneOfPairwiseTree(b),
+                AtMostOneOfPairwiseTree(c),
+                AtMostOneOfPairwiseTree(d)).Flatten();
+
+            //var ok = new BoolExpr[1 + (_expr.Length + Fanout - 1) / Fanout];
+            //var any = new BoolExpr[(_expr.Length + Fanout - 1) / Fanout];
+            //for (var i = 0; i < any.Length; i++)
+            //{
+            //    ok[1 + i] = AtMostOneOfPairwise(_expr[(i * Fanout)..Math.Min(_expr.Length, (i + 1) * Fanout)]);
+            //    any[i] = OrExpr.Create(_expr[(i * Fanout)..Math.Min(_expr.Length, (i + 1) * Fanout)]).Flatten();
+            //}
+
+            //ok[0] = AtMostOneOfPairwiseTree(any);
+            //return AndExpr.Create(ok).Flatten();
         }
 
         private BoolExpr ExactlyOneOfPairwiseTree(ReadOnlySpan<BoolExpr> _expr)
         {
-            const int Fanout = 4;
-
-            if (_expr.Length <= Fanout)
+            if (_expr.Length <= 4)
                 return ExactlyOneOfPairwise(_expr);
 
-            var ok = new BoolExpr[1 + (_expr.Length + Fanout - 1) / Fanout];
-            var any = new BoolExpr[(_expr.Length + Fanout - 1) / Fanout];
-            for (var i = 0; i < any.Length; i++)
-            {
-                ok[1 + i] = AtMostOneOfPairwise(_expr[(i * Fanout)..Math.Min(_expr.Length, (i + 1) * Fanout)]);
-                any[i] = OrExpr.Create(_expr[(i * Fanout)..Math.Min(_expr.Length, (i + 1) * Fanout)]).Flatten();
-            }
+            var ia = (int)(1 * _expr.Length / 4);
+            var ib = (int)(2 * _expr.Length / 4);
+            var ic = (int)(3 * _expr.Length / 4);
+            var a = _expr[..ia];
+            var b = _expr[ia..ib];
+            var c = _expr[ib..ic];
+            var d = _expr[ic..];
 
-            ok[0] = ExactlyOneOfPairwiseTree(any);
-            return AndExpr.Create(ok).Flatten();
+            return AndExpr.Create(
+                ExactlyOneOfPairwise(new[] {
+                    OrExpr.Create(a).Flatten(),
+                    OrExpr.Create(b).Flatten(),
+                    OrExpr.Create(c).Flatten(),
+                    OrExpr.Create(d).Flatten() }),
+                AtMostOneOfPairwiseTree(a),
+                AtMostOneOfPairwiseTree(b),
+                AtMostOneOfPairwiseTree(c),
+                AtMostOneOfPairwiseTree(d)).Flatten();
+
+            //var ok = new BoolExpr[1 + (_expr.Length + Fanout - 1) / Fanout];
+            //var any = new BoolExpr[(_expr.Length + Fanout - 1) / Fanout];
+            //for (var i = 0; i < any.Length; i++)
+            //{
+            //    ok[1 + i] = AtMostOneOfPairwise(_expr[(i * Fanout)..Math.Min(_expr.Length, (i + 1) * Fanout)]);
+            //    any[i] = OrExpr.Create(_expr[(i * Fanout)..Math.Min(_expr.Length, (i + 1) * Fanout)]).Flatten();
+            //}
+
+            //ok[0] = ExactlyOneOfPairwiseTree(any);
+            //return AndExpr.Create(ok).Flatten();
         }
 
         private BoolExpr AtMostOneOfPairwise(ReadOnlySpan<BoolExpr> _expr)
@@ -1516,6 +1550,35 @@ namespace SATInterface
             }
         }
 
+        internal BoolExpr AtMostTwoOfSequential(IEnumerable<BoolExpr> _expr)
+        {
+            var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
+
+            var trueCount = expr.Count(e => ReferenceEquals(e, True));
+            if (trueCount > 0)
+                expr = expr.Where(e => !ReferenceEquals(e, True)).ToArray();
+
+            switch (trueCount)
+            {
+                case 2:
+                    return !Or(expr).Flatten();
+                case 1:
+                    return AtMostOneOf(expr);
+                case 0:
+                    var v = Enumerable.Repeat(False, 3).ToArray();
+                    foreach (var e in expr)
+                    {
+                        var vnext = new BoolExpr[3];
+                        vnext[0] = (v[0] | e).Flatten();
+                        vnext[1] = ((v[0] & e) | v[1]).Flatten();
+                        vnext[2] = ((v[1] & e) | v[2]).Flatten();
+                        v = vnext;
+                    }
+                    return !v[2];
+                default:
+                    return False;
+            }
+        }
 
         private BoolExpr ExactlyOneOfCommander(ReadOnlySpan<BoolExpr> _expr)
         {
@@ -1568,10 +1631,8 @@ namespace SATInterface
             var valid = new List<BoolExpr>(_expr.Length + 1);
             foreach (var be in _expr)
             {
-                prev = prev.Flatten();
-
                 valid.Add((!be | !prev).Flatten());
-                prev = be | prev;
+                prev = (be | prev).Flatten();
             }
             valid.Add(prev);
             return And(valid).Flatten();
