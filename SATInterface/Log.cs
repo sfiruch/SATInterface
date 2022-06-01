@@ -5,7 +5,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
-using Microsoft.Windows.Sdk;
+using Windows.Win32;
+using Windows.Win32.System.Console;
 
 namespace SATInterface
 {
@@ -43,7 +44,7 @@ namespace SATInterface
             {
                 if (!Console.IsOutputRedirected)
                 {
-                    var h = new SafeFileHandle(PInvoke.GetStdHandle(STD_HANDLE_TYPE.STD_OUTPUT_HANDLE).Value, false);
+                    var h = new SafeFileHandle(PInvoke.GetStdHandle(STD_HANDLE.STD_OUTPUT_HANDLE).Value, false);
                     if (!h.IsInvalid && PInvoke.GetConsoleMode(h, out var mode))
                         VTEnabled = mode.HasFlag(CONSOLE_MODE.ENABLE_VIRTUAL_TERMINAL_PROCESSING)
                             || PInvoke.SetConsoleMode(h, mode | CONSOLE_MODE.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
