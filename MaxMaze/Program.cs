@@ -87,9 +87,13 @@ namespace MaxMaze
                         m.AddConstr(b != d);
                     else if (x == W - 1 && y == H - 1)
                         m.AddConstr(a != c);
-                    else if (!ReferenceEquals(free[x, y], Model.False))
+                    else
                         m.AddConstr(!free[x, y] | m.Sum(new[] { a, b, c, d }) == 2);
                 }
+
+            for (int y = 0; y < H - 1; y++)
+                for (int x = 0; x < W - 1; x++)
+                    m.AddConstr(m.Or(!free[x, y], !free[x + 1, y], !free[x, y + 1], !free[x + 1, y + 1]));
 
             m.Maximize(m.Sum(free.Cast<BoolExpr>()), () =>
             {
@@ -149,10 +153,6 @@ namespace MaxMaze
                 sb.AppendLine($"Eliminated {elimLoops} loops");
                 Console.WriteLine(sb.ToString());
             });
-
-            Console.ReadLine();
-            Console.ReadLine();
-            Console.ReadLine();
         }
     }
 }
