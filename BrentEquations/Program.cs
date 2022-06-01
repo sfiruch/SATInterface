@@ -52,14 +52,6 @@ namespace BrentEquations
                 m.AddConstr(akm1 >= ak);
             }
 
-            //symmetry breaking: transpose
-            if (ARows == ACols)
-            {
-                var originalA = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => a[r, c, 0])).ToArray());
-                var transposeA = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => a[c, r, 0])).ToArray());
-                m.AddConstr(originalA <= transposeA);
-            }
-
             for (var ra = 0; ra < ARows; ra++)
                 for (var ca = 0; ca < ACols; ca++)
                     for (var rb = 0; rb < BRows; rb++)
