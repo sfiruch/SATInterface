@@ -50,7 +50,7 @@ namespace SATInterface
         public const int Unbounded = -1;
 
         private const int MaxBitsWithUB = 30;
-        public const int MaxUB = (int)((2L << MaxBitsWithUB) - 1);
+        public const int MaxUB = (int)((1L << MaxBitsWithUB) - 1);
 
         /// <summary>
         /// Direct access to the bits making up this number. Index 0 is the LSB.
