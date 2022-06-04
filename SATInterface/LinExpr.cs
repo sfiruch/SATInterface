@@ -14,10 +14,12 @@ namespace SATInterface
     public class LinExpr
     {
         private Dictionary<BoolVar, int> Weights;
-        private int Offset;
+        public int Offset { get; private set; }
 
         private Model? Model;
         private LinExpr? Negated;
+
+        public IEnumerable<(BoolExpr Var, int Weight)> Terms => Weights.Select(w => ((BoolExpr)w.Key, w.Value));
 
         public LinExpr(int _c = 0)
         {
