@@ -1051,7 +1051,8 @@ namespace SATInterface
         public enum ExactlyOneOfMethod
         {
             Commander,
-            UnaryCount,
+            SortBB,
+            SortPairwise,
             BinaryCount,
             TwoFactor,
             Pairwise,
@@ -1066,6 +1067,8 @@ namespace SATInterface
             Pairwise,
             PairwiseTree,
             Commander,
+            SortBB,
+            SortPairwise,
             OneHot,
             Sequential,
             SequentialUnary,
@@ -1075,7 +1078,8 @@ namespace SATInterface
         public enum ExactlyKOfMethod
         {
             BinaryCount,
-            UnaryCount,
+            SortBB,
+            SortPairwise,
             Pairwise,
             Sequential,
             LinExpr
@@ -1150,6 +1154,10 @@ namespace SATInterface
             {
                 case null:
                     return AtMostOneOfPairwiseTree(expr);
+                case AtMostOneOfMethod.SortBB:
+                    return !SortBB(expr)[1];
+                case AtMostOneOfMethod.SortPairwise:
+                    return !SortPairwise(expr)[1];
                 case AtMostOneOfMethod.Commander:
                     return AtMostOneOfCommander(expr);
                 case AtMostOneOfMethod.Pairwise:
@@ -1165,7 +1173,7 @@ namespace SATInterface
                 case AtMostOneOfMethod.BinaryCount:
                     return SumUInt(expr) < 2;
                 default:
-                    throw new ArgumentException();
+                    throw new ArgumentException(nameof(_method));
             }
         }
 
@@ -1260,8 +1268,10 @@ namespace SATInterface
             {
                 case null:
                     return ExactlyOneOfPairwiseTree(expr);
-                case ExactlyOneOfMethod.UnaryCount:
-                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.UnaryCount);
+                case ExactlyOneOfMethod.SortBB:
+                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortBB);
+                case ExactlyOneOfMethod.SortPairwise:
+                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortPairwise);
                 case ExactlyOneOfMethod.BinaryCount:
                     return SumUInt(expr) == 1;
                 case ExactlyOneOfMethod.SequentialUnary:
@@ -1496,10 +1506,17 @@ namespace SATInterface
                 case ExactlyKOfMethod.BinaryCount:
                     return SumUInt(expr) == _k;
 
-                case ExactlyKOfMethod.UnaryCount:
-                    var uc = Sort(expr);
-                    //return And(Enumerable.Range(0, uc.Length).Select(i => (i < _k) ? uc[i] : !uc[i]));
-                    return uc[_k - 1] & !uc[_k];
+                case ExactlyKOfMethod.SortBB:
+                    {
+                        var uc = SortBB(expr);
+                        return uc[_k - 1] & !uc[_k];
+                    }
+
+                case ExactlyKOfMethod.SortPairwise:
+                    {
+                        var uc = SortPairwise(expr);
+                        return uc[_k - 1] & !uc[_k];
+                    }
 
                 case ExactlyKOfMethod.Sequential:
                     var v = Enumerable.Repeat(False, _k + 1).ToArray();
@@ -1655,34 +1672,99 @@ namespace SATInterface
         /// <summary>
         /// Sorts the given expressions. True will be returned first, False last.
         /// </summary>
-        public BoolExpr[] Sort(BoolExpr[] _elems)
+        public BoolExpr[] SortPairwise(ReadOnlySpan<BoolExpr> _elems)
+        {
+            switch (_elems.Length)
+            {
+                case 0:
+                    return Array.Empty<BoolExpr>();
+                case 1:
+                    return new BoolExpr[] { _elems[0] };
+                case 2:
+                    return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
+                default:
+                    //adapted from https://en.wikipedia.org/wiki/Pairwise_sorting_network
+
+                    var R = _elems.ToArray();
+
+                    void CompSwap(int _i, int _j)
+                    {
+                        var a = R[_i];
+                        var b = R[_j];
+
+                        R[_i] = OrExpr.Create(a, b).Flatten();
+                        R[_j] = AndExpr.Create(a, b).Flatten();
+                    }
+
+                    var a = 1;
+                    for (; a < _elems.Length; a *= 2)
+                    {
+                        var c = 0;
+                        for (var b = a; b < _elems.Length;)
+                        {
+                            CompSwap(b - a, b);
+                            b++;
+                            c++;
+                            if (c >= a)
+                            {
+                                c = 0;
+                                b += a;
+                            }
+                        }
+                    }
+
+                    a /= 4;
+                    for (var e = 1; a > 0; a /= 2, e = 2 * e + 1)
+                        for (var d = e; d > 0; d /= 2)
+                        {
+                            var c = 0;
+                            for (var b = (d + 1) * a; b < _elems.Length;)
+                            {
+                                CompSwap(b - d * a, b);
+                                b++;
+                                c++;
+                                if (c >= a)
+                                {
+                                    c = 0;
+                                    b += a;
+                                }
+                            }
+                        }
+
+                    return R;
+            }
+        }
+
+        /// <summary>
+        /// Sorts the given expressions. True will be returned first, False last.
+        /// </summary>
+        public BoolExpr[] SortBB(ReadOnlySpan<BoolExpr> _elems)
         {
             //Formulation by Bailleux & Boufkhad
             //- https://pdfs.semanticscholar.org/a948/1bf4ce2b5c20d2e282dd69dcb92bddcc36c9.pdf
 
-            var len = _elems.Count();
-            switch (len)
+            switch (_elems.Length)
             {
                 case 0:
-                    return new BoolExpr[0];
+                    return Array.Empty<BoolExpr>();
                 case 1:
-                    return new BoolExpr[] { _elems.Single() };
+                    return new BoolExpr[] { _elems[0] };
                 case 2:
                     return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
                 default:
-                    var R = new BoolExpr[len + 2];
+                    var R = new BoolExpr[_elems.Length + 2];
                     R[0] = True;
                     for (var i = 1; i < R.Length - 1; i++)
                         R[i] = AddVar();
                     R[^1] = False;
 
-                    var A = new BoolExpr[] { True }.Concat(Sort(_elems[..(len / 2)])).Concat(new BoolExpr[] { False }).ToArray();
-                    var B = new BoolExpr[] { True }.Concat(Sort(_elems[(len / 2)..])).Concat(new BoolExpr[] { False }).ToArray();
+                    var A = new BoolExpr[] { True }.Concat(SortBB(_elems[..(_elems.Length / 2)])).Append(False).ToArray();
+                    var B = new BoolExpr[] { True }.Concat(SortBB(_elems[(_elems.Length / 2)..])).Append(False).ToArray();
                     for (var a = 0; a < A.Length - 1; a++)
                         for (var b = 0; b < B.Length - 1; b++)
                         {
                             var r = a + b;
-                            if (r >= 0 && r < R.Length)
+                            if (r < R.Length)
                             {
                                 AddConstr(OrExpr.Create(!A[a], !B[b], R[r]).Flatten());
                                 AddConstr(OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]).Flatten());

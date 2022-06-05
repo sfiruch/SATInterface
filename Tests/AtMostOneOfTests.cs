@@ -40,6 +40,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeRandom(Model.AtMostOneOfMethod? _method)
         {
@@ -56,6 +58,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeSingle(Model.AtMostOneOfMethod? _method)
         {
@@ -70,6 +74,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeSymmetricSAT(Model.AtMostOneOfMethod? _method)
         {
@@ -85,6 +91,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeSymmetricUNSAT(Model.AtMostOneOfMethod? _method)
         {
@@ -100,6 +108,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeSymmetricUNSATDifficult(Model.AtMostOneOfMethod? _method)
         {
@@ -121,6 +131,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void MinimizeToTwo(Model.AtMostOneOfMethod? _method)
         {
@@ -145,6 +157,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void EfficientNotEncoding(Model.AtMostOneOfMethod? _method)
         {
@@ -189,6 +203,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void NQueensSAT(Model.AtMostOneOfMethod? _method)
         {
@@ -238,6 +254,8 @@ namespace Tests
         [DataRow(Model.AtMostOneOfMethod.PairwiseTree)]
         [DataRow(Model.AtMostOneOfMethod.Sequential)]
         [DataRow(Model.AtMostOneOfMethod.SequentialUnary)]
+        [DataRow(Model.AtMostOneOfMethod.SortBB)]
+        [DataRow(Model.AtMostOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void NQueensUNSAT(Model.AtMostOneOfMethod? _method)
         {
