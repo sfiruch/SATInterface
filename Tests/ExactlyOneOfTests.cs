@@ -42,7 +42,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeRandom(Model.ExactlyOneOfMethod? _method)
@@ -61,7 +61,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeSingle(Model.ExactlyOneOfMethod? _method)
@@ -78,7 +78,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeSymmetricSAT(Model.ExactlyOneOfMethod? _method)
@@ -96,7 +96,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeSymmetricUNSAT(Model.ExactlyOneOfMethod? _method)
@@ -114,7 +114,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         //[DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void PigeonholeSymmetricUNSATDifficult(Model.ExactlyOneOfMethod? _method)
@@ -175,7 +175,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void SimpleBinary(Model.ExactlyOneOfMethod? _method)
@@ -204,7 +204,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void EnumerateBinary(Model.ExactlyOneOfMethod? _method)
@@ -243,7 +243,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void MinimizeToTwo(Model.ExactlyOneOfMethod? _method)
@@ -272,7 +272,7 @@ namespace Tests
         [DataRow(Model.ExactlyOneOfMethod.Sequential)]
         [DataRow(Model.ExactlyOneOfMethod.SequentialUnary)]
         [DataRow(Model.ExactlyOneOfMethod.TwoFactor)]
-        [DataRow(Model.ExactlyOneOfMethod.SortBB)]
+        [DataRow(Model.ExactlyOneOfMethod.SortTotalizer)]
         [DataRow(Model.ExactlyOneOfMethod.SortPairwise)]
         [DataTestMethod]
         public void EfficientNotEncoding(Model.ExactlyOneOfMethod? _method)

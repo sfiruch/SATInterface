@@ -45,9 +45,9 @@ namespace Tests
         public void TestSortBB()
         {
             for (var i = 0; i < 127; i++)
-                SortCase(7, i, (m, v) => m.SortBB(v));
+                SortCase(7, i, (m, v) => m.SortTotalizer(v));
             for (var i = 0; i < 255; i++)
-                SortCase(8, i, (m, v) => m.SortBB(v));
+                SortCase(8, i, (m, v) => m.SortTotalizer(v));
         }
 
         [TestMethod]
@@ -94,9 +94,9 @@ namespace Tests
         public void TestReverseSortBB()
         {
             for (var i = 0; i < 7; i++)
-                SortCase(7, i, (m, v) => m.SortBB(v));
+                SortCase(7, i, (m, v) => m.SortTotalizer(v));
             for (var i = 0; i < 8; i++)
-                SortCase(8, i, (m, v) => m.SortBB(v));
+                SortCase(8, i, (m, v) => m.SortTotalizer(v));
         }
 
         [TestMethod]

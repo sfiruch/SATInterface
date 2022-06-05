@@ -1051,7 +1051,7 @@ namespace SATInterface
         public enum ExactlyOneOfMethod
         {
             Commander,
-            SortBB,
+            SortTotalizer,
             SortPairwise,
             BinaryCount,
             TwoFactor,
@@ -1067,7 +1067,7 @@ namespace SATInterface
             Pairwise,
             PairwiseTree,
             Commander,
-            SortBB,
+            SortTotalizer,
             SortPairwise,
             OneHot,
             Sequential,
@@ -1078,7 +1078,7 @@ namespace SATInterface
         public enum ExactlyKOfMethod
         {
             BinaryCount,
-            SortBB,
+            SortTotalizer,
             SortPairwise,
             Pairwise,
             Sequential,
@@ -1154,8 +1154,8 @@ namespace SATInterface
             {
                 case null:
                     return AtMostOneOfPairwiseTree(expr);
-                case AtMostOneOfMethod.SortBB:
-                    return !SortBB(expr)[1];
+                case AtMostOneOfMethod.SortTotalizer:
+                    return !SortTotalizer(expr)[1];
                 case AtMostOneOfMethod.SortPairwise:
                     return !SortPairwise(expr)[1];
                 case AtMostOneOfMethod.Commander:
@@ -1268,8 +1268,8 @@ namespace SATInterface
             {
                 case null:
                     return ExactlyOneOfPairwiseTree(expr);
-                case ExactlyOneOfMethod.SortBB:
-                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortBB);
+                case ExactlyOneOfMethod.SortTotalizer:
+                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
                 case ExactlyOneOfMethod.SortPairwise:
                     return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortPairwise);
                 case ExactlyOneOfMethod.BinaryCount:
@@ -1506,9 +1506,9 @@ namespace SATInterface
                 case ExactlyKOfMethod.BinaryCount:
                     return SumUInt(expr) == _k;
 
-                case ExactlyKOfMethod.SortBB:
+                case ExactlyKOfMethod.SortTotalizer:
                     {
-                        var uc = SortBB(expr);
+                        var uc = SortTotalizer(expr);
                         return uc[_k - 1] & !uc[_k];
                     }
 
@@ -1738,7 +1738,7 @@ namespace SATInterface
         /// <summary>
         /// Sorts the given expressions. True will be returned first, False last.
         /// </summary>
-        public BoolExpr[] SortBB(ReadOnlySpan<BoolExpr> _elems)
+        public BoolExpr[] SortTotalizer(ReadOnlySpan<BoolExpr> _elems)
         {
             //Formulation by Bailleux & Boufkhad
             //- https://pdfs.semanticscholar.org/a948/1bf4ce2b5c20d2e282dd69dcb92bddcc36c9.pdf
@@ -1758,8 +1758,8 @@ namespace SATInterface
                         R[i] = AddVar();
                     R[^1] = False;
 
-                    var A = new BoolExpr[] { True }.Concat(SortBB(_elems[..(_elems.Length / 2)])).Append(False).ToArray();
-                    var B = new BoolExpr[] { True }.Concat(SortBB(_elems[(_elems.Length / 2)..])).Append(False).ToArray();
+                    var A = new BoolExpr[] { True }.Concat(SortTotalizer(_elems[..(_elems.Length / 2)])).Append(False).ToArray();
+                    var B = new BoolExpr[] { True }.Concat(SortTotalizer(_elems[(_elems.Length / 2)..])).Append(False).ToArray();
                     for (var a = 0; a < A.Length - 1; a++)
                         for (var b = 0; b < B.Length - 1; b++)
                         {
