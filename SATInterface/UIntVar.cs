@@ -171,7 +171,7 @@ namespace SATInterface
             var bits = new BoolExpr[RequiredBitsForUB(_c)];
             for (var i = 0; i < bits.Length; i++)
                 bits[i] = ((_c >> i) & 1) == 1;
-            return new UIntVar(_model, _c, bits);
+            return new UIntVar(_model, _c > MaxUB ? Unbounded : _c, bits);
         }
 
         public static UIntVar operator >>(UIntVar _a, int _shift)
