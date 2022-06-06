@@ -153,13 +153,6 @@ namespace SATInterface
         public ExpectedOutcome ExpectedOutcome = ExpectedOutcome.Unknown;
 
         /// <summary>
-        /// When LinExpr contains more variables than this threshold, use
-        /// binary arithmetic for comparisons. BDDs will be used otherwise.
-        /// Default: 4
-        /// </summary>
-        public int LinExprBinaryComparisonThreshold = 4;
-
-        /// <summary>
         /// Break large clauses into multiple smaller clauses. This helps
         /// to work around O(n^2)-algorithms in some solvers.
         /// Default: 64

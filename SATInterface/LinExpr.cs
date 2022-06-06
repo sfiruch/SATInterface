@@ -298,13 +298,17 @@ namespace SATInterface
             Debug.Assert(_a.Model is not null);
 
             var rhs = _b - _a.Offset;
-            var ub = 0;
+            var ub = 0L;
             foreach (var e in _a.Weights)
-            {
-                ub += Math.Abs(e.Value);
-                if (e.Value < 0)
-                    rhs -= e.Value;
-            }
+                checked
+                {
+                    ub += Math.Abs(e.Value);
+                    if (e.Value < 0)
+                        rhs -= e.Value;
+                }
+
+            if (_a.Model.UIntCache.TryGetValue(_a, out var uintV))
+                return uintV <= rhs;
 
             Debug.Assert(rhs >= 0); //because of the early Model.False abort above
 
@@ -315,17 +319,23 @@ namespace SATInterface
             }
 
             var absEqRHSCnt = 0;
+            var maxVar = new KeyValuePair<BoolVar, int>((BoolVar)Model.False, 0);
+            var maxVarCnt = 0;
             var minAbsWeight = int.MaxValue;
-            var allOneWeights = true;
             foreach (var w in _a.Weights)
             {
                 var absWeight = Math.Abs(w.Value);
                 if (absWeight == rhs)
                     absEqRHSCnt++;
+                if (absWeight > Math.Abs(maxVar.Value))
+                {
+                    maxVar = w;
+                    maxVarCnt = 0;
+                }
+                if (absWeight == Math.Abs(maxVar.Value))
+                    maxVarCnt++;
                 if (absWeight < minAbsWeight)
                     minAbsWeight = absWeight;
-                if (absWeight != 1)
-                    allOneWeights = false;
                 if (absWeight > rhs)
                 {
                     var vWithout = new LinExpr();
@@ -412,19 +422,24 @@ namespace SATInterface
 
             Debug.Assert(_a.Weights.Count > 2);
 
+            if (ub <= 16)
+                return !_a.Model.SortPairwise(_a.Weights.SelectMany(w => w.Value > 0 ? Enumerable.Repeat(w.Key, w.Value) : Enumerable.Repeat(!w.Key, -w.Value)).ToArray())[rhs];
+
             //Console.WriteLine($"{_a} <= {_b}");
-            if (_a.Weights.Count <= _a.Model.Configuration.LinExprBinaryComparisonThreshold && !allOneWeights)
+            //if (_a.Weights.Count <= _a.Model.Configuration.LinExprBinaryComparisonThreshold && !allOneWeights)
+
+            Debug.Assert(ub > rhs);
+            if (Math.Abs(maxVar.Value) > 1 && ub - Math.Abs(maxVar.Value) * 2 <= rhs)
             {
-                var maxVar = _a.Weights.MaxBy(w => Math.Abs(w.Value));
                 var withoutMaxVar = _a - maxVar.Key * maxVar.Value;
-                //Debug.WriteLine($"BDD on {maxVar.Key}");
+                //Debug.WriteLine($"BDD {_a} <= {_b} on {maxVar.Key}");
                 return _a.Model.ITE(maxVar.Key,
                     withoutMaxVar <= _b - maxVar.Value,
                     withoutMaxVar <= _b);
             }
             else
             {
-                Debug.WriteLine($"Binary {_a} <= {_b}");
+                //Debug.WriteLine($"Binary {_a} <= {_b}");
                 return _a.ToUInt() <= rhs;
             }
         }
@@ -458,7 +473,7 @@ namespace SATInterface
         {
             Debug.Assert(_a.Model is not null);
 
-            var ub = 0;
+            var ub = 0L;
             var rhs = _b - _a.Offset;
             foreach (var e in _a.Weights)
             {
@@ -466,6 +481,9 @@ namespace SATInterface
                 if (e.Value < 0)
                     rhs -= e.Value;
             }
+
+            if (_a.Model.UIntCache.TryGetValue(_a, out var uintV))
+                return uintV == rhs;
 
             Debug.Assert(rhs >= 0);
             Debug.Assert(rhs <= _a.Weights.Sum(x => Math.Abs(x.Value)));
@@ -478,17 +496,23 @@ namespace SATInterface
 
 
             var absEqRHSCnt = 0;
+            var maxVar = new KeyValuePair<BoolVar, int>((BoolVar)Model.False, 0);
+            var maxVarCnt = 0;
             var minAbsWeight = int.MaxValue;
-            var allOneWeights = true;
             foreach (var w in _a.Weights)
             {
                 var absWeight = Math.Abs(w.Value);
                 if (absWeight == rhs)
                     absEqRHSCnt++;
+                if (absWeight > Math.Abs(maxVar.Value))
+                {
+                    maxVar = w;
+                    maxVarCnt = 0;
+                }
+                if (absWeight == Math.Abs(maxVar.Value))
+                    maxVarCnt++;
                 if (absWeight < minAbsWeight)
                     minAbsWeight = absWeight;
-                if (absWeight != 1)
-                    allOneWeights = false;
                 if (absWeight > rhs)
                 {
                     var vWithout = new LinExpr();
@@ -572,24 +596,24 @@ namespace SATInterface
                 return -_a == -_b;
             }
 
-            //if (_a.Weights.Count < 6 && _a.Weights.Values.All(v => Math.Abs(v) == 1) && rhs <= 2)
-            //    return _a.Model.ExactlyKOf(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key), rhs, Model.ExactlyKOfMethod.Sequential);
+            if (_a.Weights.Sum(w => Math.Abs(w.Value)) <= 16)
+                return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => w.Value > 0 ? Enumerable.Repeat(w.Key, w.Value) : Enumerable.Repeat(!w.Key, -w.Value)), rhs, Model.ExactlyKOfMethod.SortPairwise);
 
             Debug.Assert(_a.Weights.Count > 2);
 
-            //Console.WriteLine($"{_a} == {_b}");
-            if (_a.Weights.Count <= _a.Model.Configuration.LinExprBinaryComparisonThreshold && !allOneWeights)
+            //if (_a.Weights.Count <= _a.Model.Configuration.LinExprBinaryComparisonThreshold && Math.Abs(maxVar.Value) >= 1)
+            Debug.Assert(ub >= rhs);
+            if (Math.Abs(maxVar.Value) > 1 && ub - Math.Abs(maxVar.Value) * 2 < rhs)
             {
-                var maxVar = _a.Weights.MaxBy(w => Math.Abs(w.Value));
                 var withoutMaxVar = _a - maxVar.Key * maxVar.Value;
-                //Debug.WriteLine($"BDD on {maxVar.Key}");
+                //Debug.WriteLine($"BDD {_a} == {_b} on {maxVar.Key}");
                 return _a.Model.ITE(maxVar.Key,
                     withoutMaxVar == _b - maxVar.Value,
                     withoutMaxVar == _b);
             }
             else
             {
-                Debug.WriteLine($"Binary {_a} == {_b}");
+                //Debug.WriteLine($"Binary {_a} == {_b}");
                 return _a.ToUInt() == rhs;
             }
         }

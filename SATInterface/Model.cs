@@ -1080,7 +1080,6 @@ namespace SATInterface
             BinaryCount,
             SortTotalizer,
             SortPairwise,
-            Pairwise,
             Sequential,
             LinExpr
         }
@@ -1529,38 +1528,6 @@ namespace SATInterface
                         v = vnext;
                     }
                     return v[_k - 1] & !v[_k];
-
-                case ExactlyKOfMethod.Pairwise:
-                    if (_k == 1)
-                        return ExactlyOneOfPairwise(expr);
-                    else if (_k == 2)
-                    {
-                        //at most 2
-                        var and = new List<BoolExpr>();
-                        for (var i = 0; i < expr.Length; i++)
-                            for (var j = i + 1; j < expr.Length; j++)
-                                for (var k = j + 1; k < expr.Length; k++)
-                                    and.Add(!expr[i] | !expr[j] | !expr[k]);
-
-                        //at least 2
-                        var or = new List<BoolExpr>();
-                        for (var i = 0; i < expr.Length; i++)
-                            for (var j = i + 1; j < expr.Length; j++)
-                                or.Add(expr[i] & expr[j]);
-
-                        and.Add(OrExpr.Create(CollectionsMarshal.AsSpan(or)).Flatten());
-                        return AndExpr.Create(CollectionsMarshal.AsSpan(and)).Flatten();
-                    }
-                    else
-                    {
-                        var or = new BoolExpr[expr.Length];
-                        for (var i = 0; i < expr.Length; i++)
-                            or[i] = (expr[i]
-                                & AndExpr.Create(Enumerable.Range(0, i - 1).Select(j => !expr[j]).ToArray())
-                                & ExactlyKOf(Enumerable.Range(i + 1, expr.Length - i - 1).Select(j => expr[j]).ToArray(), _k - 1, _method)
-                                ).Flatten();
-                        return OrExpr.Create(or).Flatten();
-                    }
 
                 default:
                     throw new ArgumentException("Invalid method", nameof(_method));
