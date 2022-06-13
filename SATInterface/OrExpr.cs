@@ -65,7 +65,7 @@ namespace SATInterface
                 else if (ReferenceEquals(es, Model.True))
                     return Model.True;
                 else if (es is OrExpr oe)
-                    count += oe.Elements.Length;
+                    count += oe.FlatCached ? 1 : oe.Elements.Length;
                 else if (!ReferenceEquals(es, Model.False))
                     count++;
 
@@ -76,8 +76,13 @@ namespace SATInterface
             count = 0;
             foreach (var es in _elems)
                 if (es is OrExpr oe)
-                    foreach (var e in oe.Elements)
-                        res[count++] = e;
+                {
+                    if (oe.FlatCached)
+                        res[count++] = oe.Flatten();
+                    else
+                        foreach (var e in oe.Elements)
+                            res[count++] = e;
+                }
                 else if (es is AndExpr ae)
                     res[count++] = ae.Flatten();
                 else if (!ReferenceEquals(es, Model.False))
@@ -142,6 +147,8 @@ namespace SATInterface
         }
 
         public override string ToString() => "(" + string.Join(" | ", Elements.Select(e => e.ToString()).ToArray()) + ")";
+
+        internal bool FlatCached => (Elements.Length == 0) || GetModel()!.OrCache.ContainsKey(this);
 
         public override BoolExpr Flatten()
         {
