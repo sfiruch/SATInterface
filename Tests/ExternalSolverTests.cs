@@ -10,6 +10,7 @@ using System.Text;
 namespace Tests
 {
     [TestClass]
+    [Ignore]
     public class ExternalSolverTests
     {
         private void TestSat(Solver _s)
