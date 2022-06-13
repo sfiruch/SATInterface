@@ -533,7 +533,7 @@ namespace SATInterface
                 if (i < bits.Length - 1)
                 {
                     var oldCarry = carry;
-                    carry = !(m.AtMostOneOf(new[] { carry, _a.Bits[i], _b.Bits[i] }, Model.AtMostOneOfMethod.Pairwise).Flatten());
+                    carry = OrExpr.Create(carry & _a.Bits[i], carry & _b.Bits[i], _a.Bits[i] & _b.Bits[i]).Flatten();
 
                     //unitprop
                     if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
