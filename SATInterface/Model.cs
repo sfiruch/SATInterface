@@ -807,8 +807,7 @@ namespace SATInterface
                     AddConstr(OrExpr.Create(carry, sum, !_b));
                 }
 
-                return UIntSumTwoCache[(_a, _b)]
-                = new UIntVar(this, 2, new[] { sum, carry }, false);
+                return UIntSumTwoCache[(_a, _b)] = new UIntVar(this, 2, new[] { sum, carry }, false);
             }
 
             UIntVar SumThree(BoolExpr _a, BoolExpr _b, BoolExpr _c)
@@ -827,7 +826,7 @@ namespace SATInterface
                     return res;
 
                 var sum = (_a ^ _b ^ _c).Flatten();
-                var carry = !(AtMostOneOf(new[] { _a, _b, _c }, AtMostOneOfMethod.Pairwise).Flatten());
+                var carry = OrExpr.Create(_a & _b, _a & _c, _b & _c).Flatten();
 
                 //unitprop
                 if (Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
@@ -913,6 +912,7 @@ namespace SATInterface
         private Dictionary<int, UIntVar> UIntConstCache = new();
         internal Dictionary<(LinExpr, int), BoolExpr> LinExprEqCache = new();
         internal Dictionary<(LinExpr, int), BoolExpr> LinExprLECache = new();
+        private Dictionary<LinExpr, BoolExpr[]> SortCache = new();
 
         /// <summary>
         /// Returns the count of the supplied expressions.
@@ -1652,8 +1652,11 @@ namespace SATInterface
                 default:
                     //adapted from https://en.wikipedia.org/wiki/Pairwise_sorting_network
 
-                    var R = _elems.ToArray();
+                    var cacheKey = Sum(_elems);
+                    if (SortCache.TryGetValue(cacheKey, out var res))
+                        return res;
 
+                    var R = _elems.ToArray();
                     void CompSwap(int _i, int _j)
                     {
                         var a = R[_i];
@@ -1698,7 +1701,7 @@ namespace SATInterface
                             }
                         }
 
-                    return R;
+                    return SortCache[cacheKey] = R;
             }
         }
 
@@ -1719,6 +1722,10 @@ namespace SATInterface
                 case 2:
                     return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
                 default:
+                    var cacheKey = Sum(_elems);
+                    if (SortCache.TryGetValue(cacheKey, out var res))
+                        return res;
+
                     var R = new BoolExpr[_elems.Length + 2];
                     R[0] = True;
                     for (var i = 1; i < R.Length - 1; i++)
@@ -1738,7 +1745,7 @@ namespace SATInterface
                             }
                         }
 
-                    return R[1..^1];
+                    return SortCache[cacheKey] = R[1..^1];
             }
         }
 
