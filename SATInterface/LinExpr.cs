@@ -248,11 +248,14 @@ namespace SATInterface
                     toSum.Add(Model.AddUIntConst(minWeight) * minWeightVars.Single());
                 else
                 {
-                    var sum = Model.SumUInt(minWeightVars);
+                    var sum = Model.SumUInt(CollectionsMarshal.AsSpan(minWeightVars));
                     if (sum.UB > 0)
                     {
                         for (var i = 1; i < sum.Bits.Length; i++)
+                        {
+                            Debug.Assert((minWeight << i) > 0);
                             posWeights.Add((minWeight << i, sum.Bits[i]));
+                        }
 
                         toSum.Add(Model.AddUIntConst(minWeight) * sum.Bits[0]);
                     }
@@ -310,6 +313,9 @@ namespace SATInterface
             if (_a.Model.UIntCache.TryGetValue(_a, out var uintV))
                 return uintV <= rhs;
 
+            if (_a.Model.LinExprLECache.TryGetValue((_a, _b - 1), out var res1) && _a.Model.LinExprEqCache.TryGetValue((_a, _b), out var res2))
+                return res1 | res2;
+
             Debug.Assert(rhs >= 0); //because of the early Model.False abort above
 
             if (rhs == 0)
@@ -345,9 +351,6 @@ namespace SATInterface
                         else if (wi.Value < 0 && -wi.Value <= rhs)
                             vWithout.AddTerm(!wi.Key, -wi.Value);
 
-                    //Debug.WriteLine($"And({string.Join(',', _a.Weights.Where(w => Math.Abs(w.Value) > rhs).Select(w => w.Value > 0 ? !w.Key : w.Key))}, ...");
-                    //Debug.WriteLine($"..., {vWithout} <= {rhs})");
-
                     return _a.Model.And(_a.Weights
                         .Where(w => Math.Abs(w.Value) > rhs)
                         .Select(w => w.Value > 0 ? !w.Key : w.Key)
@@ -357,23 +360,30 @@ namespace SATInterface
 
             if (rhs == minAbsWeight)
             {
-                //Debug.WriteLine($"AMO({string.Join(',', _a.Weights.Where(w => Math.Abs(w.Value) == minAbsWeight).Select(w => w.Value > 0 ? w.Key : !w.Key))}) & ...");
-                //Debug.WriteLine($"... & And({string.Join(',', _a.Weights.Where(w => Math.Abs(w.Value) > minAbsWeight).Select(w => w.Value > 0 ? !w.Key : w.Key))})");
+                //return AndExpr.Create(_a.Weights.Where(w => Math.Abs(w.Value) > minAbsWeight).Select(w => w.Value > 0 ? !w.Key : w.Key)
+                //    .Append(_a.Model.AtMostOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == minAbsWeight).Select(w => w.Value > 0 ? w.Key : !w.Key)))
+                //    .ToArray());
 
-                return AndExpr.Create(_a.Weights.Where(w => Math.Abs(w.Value) > minAbsWeight).Select(w => w.Value > 0 ? !w.Key : w.Key)
-                    .Append(_a.Model.AtMostOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == minAbsWeight).Select(w => w.Value > 0 ? w.Key : !w.Key)))
-                    .ToArray());
+                Debug.Assert(_a.Weights.All(w => Math.Abs(w.Value) == rhs));
+                return _a.Model.AtMostOneOf(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key));
             }
 
-            var gcd = _a.Weights.Values.Select(w => Math.Abs(w)).Where(w => w < rhs).Aggregate(GCD);
+            Debug.Assert(_a.Weights.All(w => Math.Abs(w.Value) <= rhs));
+            var gcd = _a.Weights.Values.Select(w => Math.Abs(w)).Aggregate(GCD);
             if (gcd > 1)
             {
                 var vDiv = new LinExpr();
                 foreach (var w in _a.Weights)
                     if (w.Value > 0)
-                        vDiv.AddTerm(w.Key, Math.Min(rhs, w.Value) / gcd);
+                    {
+                        Debug.Assert(w.Value % gcd == 0);
+                        vDiv.AddTerm(w.Key, w.Value / gcd);
+                    }
                     else if (w.Value < 0)
-                        vDiv.AddTerm(!w.Key, Math.Min(rhs, -w.Value) / gcd);
+                    {
+                        Debug.Assert((-w.Value) % gcd == 0);
+                        vDiv.AddTerm(!w.Key, (-w.Value) / gcd);
+                    }
 
                 //Debug.WriteLine($"GCD={gcd}, {vDiv} <= {rhs / gcd}");
                 return vDiv <= rhs / gcd;
@@ -395,14 +405,9 @@ namespace SATInterface
                 if (vWithout.Weights.Count >= 0)
                 {
                     //Debug.WriteLine($"ITE {vWithout} <= {rhs}, AMO({string.Join(',', vRHS.AsEnumerable())})");
-
                     return _a.Model.ITE(_a.Model.Or(lWithout),
                         vWithout <= rhs & !_a.Model.Or(vRHS).Flatten(),
                         _a.Model.AtMostOneOf(vRHS));
-
-                    //return _a.Model.ITE(_a.Model.Or(vRHS),
-                    //    _a.Model.ExactlyOneOf(vRHS) & !_a.Model.Or(lWithout),
-                    //    vWithout <= rhs);
                 }
                 else
                 {
@@ -417,22 +422,35 @@ namespace SATInterface
                 return !(-_a <= (-_b - 1));
             }
 
-            //if (_a.Weights.Count < 6 && _a.Weights.Values.All(v => Math.Abs(v) == 1) && rhs == 2)
-            //    return _a.Model.AtMostTwoOfSequential(_a.Weights.Select(w => w.Value > 0 ? w.Key : !w.Key));
-
             Debug.Assert(_a.Weights.Count > 2);
+            Debug.Assert(ub > rhs);
+
+            if (Math.Abs(maxVar.Value) == 1 && _a.Weights.Count <= 18)
+            {
+                var res = EnumerateLEResolvent(_a, rhs);
+                if (res is not null)
+                {
+                    //Console.WriteLine($"{res.Count}: {_a}<={_b}");
+                    return res;
+                }
+            }
+            else if (Math.Abs(maxVar.Value) != minAbsWeight && _a.Weights.Count <= 18)
+            {
+                var res = EnumerateLEResolventWeightGrouped(_a, rhs);
+                if (res is not null)
+                {
+                    //Console.WriteLine($"WG: {_a}<={_b}");
+                    return res;
+                }
+            }
 
             if (ub <= 16)
                 return !_a.Model.SortPairwise(_a.Weights.SelectMany(w => w.Value > 0 ? Enumerable.Repeat(w.Key, w.Value) : Enumerable.Repeat(!w.Key, -w.Value)).ToArray())[rhs];
 
-            //Console.WriteLine($"{_a} <= {_b}");
-            //if (_a.Weights.Count <= _a.Model.Configuration.LinExprBinaryComparisonThreshold && !allOneWeights)
-
-            Debug.Assert(ub > rhs);
             if (Math.Abs(maxVar.Value) > 1 && ub - Math.Abs(maxVar.Value) * 2 <= rhs)
             {
-                var withoutMaxVar = _a - maxVar.Key * maxVar.Value;
                 //Debug.WriteLine($"BDD {_a} <= {_b} on {maxVar.Key}");
+                var withoutMaxVar = _a - maxVar.Key * maxVar.Value;
                 return _a.Model.ITE(maxVar.Key,
                     withoutMaxVar <= _b - maxVar.Value,
                     withoutMaxVar <= _b);
@@ -469,6 +487,416 @@ namespace SATInterface
             return res;
         }
 
+
+        private static BoolExpr? EnumerateLEResolvent(LinExpr _a, int _rhs)
+        {
+            var m = _a.Model!;
+            var limit = m.Configuration.EnumerateLinExprComparisonsLimit;
+            if (limit == 0)
+                return null;
+
+            var vars = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => w.Value > 0 ? w.Key : !w.Key).ToArray();
+            var _weights = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => Math.Abs(w.Value)).ToArray();
+
+            var res = new List<BoolExpr[]>(limit + 1);
+            var active = new Stack<BoolExpr>(vars.Length);
+            void Visit(int _s)
+            {
+                if (res.Count > limit)
+                    return;
+
+                active.Push(vars[_s]);
+                _rhs -= _weights[_s];
+
+                if (_rhs < 0)
+                    res.Add(active.ToArray());
+                else
+                    for (var i = _s + 1; i < _weights.Length; i++)
+                        Visit(i);
+
+                active.Pop();
+                _rhs += _weights[_s];
+            }
+
+            for (var i = 0; i < _weights.Length; i++)
+                Visit(i);
+
+            Debug.Assert(active.Count == 0);
+
+            if (res.Count > limit)
+                return null;
+            else
+                return AndExpr.Create(res.Select(r => OrExpr.Create(r.Select(v => !v).ToArray()).Flatten()).ToArray());
+        }
+
+        private static BoolExpr? EnumerateLEResolventWeightGrouped(LinExpr _a, int _rhs)
+        {
+            var m = _a.Model!;
+            var limit = m.Configuration.EnumerateLinExprComparisonsLimit;
+            if (limit == 0)
+                return null;
+
+            var weights = _a.Weights.Values.Select(w => Math.Abs(w)).Distinct().OrderByDescending(w => w).ToArray();
+            var max = weights.Select(wi => _a.Weights.Count(w => Math.Abs(w.Value) == wi)).ToArray();
+            var count = new int[weights.Length];
+
+            var resolvent = new List<int[]>(limit + 1);
+            void Visit(int _s)
+            {
+                if (resolvent.Count > limit)
+                    return;
+
+                if(_s + 1 < weights.Length)
+                    Visit(_s + 1);
+
+                var origRHS = _rhs;
+                for (count[_s] = 1; count[_s] <= max[_s]; count[_s]++)
+                {
+                    _rhs -= weights[_s];
+                    if (_rhs < 0)
+                    {
+                        resolvent.Add(count.ToArray());
+                        break;
+                    }
+                    else if (_rhs >= 0 && _s + 1 < weights.Length)
+                        Visit(_s + 1);
+
+                }
+
+                _rhs = origRHS;
+                count[_s] = 0;
+            }
+
+            Visit(0);
+
+            if (resolvent.Count > limit)
+                return null;
+
+            var varCnt = weights.Select(wi => m.Sum(_a.Weights.Where(w => Math.Abs(w.Value) == wi)
+                .Select(w => w.Value > 0 ? w.Key : !w.Key))).ToArray();
+
+            return AndExpr.Create(resolvent.Select(a => OrExpr.Create(
+                    a.Select((cnt, i) => varCnt[i] < cnt).ToArray()
+                )).ToArray());
+        }
+
+
+        private static BoolExpr? EnumerateEqAssignments(LinExpr _a, int _rhs)
+        {
+            var m = _a.Model!;
+            var limit = m.Configuration.EnumerateLinExprComparisonsLimit;
+            if (limit == 0)
+                return null;
+
+            var vars = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => w.Value > 0 ? w.Key : !w.Key).ToArray();
+            var _weights = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => Math.Abs(w.Value)).ToArray();
+
+            var res = new List<BoolExpr[]>(limit + 1);
+            var active = new Stack<BoolExpr>(vars.Length);
+            void Visit(int _s)
+            {
+                if (res.Count > limit)
+                    return;
+
+                active.Push(vars[_s]);
+                _rhs -= _weights[_s];
+
+                if (_rhs == 0)
+                {
+                    for (var i = _s + 1; i < _weights.Length; i++)
+                        active.Push(!vars[i]);
+                    res.Add(active.ToArray());
+                    for (var i = _s + 1; i < _weights.Length; i++)
+                        active.Pop();
+                }
+                else if (_rhs > 0)
+                {
+                    for (var i = _s + 1; i < _weights.Length; i++)
+                    {
+                        Visit(i);
+                        active.Push(!vars[i]);
+                    }
+                    for (var i = _s + 1; i < _weights.Length; i++)
+                        active.Pop();
+                }
+
+                _rhs += _weights[_s];
+                active.Pop();
+            }
+
+            for (var i = 0; i < _weights.Length; i++)
+            {
+                Visit(i);
+                active.Push(!vars[i]);
+            }
+
+            Debug.Assert(active.Count == _weights.Length);
+
+            if (res.Count > limit)
+                return null;
+            else
+                return OrExpr.Create(res.Select(vars => AndExpr.Create(vars).Flatten()).ToArray());
+        }
+
+        private static BoolExpr? EnumerateEqAssignmentsWeightGrouped(LinExpr _a, int _rhs)
+        {
+            var m = _a.Model!;
+            var limit = m.Configuration.EnumerateLinExprComparisonsLimit;
+            if (limit == 0)
+                return null;
+
+            var weights = _a.Weights.Values.Select(w => Math.Abs(w)).Distinct().OrderByDescending(w => w).ToArray();
+            var max = weights.Select(wi => _a.Weights.Count(w => Math.Abs(w.Value) == wi)).ToArray();
+            var count = new int[weights.Length];
+
+            var validAssignments = new List<int[]>(limit + 1);
+            void Visit(int _s, int _cnt)
+            {
+                if (validAssignments.Count > limit)
+                    return;
+
+                count[_s] = _cnt;
+                _rhs -= weights[_s] * _cnt;
+
+                if (_rhs == 0)
+                    validAssignments.Add(count.ToArray());
+                else if (_rhs > 0 && _s + 1 < weights.Length)
+                    for (var i = 0; i <= max[_s + 1]; i++)
+                        Visit(_s + 1, i);
+
+                _rhs += weights[_s] * _cnt;
+                count[_s] = 0;
+            }
+
+            for (var i = 0; i <= max[0]; i++)
+                Visit(0, i);
+
+            if (validAssignments.Count > limit)
+                return null;
+
+            var varCnt = weights.Select(wi => m.Sum(_a.Weights.Where(w => Math.Abs(w.Value) == wi)
+                .Select(w => w.Value > 0 ? w.Key : !w.Key))).ToArray();
+
+            return OrExpr.Create(validAssignments.Select(a => AndExpr.Create(
+                    a.Select((cnt, i) => varCnt[i] == cnt).ToArray()
+                )).ToArray());
+        }
+
+        private static (LinExpr LE, int RHS) CanonicalizeLE(LinExpr _a, int _rhs)
+        {
+            //Wilson, J.M., 1977. A method for reducing coefficients in zero‐one linear
+            //inequalities. International Journal of Mathematical Educational in Science
+            //and Technology, 8(1), pp.31-35.
+            //https://www.tandfonline.com/doi/pdf/10.1080/0020739770080104
+
+            //Onyekwelu, D.C. and Proll, L.G., 1982. On Wilson's method for equivalent
+            //inequalities. International Journal of Mathematical Education in Science
+            //and Technology, 13(5), pp.551-557.
+            //https://www.tandfonline.com/doi/pdf/10.1080/0020739820130505
+
+            var abortEarly = false;
+
+            List<int[]> ComputeResolvent(int[] _weights, int _rhs)
+            {
+                var res = new List<int[]>();
+                var active = new Stack<int>();
+                var remaining = _rhs;
+                void Visit(int _s)
+                {
+                    if (abortEarly)
+                        return;
+
+                    active.Push(_s);
+                    remaining -= _weights[_s];
+
+                    if (remaining < 0)
+                    {
+                        var r = active.Reverse().ToArray();
+
+                        //if (ComputeLBUB(_weights, r).LB == _rhs)
+                        //  abortEarly = true;
+
+                        res.Add(r);
+                    }
+                    else
+                        for (var i = _s + 1; i < _weights.Length; i++)
+                            Visit(i);
+
+                    active.Pop();
+                    remaining += _weights[_s];
+                }
+
+                for (var i = 0; i < _weights.Length; i++)
+                    Visit(i);
+
+                return res;
+            }
+
+            (int LB, int UB) ComputeLBUB(int[] _weights, int[] _cj)
+            {
+                var lb = 0;
+                for (var i = 0; i < _cj.Length - 1; i++)
+                    lb += _weights[_cj[i]];
+                return (lb, lb + _weights[_cj[^1]] - 1);
+            }
+
+            bool ComputeValidRHS(int[] _oldWeights, int _oldRHS, int[] _newWeights, List<int[]> _resolvent, out int _rhs)
+            {
+                var minRHS = 0;
+                var maxRHS = int.MaxValue;
+
+                foreach (var r in _resolvent)
+                {
+                    (var lb, var ub) = ComputeLBUB(_newWeights, r);
+                    if (lb > minRHS)
+                        minRHS = lb;
+                    if (ub < maxRHS)
+                        maxRHS = ub;
+
+                    if (maxRHS < minRHS)
+                    {
+                        _rhs = 0;
+                        return false;
+                    }
+                }
+
+                for (var rhs = minRHS; rhs <= maxRHS; rhs++)
+                    if (IsValid(_oldWeights, _oldRHS, _newWeights, rhs))
+                    {
+                        _rhs = rhs;
+                        return true;
+                    }
+
+                _rhs = 0;
+                return false;
+            }
+
+            bool IsValid(int[] _oldWeights, int _rhs, int[] _newWeights, int _newRHS)
+            {
+                var remainingOld = _rhs;
+                var remainingNew = _newRHS;
+
+                if (remainingOld < 0 ^ remainingNew < 0)
+                    return false;
+
+                bool Visit(int _s)
+                {
+                    remainingOld -= _oldWeights[_s];
+                    remainingNew -= _newWeights[_s];
+
+                    if (remainingOld < 0 ^ remainingNew < 0)
+                        return false;
+
+                    if (remainingOld >= 0 && remainingNew >= 0)
+                        for (var i = _s + 1; i < _oldWeights.Length; i++)
+                            if (!Visit(i))
+                                return false;
+
+                    remainingOld += _oldWeights[_s];
+                    remainingNew += _newWeights[_s];
+                    return true;
+                }
+
+                for (var i = 0; i < _oldWeights.Length; i++)
+                    if (!Visit(i))
+                        return false;
+
+                return true;
+            }
+
+
+
+            var vars = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => w.Value > 0 ? w.Key : !w.Key).ToArray();
+            var oldWeights = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => Math.Abs(w.Value)).ToArray();
+            var resolvent = ComputeResolvent(oldWeights, _rhs);
+            if (abortEarly)
+                return (_a, _rhs);
+
+            var largerThan = new bool[vars.Length, vars.Length];
+            foreach (var r in resolvent)
+                for (var jk = 0; jk < vars.Length; jk++)
+                {
+                    var idx = Array.IndexOf(r, jk);
+                    if (idx == -1)
+                        continue;
+
+                    for (var jkt = jk + 1; jkt < oldWeights.Length && (idx == r.Length - 1 || jkt < r[idx + 1]); jkt++)
+                    {
+                        Debug.Assert(!r.Contains(jkt));
+
+                        var r2 = r.ToArray();
+                        r2[idx] = jkt;
+                        Array.Sort(r2);
+
+                        if (!resolvent.Any(rnot => Enumerable.SequenceEqual(rnot, r2)))
+                        {
+                            largerThan[jk, jkt] = true;
+                            break;
+                        }
+                    }
+                }
+
+
+            var newWeights = new int[vars.Length];
+            for (var i = 0; i < vars.Length; i++)
+                if (resolvent.Any(r => r.Contains(i)))
+                    newWeights[i] = 1;
+
+            var increased = new bool[vars.Length];
+            void ApplyRules()
+            {
+                //TODO: in reverse order - things should converge in 1 step?
+                for (; ; )
+                {
+                    var changed = false;
+                    for (var i = 0; i < vars.Length; i++)
+                        for (var j = i + 1; j < vars.Length; j++)
+                            if (oldWeights[i] == oldWeights[j] && newWeights[i] < newWeights[j])
+                            {
+                                increased[i] = true;
+                                newWeights[i] = newWeights[j];
+                                changed = true;
+                            }
+                            else if (largerThan[i, j] && newWeights[i] <= newWeights[j])
+                            {
+                                increased[i] = true;
+                                newWeights[i] = newWeights[j] + 1;
+                                changed = true;
+                            }
+
+                    if (!changed)
+                        break;
+                }
+            }
+
+            ApplyRules();
+
+            for (; ; )
+            {
+                if (ComputeValidRHS(oldWeights, _rhs, newWeights, resolvent, out var rhs))
+                {
+                    var res = new LinExpr();
+                    for (var i = 0; i < oldWeights.Length; i++)
+                        res.AddTerm(vars[i], newWeights[i]);
+                    return (res, rhs);
+                }
+
+                var incI = -1;
+                for (var i = 0; i < vars.Length; i++)
+                    if (!increased[i])
+                    {
+                        Debug.Assert(newWeights[i] >= 1);
+                        newWeights[i]++;
+                        incI = i;
+                        break;
+                    }
+
+                Array.Clear(increased);
+                //increased[incI] = true;
+                ApplyRules();
+            }
+        }
+
         private static BoolExpr UncachedEq(LinExpr _a, int _b)
         {
             Debug.Assert(_a.Model is not null);
@@ -489,11 +917,10 @@ namespace SATInterface
             Debug.Assert(rhs <= _a.Weights.Sum(x => Math.Abs(x.Value)));
 
             if (rhs == 0)
-            {
-                //Debug.WriteLine($"And({string.Join(',', _a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key))})");
                 return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? !x.Key : x.Key).ToArray());
-            }
 
+            if (_a.Model.LinExprLECache.TryGetValue((_a, _b - 1), out var res1) && _a.Model.LinExprLECache.TryGetValue((_a, _b), out var res2))
+                return !res1 & res2;
 
             var absEqRHSCnt = 0;
             var maxVar = new KeyValuePair<BoolVar, int>((BoolVar)Model.False, 0);
@@ -596,17 +1023,35 @@ namespace SATInterface
                 return -_a == -_b;
             }
 
-            if (_a.Weights.Sum(w => Math.Abs(w.Value)) <= 16)
+            Debug.Assert(_a.Weights.Count > 2);
+            Debug.Assert(ub >= rhs);
+
+            if (Math.Abs(maxVar.Value) == 1 && _a.Weights.Count <= 18)
+            {
+                var res = EnumerateEqAssignments(_a, rhs);
+                if (res is not null)
+                {
+                    //Console.WriteLine($"{res.Count}: {_a}=={_b}");
+                    return res;
+                }
+            }
+            else if (Math.Abs(maxVar.Value) != minAbsWeight && _a.Weights.Count <= 18)
+            {
+                var res = EnumerateEqAssignmentsWeightGrouped(_a, rhs);
+                if (res is not null)
+                {
+                    //Console.WriteLine($"WG: {_a}=={_b}");
+                    return res;
+                }
+            }
+
+            if (ub <= 16)
                 return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => w.Value > 0 ? Enumerable.Repeat(w.Key, w.Value) : Enumerable.Repeat(!w.Key, -w.Value)), rhs, Model.ExactlyKOfMethod.SortPairwise);
 
-            Debug.Assert(_a.Weights.Count > 2);
-
-            //if (_a.Weights.Count <= _a.Model.Configuration.LinExprBinaryComparisonThreshold && Math.Abs(maxVar.Value) >= 1)
-            Debug.Assert(ub >= rhs);
             if (Math.Abs(maxVar.Value) > 1 && ub - Math.Abs(maxVar.Value) * 2 < rhs)
             {
-                var withoutMaxVar = _a - maxVar.Key * maxVar.Value;
                 //Debug.WriteLine($"BDD {_a} == {_b} on {maxVar.Key}");
+                var withoutMaxVar = _a - maxVar.Key * maxVar.Value;
                 return _a.Model.ITE(maxVar.Key,
                     withoutMaxVar == _b - maxVar.Value,
                     withoutMaxVar == _b);
