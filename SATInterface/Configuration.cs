@@ -82,9 +82,9 @@ namespace SATInterface
         /// <summary>
         /// Strategy to solve minimization/maximization problems.
         /// 
-        /// Default: Balanced
+        /// Default: Incumbent
         /// </summary>
-        public OptimizationFocus OptimizationFocus = OptimizationFocus.Balanced;
+        public OptimizationFocus OptimizationFocus = OptimizationFocus.Incumbent;
 
         /// <summary>
         /// Verbosity of the solver logging. Set to 0 to disable logging.
