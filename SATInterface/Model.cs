@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -704,6 +705,7 @@ namespace SATInterface
         /// </summary>
         /// <param name="_elems"></param>
         /// <returns></returns>
+        [Pure]
         public BoolExpr And(params BoolExpr[] _elems) => AndExpr.Create(_elems);
 
         /// <summary>
@@ -712,6 +714,7 @@ namespace SATInterface
         /// </summary>
         /// <param name="_elems"></param>
         /// <returns></returns>
+        [Pure]
         public BoolExpr Or(IEnumerable<BoolExpr> _elems) => OrExpr.Create(_elems.ToArray());
 
 
@@ -719,6 +722,7 @@ namespace SATInterface
         /// Returns an expression equivalent to the exclusive-or of the
         /// supplied expressions.
         /// </summary>
+        [Pure]
         public BoolExpr Xor(BoolExpr _a, BoolExpr _b)
             => _a ^ _b;
 
@@ -966,6 +970,7 @@ namespace SATInterface
         /// <param name="_then"></param>
         /// <param name="_else"></param>
         /// <returns></returns>
+        [Pure]
         public UIntVar ITE(BoolExpr _if, UIntVar _then, UIntVar _else) => UIntVar.ITE(_if, _then, _else);
 
 
@@ -976,6 +981,7 @@ namespace SATInterface
         /// <param name="_then"></param>
         /// <param name="_else"></param>
         /// <returns></returns>
+        [Pure]
         public BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else)
         {
             _if = _if.Flatten();
@@ -1089,6 +1095,7 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
+        [Pure]
         public BoolExpr AtMostOneOf(params BoolExpr[] _expr) => AtMostOneOf(_expr.AsSpan(), null);
 
         /// <summary>
@@ -1096,6 +1103,7 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
+        [Pure]
         public BoolExpr AtMostOneOf(IEnumerable<BoolExpr> _expr, AtMostOneOfMethod? _method = null) => AtMostOneOf(_expr.ToArray(), _method);
 
         /// <summary>
@@ -1103,6 +1111,7 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
+        [Pure]
         public BoolExpr AtMostOneOf(BoolExpr[] _expr, AtMostOneOfMethod? _method = null) => AtMostOneOf(_expr.AsSpan(), _method);
 
         /// <summary>
@@ -1110,6 +1119,7 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
+        [Pure]
         public BoolExpr AtMostOneOf(ReadOnlySpan<BoolExpr> _expr, AtMostOneOfMethod? _method = null)
         {
             var trueCount = 0;
@@ -1209,6 +1219,7 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
+        [Pure]
         public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod? _method = null) => ExactlyOneOf(_expr.ToArray().AsSpan(), _method);
 
         /// <summary>
@@ -1216,6 +1227,7 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
+        [Pure]
         public BoolExpr ExactlyOneOf(BoolExpr[] _expr, ExactlyOneOfMethod? _method = null) => ExactlyOneOf(_expr.ToArray().AsSpan(), _method);
 
         /// <summary>
@@ -1223,6 +1235,7 @@ namespace SATInterface
         /// 
         /// Consider using LinExpr-based constraints instead.
         /// </summary>
+        [Pure]
         public BoolExpr ExactlyOneOf(ReadOnlySpan<BoolExpr> _expr, ExactlyOneOfMethod? _method = null)
         {
             var trueCount = 0;
@@ -1476,6 +1489,7 @@ namespace SATInterface
         /// <param name="_expr"></param>
         /// <param name="_k"></param>
         /// <returns></returns>
+        [Pure]
         public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod? _method = null)
         {
             var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
