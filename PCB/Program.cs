@@ -37,10 +37,7 @@ namespace PCB
 
         static void Main(string[] args)
         {
-            using var m = new Model(new Configuration()
-            {
-                OptimizationFocus = OptimizationFocus.Incumbent
-            });
+            using var m = new Model();
 
             var vXYLC = new BoolExpr[W, H, L, C];
             var sourceXYC = new bool[W, H, C];

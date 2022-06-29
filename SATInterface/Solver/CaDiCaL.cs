@@ -15,10 +15,6 @@ namespace SATInterface.Solver
 
         public CaDiCaL()
         {
-            if (!Environment.Is64BitProcess)
-                throw new Exception("This library only supports x64 when using the bundled CaDiCaL solver.");
-
-            Handle = CaDiCaLNative.ccadical_init();
         }
 
         public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
@@ -88,12 +84,21 @@ namespace SATInterface.Solver
 
         protected override void DisposeUnmanaged()
         {
-            CaDiCaLNative.ccadical_release(Handle);
+            if (Handle != IntPtr.Zero)
+                CaDiCaLNative.ccadical_release(Handle);
+
             Handle = IntPtr.Zero;
         }
 
         internal override void ApplyConfiguration()
         {
+            if (Handle == IntPtr.Zero)
+            {
+                if (!Environment.Is64BitProcess)
+                    throw new Exception("This library only supports x64 when using the bundled CaDiCaL solver.");
+                Handle = CaDiCaLNative.ccadical_init();
+            }
+
             if ((Model.Configuration.Threads ?? 1) != 1)
                 throw new NotImplementedException("CaDiCaL only supports single-threaded operation.");
 

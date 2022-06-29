@@ -81,24 +81,28 @@ namespace SATInterface
     {
         /// <summary>
         /// Strategy to solve minimization/maximization problems.
-        /// Default: Balanced
+        /// 
+        /// Default: Incumbent
         /// </summary>
-        public OptimizationFocus OptimizationFocus = OptimizationFocus.Balanced;
+        public OptimizationFocus OptimizationFocus = OptimizationFocus.Incumbent;
 
         /// <summary>
         /// Verbosity of the solver logging. Set to 0 to disable logging.
+        /// 
         /// Default: 2
         /// </summary>
         public int Verbosity = 2;
 
         /// <summary>
         /// Bundled SAT solver to use.
+        /// 
         /// Default: new SATInterface.Solver.CaDiCaL()
         /// </summary>
         public Solver.Solver Solver = new CaDiCaL();
 
         /// <summary>
         /// Number of threads the solver may use.
+        /// 
         /// Default: null
         /// </summary>
         public int? Threads;
@@ -124,12 +128,14 @@ namespace SATInterface
 
         /// <summary>
         /// Random seed used by the solver for tie-breaking.
+        /// 
         /// Default: null
         /// </summary>
         public int? RandomSeed;
 
         /// <summary>
         /// Initial phase of variables.
+        /// 
         /// Default: null
         /// </summary>
         public bool? InitialPhase;
@@ -137,6 +143,7 @@ namespace SATInterface
         /// <summary>
         /// Number of lines the solver output will use, after
         /// which the solver log will scroll.
+        /// 
         /// Default: 35
         /// </summary>
         public int? ConsoleSolverLines = 35;
@@ -148,6 +155,7 @@ namespace SATInterface
 
         /// <summary>
         /// Expected outcome.
+        /// 
         /// Default: ExpectedOutcome.Unknown
         /// </summary>
         public ExpectedOutcome ExpectedOutcome = ExpectedOutcome.Unknown;
@@ -155,14 +163,24 @@ namespace SATInterface
         /// <summary>
         /// Break large clauses into multiple smaller clauses. This helps
         /// to work around O(n^2)-algorithms in some solvers.
+        /// 
         /// Default: 64
         /// </summary>
         public int MaxClauseSize = 64;
 
         /// <summary>
         /// Controls which redundant clauses are added for arc-consistency.
+        /// 
         /// Default: ArcConstistencyClauses.ITE
         /// </summary>
         public ArcConstistencyClauses AddArcConstistencyClauses = ArcConstistencyClauses.ITE;
+
+        /// <summary>
+        /// Valid assignments for (in)equalities are enumerated, if there are
+        /// fewer assignments than this limit.
+        /// 
+        /// Default: 4
+        /// </summary>
+        public int EnumerateLinExprComparisonsLimit = 4;
     }
 }

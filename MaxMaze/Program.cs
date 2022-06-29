@@ -46,10 +46,7 @@ namespace MaxMaze
 
         static void Main(string[] args)
         {
-            using var m = new Model(new Configuration()
-            {
-                OptimizationFocus = OptimizationFocus.Incumbent
-            });
+            using var m = new Model();
 
             var free = new BoolExpr[W, H];
             for (int y = 0; y < H; y++)
