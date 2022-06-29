@@ -29,6 +29,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Superpermutation", "Superpe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ParkerSquare", "ParkerSquare\ParkerSquare.csproj", "{2220C5C8-5217-42F2-996C-1DADED8F17CA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EternityII", "EternityII\EternityII.csproj", "{A8951974-B4BE-4E97-B2B1-62E15014AD89}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,10 @@ Global
 		{2220C5C8-5217-42F2-996C-1DADED8F17CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2220C5C8-5217-42F2-996C-1DADED8F17CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2220C5C8-5217-42F2-996C-1DADED8F17CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8951974-B4BE-4E97-B2B1-62E15014AD89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8951974-B4BE-4E97-B2B1-62E15014AD89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8951974-B4BE-4E97-B2B1-62E15014AD89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8951974-B4BE-4E97-B2B1-62E15014AD89}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
