@@ -103,6 +103,7 @@ namespace Tests
         }
 
         [TestMethod]
+        [Ignore]
         public void kissatWin32PipeTimeout()
         {
             using var m = new Model(new Configuration()
@@ -114,6 +115,7 @@ namespace Tests
         }
 
         [TestMethod]
+        [Ignore]
         public void kissatWin32FileTimeout()
         {
             var input = Path.GetTempFileName();

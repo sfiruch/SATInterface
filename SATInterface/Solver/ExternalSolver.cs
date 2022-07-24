@@ -170,7 +170,7 @@ namespace SATInterface.Solver
                     {
                         assignment = bc.Take(cts.Token);
 
-                        if(ReferenceEquals(assignment, UNSAT))
+                        if (ReferenceEquals(assignment, UNSAT))
                         {
                             assignment = null;
                             s = State.Unsatisfiable;
@@ -182,7 +182,7 @@ namespace SATInterface.Solver
                     {
                         s = State.Undecided;
                     }
-                    catch(InvalidOperationException)
+                    catch (InvalidOperationException)
                     {
                         //enumeration complete
                         yield break;
@@ -195,9 +195,6 @@ namespace SATInterface.Solver
             }
             finally
             {
-                p!.Kill(true);
-                p.WaitForExit();
-
                 cts.Cancel();
 
                 if (FilenameInput is null)
