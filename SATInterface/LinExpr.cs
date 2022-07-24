@@ -416,6 +416,9 @@ namespace SATInterface
                 }
             }
 
+            //if (_a.Weights.Count <= 18)
+            //    (_a, rhs) = CanonicalizeLE(_a, rhs);
+
             if (rhs > ub / 2)
             {
                 //Debug.WriteLine($"Swapping to !({-_a} <= {(-_b - 1)})");
@@ -546,7 +549,7 @@ namespace SATInterface
                 if (resolvent.Count > limit)
                     return;
 
-                if(_s + 1 < weights.Length)
+                if (_s + 1 < weights.Length)
                     Visit(_s + 1);
 
                 var origRHS = _rhs;
@@ -711,7 +714,9 @@ namespace SATInterface
 
                     if (remaining < 0)
                     {
-                        var r = active.Reverse().ToArray();
+                        var r = new int[active.Count];
+                        active.CopyTo(r, 0);
+                        Array.Reverse(r);
 
                         //if (ComputeLBUB(_weights, r).LB == _rhs)
                         //  abortEarly = true;
@@ -738,37 +743,6 @@ namespace SATInterface
                 for (var i = 0; i < _cj.Length - 1; i++)
                     lb += _weights[_cj[i]];
                 return (lb, lb + _weights[_cj[^1]] - 1);
-            }
-
-            bool ComputeValidRHS(int[] _oldWeights, int _oldRHS, int[] _newWeights, List<int[]> _resolvent, out int _rhs)
-            {
-                var minRHS = 0;
-                var maxRHS = int.MaxValue;
-
-                foreach (var r in _resolvent)
-                {
-                    (var lb, var ub) = ComputeLBUB(_newWeights, r);
-                    if (lb > minRHS)
-                        minRHS = lb;
-                    if (ub < maxRHS)
-                        maxRHS = ub;
-
-                    if (maxRHS < minRHS)
-                    {
-                        _rhs = 0;
-                        return false;
-                    }
-                }
-
-                for (var rhs = minRHS; rhs <= maxRHS; rhs++)
-                    if (IsValid(_oldWeights, _oldRHS, _newWeights, rhs))
-                    {
-                        _rhs = rhs;
-                        return true;
-                    }
-
-                _rhs = 0;
-                return false;
             }
 
             bool IsValid(int[] _oldWeights, int _rhs, int[] _newWeights, int _newRHS)
@@ -873,26 +847,33 @@ namespace SATInterface
 
             for (; ; )
             {
-                if (ComputeValidRHS(oldWeights, _rhs, newWeights, resolvent, out var rhs))
+                var minRHS = 0;
+                var maxRHS = int.MaxValue;
+
+                foreach (var r in resolvent)
                 {
-                    var res = new LinExpr();
-                    for (var i = 0; i < oldWeights.Length; i++)
-                        res.AddTerm(vars[i], newWeights[i]);
-                    return (res, rhs);
+                    (var lb, var ub) = ComputeLBUB(newWeights, r);
+                    if (lb > minRHS)
+                        minRHS = lb;
+                    if (ub < maxRHS)
+                        maxRHS = ub;
                 }
 
-                var incI = -1;
-                for (var i = 0; i < vars.Length; i++)
-                    if (!increased[i])
+                for (var rhs = minRHS; rhs <= maxRHS; rhs++)
+                    if (IsValid(oldWeights, _rhs, newWeights, rhs))
                     {
-                        Debug.Assert(newWeights[i] >= 1);
-                        newWeights[i]++;
-                        incI = i;
-                        break;
+                        var res = new LinExpr();
+                        for (var i = 0; i < oldWeights.Length; i++)
+                            res.AddTerm(vars[i], newWeights[i]);
+                        return (res, rhs);
                     }
 
+
+
+                var incI = Enumerable.Range(0, vars.Length).Where(i => !increased[i]).MaxBy(i => newWeights[i]);
                 Array.Clear(increased);
-                //increased[incI] = true;
+                newWeights[incI]++;
+                increased[incI] = true;
                 ApplyRules();
             }
         }
