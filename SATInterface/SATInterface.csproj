@@ -25,7 +25,7 @@
     <None Pack="true" PackageCopyToOutput="true" Include="CaDiCaL.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Pack="true" PackageCopyToOutput="true" Include="Kissat.dll">
+    <None Pack="true" PackageCopyToOutput="true" Include="kissat.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Pack="true" PackageCopyToOutput="true" Include="YalSAT.dll">
