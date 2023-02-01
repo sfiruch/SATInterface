@@ -140,6 +140,7 @@ namespace SATInterface.Solver
     }
 
     public static class CaDiCaLNative
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     {
         [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr ccadical_init();
@@ -186,4 +187,5 @@ namespace SATInterface.Solver
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int TerminateCallback(IntPtr State);
     }
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

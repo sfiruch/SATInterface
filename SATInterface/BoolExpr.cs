@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -60,11 +61,6 @@ namespace SATInterface
         /// <returns></returns>
         public abstract BoolExpr Flatten();
 
-        internal virtual IEnumerable<BoolVar> EnumVars()
-        {
-            yield break;
-        }
-
         internal abstract Model? GetModel();
 
         public override string ToString()
@@ -88,13 +84,13 @@ namespace SATInterface
             if (ReferenceEquals(_v, Model.True))
                 return Model.False;
 
-            if (_v is NotExpr ne)
+            if (_v is NotVar ne)
                 return ne.inner;
 
             if (_v is BoolVar bv)
                 return bv.Negated;
 
-            return NotExpr.Create(_v);
+            return NotVar.Create(_v);
         }
 
         public abstract int VarCount { get; }

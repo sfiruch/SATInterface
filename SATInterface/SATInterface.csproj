@@ -17,6 +17,7 @@
     <Authors>Simon Felix</Authors>
     <Description>Library to formulate and solve SAT problems in .NET. Includes CaDiCaL, Kissat, CryptoMiniSat and YalSAT as solvers.</Description>
     <Copyright>Copyright 2022 Simon Felix</Copyright>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <None Pack="true" PackageCopyToOutput="true" Include="cryptominisat5win.dll">

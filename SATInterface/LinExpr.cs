@@ -324,6 +324,10 @@ namespace SATInterface
                 return AndExpr.Create(_a.Weights.Select(w => w.Value > 0 ? !w.Key : w.Key).ToArray());
             }
 
+            //if (_a.Weights.Count <= 18)
+            //    //(_a, rhs) = CanonicalizeLE(_a, rhs);
+            //    (_a, rhs) = CanonicalizeLE2(_a, rhs);
+
             var absEqRHSCnt = 0;
             var maxVar = new KeyValuePair<BoolVar, int>((BoolVar)Model.False, 0);
             var maxVarCnt = 0;
@@ -416,9 +420,6 @@ namespace SATInterface
                 }
             }
 
-            //if (_a.Weights.Count <= 18)
-            //    (_a, rhs) = CanonicalizeLE(_a, rhs);
-
             if (rhs > ub / 2)
             {
                 //Debug.WriteLine($"Swapping to !({-_a} <= {(-_b - 1)})");
@@ -437,8 +438,11 @@ namespace SATInterface
                     return res;
                 }
             }
-            else if (Math.Abs(maxVar.Value) != minAbsWeight && _a.Weights.Count <= 18)
+            else if (_a.Weights.Count <= 18)
             {
+                //not all variables have the same weight, ensured by /gcd
+                Debug.Assert(Math.Abs(maxVar.Value) != minAbsWeight);
+
                 var res = EnumerateLEResolventWeightGrouped(_a, rhs);
                 if (res is not null)
                 {
@@ -447,7 +451,7 @@ namespace SATInterface
                 }
             }
 
-            if (ub <= 16)
+            if (ub <= 8)
                 return !_a.Model.SortPairwise(_a.Weights.SelectMany(w => w.Value > 0 ? Enumerable.Repeat(w.Key, w.Value) : Enumerable.Repeat(!w.Key, -w.Value)).ToArray())[rhs];
 
             if (Math.Abs(maxVar.Value) > 1 && ub - Math.Abs(maxVar.Value) * 2 <= rhs)
@@ -499,37 +503,37 @@ namespace SATInterface
                 return null;
 
             var vars = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => w.Value > 0 ? w.Key : !w.Key).ToArray();
-            var _weights = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => Math.Abs(w.Value)).ToArray();
+            var weights = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => Math.Abs(w.Value)).ToArray();
 
-            var res = new List<BoolExpr[]>(limit + 1);
+            var resolvent = new List<BoolExpr[]>(limit + 1);
             var active = new Stack<BoolExpr>(vars.Length);
             void Visit(int _s)
             {
-                if (res.Count > limit)
+                if (resolvent.Count > limit)
                     return;
 
                 active.Push(vars[_s]);
-                _rhs -= _weights[_s];
+                _rhs -= weights[_s];
 
                 if (_rhs < 0)
-                    res.Add(active.ToArray());
+                    resolvent.Add(active.ToArray());
                 else
-                    for (var i = _s + 1; i < _weights.Length; i++)
+                    for (var i = _s + 1; i < weights.Length; i++)
                         Visit(i);
 
                 active.Pop();
-                _rhs += _weights[_s];
+                _rhs += weights[_s];
             }
 
-            for (var i = 0; i < _weights.Length; i++)
+            for (var i = 0; i < weights.Length; i++)
                 Visit(i);
 
             Debug.Assert(active.Count == 0);
 
-            if (res.Count > limit)
+            if (resolvent.Count > limit)
                 return null;
             else
-                return AndExpr.Create(res.Select(r => OrExpr.Create(r.Select(v => !v).ToArray()).Flatten()).ToArray());
+                return AndExpr.Create(resolvent.Select(r => OrExpr.Create(r.Select(v => !v).ToArray()).Flatten()).ToArray());
         }
 
         private static BoolExpr? EnumerateLEResolventWeightGrouped(LinExpr _a, int _rhs)
@@ -683,6 +687,131 @@ namespace SATInterface
             return OrExpr.Create(validAssignments.Select(a => AndExpr.Create(
                     a.Select((cnt, i) => varCnt[i] == cnt).ToArray()
                 )).ToArray());
+        }
+
+        private static (LinExpr LE, int RHS) CanonicalizeLE2(LinExpr _a, int _rhs)
+        {
+            var abortEarly = false;
+
+            List<int[]> ComputeResolvent(int[] _weights, int _rhs)
+            {
+                var res = new List<int[]>();
+                var active = new Stack<int>();
+                var remaining = _rhs;
+                void Visit(int _s)
+                {
+                    if (abortEarly)
+                        return;
+
+                    active.Push(_s);
+                    remaining -= _weights[_s];
+
+                    if (remaining < 0)
+                    {
+                        var r = new int[active.Count];
+                        active.CopyTo(r, 0);
+                        Array.Reverse(r);
+
+                        //if (ComputeLBUB(_weights, r).LB == _rhs)
+                        //  abortEarly = true;
+
+                        res.Add(r);
+                    }
+                    else
+                        for (var i = _s + 1; i < _weights.Length; i++)
+                            Visit(i);
+
+                    active.Pop();
+                    remaining += _weights[_s];
+                }
+
+                for (var i = 0; i < _weights.Length; i++)
+                    Visit(i);
+
+                return res;
+            }
+
+            (int LB, int UB) ComputeLBUB(int[] _weights, int[] _cj)
+            {
+                var lb = 0;
+                for (var i = 0; i < _cj.Length - 1; i++)
+                    lb += _weights[_cj[i]];
+                return (lb, lb + _weights[_cj[^1]] - 1);
+            }
+
+            bool IsValid(int[] _oldWeights, int _rhs, int[] _newWeights, int _newRHS)
+            {
+                var remainingOld = _rhs;
+                var remainingNew = _newRHS;
+
+                if (remainingOld < 0 ^ remainingNew < 0)
+                    return false;
+
+                bool Visit(int _s)
+                {
+                    remainingOld -= _oldWeights[_s];
+                    remainingNew -= _newWeights[_s];
+
+                    if (remainingOld < 0 ^ remainingNew < 0)
+                        return false;
+
+                    if (remainingOld >= 0 && remainingNew >= 0)
+                        for (var i = _s + 1; i < _oldWeights.Length; i++)
+                            if (!Visit(i))
+                                return false;
+
+                    remainingOld += _oldWeights[_s];
+                    remainingNew += _newWeights[_s];
+                    return true;
+                }
+
+                for (var i = 0; i < _oldWeights.Length; i++)
+                    if (!Visit(i))
+                        return false;
+
+                return true;
+            }
+
+            var vars = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => w.Value > 0 ? w.Key : !w.Key).ToArray();
+            var oldWeights = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => Math.Abs(w.Value)).ToArray();
+            var resolvent = ComputeResolvent(oldWeights, _rhs);
+            if (abortEarly)
+                return (_a, _rhs);
+
+            var nonZero = new bool[vars.Length];
+            for (var i = 0; i < vars.Length; i++)
+                nonZero[i] = resolvent.Any(r => r.Contains(i));
+
+            var newWeights = new int[vars.Length];
+            for (var scale = 1; scale < oldWeights[0]; scale++)
+            {
+                for (var i = 0; i < oldWeights.Length; i++)
+                    if (nonZero[i])
+                        newWeights[i] = (oldWeights[i] * scale + oldWeights[0] - 1) / oldWeights[0];
+
+                var minRHS = 0;
+                var maxRHS = int.MaxValue;
+
+                foreach (var r in resolvent)
+                {
+                    (var lb, var ub) = ComputeLBUB(newWeights, r);
+                    if (lb > minRHS)
+                        minRHS = lb;
+                    if (ub < maxRHS)
+                        maxRHS = ub;
+                }
+
+                for (var rhs = minRHS; rhs <= maxRHS; rhs++)
+                    if (IsValid(oldWeights, _rhs, newWeights, rhs))
+                    {
+                        var res = new LinExpr();
+                        for (var i = 0; i < oldWeights.Length; i++)
+                            res.AddTerm(vars[i], newWeights[i]);
+                        return (res, rhs);
+                    }
+            }
+
+            return (_a, _rhs);
         }
 
         private static (LinExpr LE, int RHS) CanonicalizeLE(LinExpr _a, int _rhs)
@@ -1016,8 +1145,11 @@ namespace SATInterface
                     return res;
                 }
             }
-            else if (Math.Abs(maxVar.Value) != minAbsWeight && _a.Weights.Count <= 18)
+            else if (_a.Weights.Count <= 18)
             {
+                //not all variables have the same weight, should be guaranteed by /gcd
+                Debug.Assert(Math.Abs(maxVar.Value) != minAbsWeight);
+
                 var res = EnumerateEqAssignmentsWeightGrouped(_a, rhs);
                 if (res is not null)
                 {
@@ -1026,7 +1158,7 @@ namespace SATInterface
                 }
             }
 
-            if (ub <= 16)
+            if (ub <= 8)
                 return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => w.Value > 0 ? Enumerable.Repeat(w.Key, w.Value) : Enumerable.Repeat(!w.Key, -w.Value)), rhs, Model.ExactlyKOfMethod.SortPairwise);
 
             if (Math.Abs(maxVar.Value) > 1 && ub - Math.Abs(maxVar.Value) * 2 < rhs)
@@ -1137,7 +1269,7 @@ namespace SATInterface
                     Model = bv.Model;
                 this[bv] += _weight;
             }
-            else if (be is NotExpr ne)
+            else if (be is NotVar ne)
             {
                 if (ne.inner.Model is not null)
                     Model = ne.inner.Model;

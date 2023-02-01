@@ -146,6 +146,9 @@ namespace SATInterface
         internal static UIntVar Convert(Model _m, BoolExpr _v) => new UIntVar(_m, 1, new[] { _v });
         public static implicit operator LinExpr(UIntVar _v) => _v.ToLinExpr();
 
+        /// <summary>
+        /// Returns a value indicating whether this instance is equal to a specified UIntVar.
+        /// </summary>
         public override bool Equals(object? obj)
         {
             if (obj is not UIntVar other)
@@ -154,6 +157,9 @@ namespace SATInterface
             return other.UB == UB && ReferenceEquals(other.Model, Model) && other.bit.SequenceEqual(bit);
         }
 
+        /// <summary>
+        /// Returns the hash code for this instance.
+        /// </summary>
         public override int GetHashCode()
         {
             var hc = new HashCode();
@@ -163,6 +169,9 @@ namespace SATInterface
             return hc.ToHashCode();
         }
 
+        /// <summary>
+        /// Returns a new, constant UIntVar which is equal to the provided value.
+        /// </summary>
         internal static UIntVar Const(Model _model, int _c)
         {
             if (_c < 0)
@@ -174,6 +183,9 @@ namespace SATInterface
             return new UIntVar(_model, _c > MaxUB ? Unbounded : _c, bits);
         }
 
+        /// <summary>
+        /// Returns a new UIntVar representing the first parameter shifted left by the given number of bits.
+        /// </summary>
         public static UIntVar operator >>(UIntVar _a, int _shift)
         {
             if (_a.Bits.Length <= _shift)
@@ -185,7 +197,14 @@ namespace SATInterface
             return new UIntVar(_a.Model, _a.UB == Unbounded ? Unbounded : (_a.UB >> _shift), bits);
         }
 
+        /// <summary>
+        /// Returns a new UIntVar representing the binary AND operation of the first and second parameter.
+        /// </summary>
         public static UIntVar operator &(int _mask, UIntVar _v) => (_v & _mask);
+
+        /// <summary>
+        /// Returns a new UIntVar representing the binary AND operation of the first and second parameter.
+        /// </summary>
         public static UIntVar operator &(UIntVar _v, int _mask)
         {
             var bits = new BoolExpr[(_v.UB == Unbounded) ? _v.Bits.Length : RequiredBitsForUB(Math.Min(_v.UB, _mask))];
@@ -197,7 +216,9 @@ namespace SATInterface
             return new UIntVar(_v.Model, (_v.UB == Unbounded) ? _mask : Math.Min(_v.UB, _mask), bits);
         }
 
-
+        /// <summary>
+        /// Returns a new UIntVar representing the sum of the first and second parameter.
+        /// </summary>
         public static UIntVar operator +(UIntVar _a, int _add)
         {
             if (_add > 0)
@@ -208,8 +229,16 @@ namespace SATInterface
                 return _a;
         }
 
+        /// <summary>
+        /// Returns a new UIntVar representing the sum of the first and second parameter.
+        /// </summary>
         public static UIntVar operator +(int _add, UIntVar _a) => _a + _add;
 
+        /// <summary>
+        /// Returns a new UIntVar representing the difference of the first and second parameter.
+        /// Please note that this also implies that the first number must be greater than or equal
+        /// to the second number.
+        /// </summary>
         public static UIntVar operator -(UIntVar _a, int _add)
         {
             if (_add > 0)
@@ -219,8 +248,19 @@ namespace SATInterface
             else
                 return _a;
         }
+
+        /// <summary>
+        /// Returns a new UIntVar representing the difference of the first and second parameter.
+        /// Please note that this also implies that the first number must be greater than or equal
+        /// to the second number.
+        /// </summary>
         public static UIntVar operator -(int _add, UIntVar _a) => _a.Model.AddUIntConst(_add) - _a;
 
+        /// <summary>
+        /// Returns a new UIntVar representing the difference of the first and second parameter.
+        /// Please note that this also implies that the first number must be greater than or equal
+        /// to the second number.
+        /// </summary>
         public static UIntVar operator -(UIntVar _a, UIntVar _b)
         {
             var res = new UIntVar(_a.Model, (_a.UB == Unbounded) ? Unbounded : _a.UB, false);
@@ -256,7 +296,14 @@ namespace SATInterface
             }
         }
 
+        /// <summary>
+        /// Returns `true` iff the first parameter is equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator ==(int _v, UIntVar _a) => _a == _v;
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator ==(UIntVar _a, int _v)
         {
             if (_v < 0)
@@ -271,7 +318,14 @@ namespace SATInterface
             return AndExpr.Create(res).Flatten();
         }
 
+        /// <summary>
+        /// Returns `true` iff the first parameter is not equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator !=(int _v, UIntVar _a) => _a != _v;
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is not equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator !=(UIntVar _a, int _v)
         {
             if (_v < 0)
@@ -304,7 +358,14 @@ namespace SATInterface
             return OrExpr.Create(res).Flatten();
         }
 
+        /// <summary>
+        /// Returns `true` iff the first parameter is greater than the second parameter.
+        /// </summary>
         public static BoolExpr operator >(int _v, UIntVar _a) => _a < _v;
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is greater than the second parameter.
+        /// </summary>
         public static BoolExpr operator >(UIntVar _a, int _v)
         {
             if (_v < 0)
@@ -319,7 +380,14 @@ namespace SATInterface
             return _a > _a.Model.AddUIntConst(_v);
         }
 
+        /// <summary>
+        /// Returns `true` iff the first parameter is less than the second parameter.
+        /// </summary>
         public static BoolExpr operator <(int _v, UIntVar _a) => _a > _v;
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is less than the second parameter.
+        /// </summary>
         public static BoolExpr operator <(UIntVar _a, int _v)
         {
             if (_v <= 0)
@@ -333,7 +401,14 @@ namespace SATInterface
         }
 
 
+        /// <summary>
+        /// Returns `true` iff the first parameter is greater than the second parameter.
+        /// </summary>
         public static BoolExpr operator >(UIntVar _a, UIntVar _b) => _b < _a;
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is less than the second parameter.
+        /// </summary>
         public static BoolExpr operator <(UIntVar _a, UIntVar _b)
         {
             var res = new BoolExpr[Math.Max(_a.bit.Length, _b.bit.Length)];
@@ -354,17 +429,46 @@ namespace SATInterface
             return OrExpr.Create(res).Flatten();
         }
 
-
-
+        /// <summary>
+        /// Returns `true` iff the first parameter is greater than or equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator >=(UIntVar _a, int _v) => _a > (_v - 1);
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is less than or equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator <=(UIntVar _a, int _v) => _a < (_v + 1);
 
+        /// <summary>
+        /// Returns `true` iff the first parameter is greater than or equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator >=(int _v, UIntVar _a) => _a < (_v + 1);
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is less than or equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator <=(int _v, UIntVar _a) => _a > (_v - 1);
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is greater than or equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator >=(UIntVar _a, UIntVar _b) => !(_a < _b);
+
+        /// <summary>
+        /// Returns `true` iff the first parameter is less than or equal to the second parameter.
+        /// </summary>
         public static BoolExpr operator <=(UIntVar _a, UIntVar _b) => !(_b < _a);
 
+        /// <summary>
+        /// Returns a new UIntVar which is equal to the second parameter, if the first
+        /// parameter is `true`, otherwise zero.
+        /// </summary>
         public static UIntVar operator *(BoolExpr _b, UIntVar _a) => _a * _b;
+
+        /// <summary>
+        /// Returns a new UIntVar which is equal to the first parameter, if the second
+        /// parameter is `true`, otherwise zero.
+        /// </summary>
         public static UIntVar operator *(UIntVar _a, BoolExpr _b)
         {
             if (ReferenceEquals(_b, Model.False))
@@ -398,6 +502,9 @@ namespace SATInterface
             return _a.Model.Sum(CollectionsMarshal.AsSpan(sum));
         }
 
+        /// <summary>
+        /// Returns a new UIntVar which is equal to the multiplication of both values. 
+        /// </summary>
         public static UIntVar operator *(UIntVar _a, UIntVar _b)
         {
             if (_a.UB == 0 || _b.UB == 0)
@@ -415,7 +522,16 @@ namespace SATInterface
             return res;
         }
 
+        /// <summary>
+        /// Returns the sum of _a and _b, where `false` corresponts to 0, and `true`
+        /// corresponds to 1.
+        /// </summary>
         public static UIntVar operator +(BoolExpr _b, UIntVar _a) => _a + _b;
+
+        /// <summary>
+        /// Returns the sum of _a and _b, where `false` corresponts to 0, and `true`
+        /// corresponds to 1.
+        /// </summary>
         public static UIntVar operator +(UIntVar _a, BoolExpr _b)
         {
             if (ReferenceEquals(_b, Model.False))

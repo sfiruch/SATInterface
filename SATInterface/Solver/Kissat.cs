@@ -129,6 +129,7 @@ namespace SATInterface.Solver
     }
 
     public static class KissatNative
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     {
         [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr kissat_init();
@@ -171,4 +172,5 @@ namespace SATInterface.Solver
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int TerminateCallback(IntPtr State);
     }
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

@@ -17,22 +17,29 @@ namespace SATInterface
     /// </summary>
     public class Model : IDisposable
     {
-        public static readonly BoolExpr True = new BoolVar(-1);
-        public static readonly BoolExpr False = new BoolVar(-2);
+        public static readonly BoolExpr True = new BoolVar(int.MaxValue);
+        public static readonly BoolExpr False = new BoolVar(int.MaxValue - 1);
 
-        private List<BoolVar> vars = new List<BoolVar>();
+        private List<bool> varsX = new List<bool>();
+
         public State State { get; internal set; } = State.Undecided;
 
         internal bool InOptimization = false;
         internal bool AbortOptimization = false;
         internal bool UnsatWithAssumptions = false;
 
+        /// <summary>
+        /// The active solver configuration for this model.
+        /// </summary>
         public readonly Configuration Configuration;
+
+        internal bool GetAssignment(int _id) => _id > 0 ? varsX[_id - 1] : !varsX[-_id - 1];
+        internal BoolExpr GetVariable(int _id) => _id > 0 ? new BoolVar(this, _id) : !new BoolVar(this, -_id);
 
         /// <summary>
         /// Number of variables in this model.
         /// </summary>
-        public int VariableCount => vars.Count;
+        public int VariableCount => varsX.Count;
 
         /// <summary>
         /// Number of clauses in this model.
@@ -88,7 +95,7 @@ namespace SATInterface
 
                 AddClauseToSolver(stackalloc[] { boolVar.Id });
             }
-            else if (_c is NotExpr notExpr)
+            else if (_c is NotVar notExpr)
             {
                 if (!ReferenceEquals(notExpr.inner.Model, this))
                     throw new ArgumentException("Mixing variables from different models is not supported.");
@@ -99,41 +106,19 @@ namespace SATInterface
             }
             else if (_c is OrExpr orExpr)
             {
+                if (!ReferenceEquals(orExpr.Model, this))
+                    throw new ArgumentException("Mixing variables from different models is not supported.");
+
                 if (OrCache.TryGetValue(orExpr, out var res))
                     AddConstrInternal(res);
                 else
-                {
-                    Span<int> sb = stackalloc int[orExpr.Elements.Length];
-                    for (var i = 0; i < sb.Length; i++)
-                        if (orExpr.Elements[i] is BoolVar bv)
-                        {
-                            Debug.Assert(bv.Id > 0);
-
-                            sb[i] = bv.Id;
-
-                            if (!ReferenceEquals(bv.Model, this))
-                                throw new ArgumentException("Mixing variables from different models is not supported.");
-                        }
-                        else if (orExpr.Elements[i] is NotExpr ne)
-                        {
-                            Debug.Assert(ne.inner.Id > 0);
-
-                            sb[i] = -ne.inner.Id;
-
-                            if (!ReferenceEquals(ne.inner.Model, this))
-                                throw new ArgumentException("Mixing variables from different models is not supported.");
-                        }
-                        else
-                            throw new Exception();
-
-                    AddClauseToSolver(sb);
-                }
+                    AddClauseToSolver(orExpr.Elements);
             }
             else
                 throw new NotImplementedException(_c.GetType().ToString());
         }
 
-        private void AddClauseToSolver(ReadOnlySpan<int> _x)
+        internal void AddClauseToSolver(ReadOnlySpan<int> _x)
         {
             Configuration.Solver.AddClause(_x);
             ClauseCount++;
@@ -241,8 +226,9 @@ namespace SATInterface
 
         internal void RegisterVariable(BoolVar boolVar)
         {
-            vars.Add(boolVar);
-            Debug.Assert(boolVar.Id == vars.Count);
+            varsX.Add(false);
+
+            Debug.Assert(boolVar.Id == varsX.Count);
 
             if (!InOptimization && State == State.Satisfiable)
                 State = State.Undecided;
@@ -359,7 +345,7 @@ namespace SATInterface
                         break;
 
                     for (var i = 0; i < assignment.Length; i++)
-                        vars[i].Value = assignment[i];
+                        varsX[i] = assignment[i];
 
                     State = State.Satisfiable;
 
@@ -391,7 +377,7 @@ namespace SATInterface
                 if (lastAssignment is not null)
                 {
                     for (var i = 0; i < lastAssignment.Length; i++)
-                        vars[i].Value = lastAssignment[i];
+                        varsX[i] = lastAssignment[i];
 
                     State = State.Satisfiable;
                 }
@@ -411,7 +397,7 @@ namespace SATInterface
         /// Returns all solutions produced by the solver. Only useful with solvers that actually
         /// produce multiple solutions directly. Only tested with CMSGen and CryptoMiniSat.
         /// </summary>
-        /// <param name="_solutionCallback">Invoked for every valid assignment</param>
+        /// <param name="_solutionCallback">Invoked for every valid assignment. May call Abort().</param>
         public void MultiSolve(Action _solutionCallback)
         {
             //TODO integrate with enumSolutions properly
@@ -432,7 +418,7 @@ namespace SATInterface
                 foreach (var assignment in InvokeSampler(timeout, null))
                 {
                     for (var i = 0; i < assignment.Length; i++)
-                        vars[i].Value = assignment[i];
+                        varsX[i] = assignment[i];
 
                     State = State.Satisfiable;
 
@@ -495,7 +481,7 @@ namespace SATInterface
 
                     //found initial, potentially feasible solution
                     for (var i = 0; i < bestAssignment.Length; i++)
-                        vars[i].Value = bestAssignment[i];
+                        varsX[i] = bestAssignment[i];
 
                     State = State.Satisfiable;
                     var mClauses = ClauseCount;
@@ -555,7 +541,7 @@ namespace SATInterface
                         var ge = (_obj >= cur).Flatten();
                         if (ge is BoolVar v)
                             assumptionGE.Add(v.Id);
-                        else if (ge is NotExpr ne && ne.inner is BoolVar iv)
+                        else if (ge is NotVar ne && ne.inner is BoolVar iv)
                             assumptionGE.Add(-iv.Id);
                         else
                             throw new Exception();
@@ -568,7 +554,7 @@ namespace SATInterface
 
                         State = State.Satisfiable;
                         for (var i = 0; i < assignment.Length; i++)
-                            vars[i].Value = assignment[i];
+                            varsX[i] = assignment[i];
 
                         Debug.Assert(_obj.X >= cur);
 
@@ -604,7 +590,7 @@ namespace SATInterface
                 State = State.Satisfiable;
                 UnsatWithAssumptions = false;
                 for (var i = 0; i < bestAssignment.Length; i++)
-                    vars[i].Value = bestAssignment[i];
+                    varsX[i] = bestAssignment[i];
             }
             finally
             {
@@ -635,11 +621,11 @@ namespace SATInterface
                     assumptions[i] = _assumptions[i] switch
                     {
                         BoolVar bv => bv.Id,
-                        NotExpr ne => -ne.inner.Id,
+                        NotVar ne => -ne.inner.Id,
                         BoolExpr be => be.Flatten() switch
                         {
                             BoolVar ibv => ibv.Id,
-                            NotExpr ine => -ine.inner.Id,
+                            NotVar ine => -ine.inner.Id,
                             _ => throw new Exception()
                         }
                     };
@@ -649,10 +635,10 @@ namespace SATInterface
             if (State == State.Satisfiable)
             {
                 Debug.Assert(assignment is not null);
-                Debug.Assert(assignment.Length == vars.Count);
+                Debug.Assert(assignment.Length == varsX.Count);
 
                 for (var i = 0; i < assignment.Length; i++)
-                    vars[i].Value = assignment[i];
+                    varsX[i] = assignment[i];
             }
 
             UnsatWithAssumptions = assumptions is not null;
@@ -1012,7 +998,7 @@ namespace SATInterface
         }
 
         private Dictionary<(BoolExpr _i, BoolExpr _t, BoolExpr _e), BoolExpr> ITECache = new();
-        internal Dictionary<OrExpr, BoolExpr> OrCache = new();
+        internal Dictionary<OrExpr, BoolVar> OrCache = new();
 
         private BoolExpr ITEInternal(BoolExpr _if, BoolExpr _then, BoolExpr _else)
         {
@@ -1162,6 +1148,7 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
+                    //return !SortPairwise(expr)[1];
                     return AtMostOneOfPairwiseTree(expr);
                 case AtMostOneOfMethod.SortTotalizer:
                     return !SortTotalizer(expr)[1];
@@ -1279,11 +1266,18 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    return ExactlyOneOfPairwiseTree(expr);
+                    {
+                        //var uc = SortPairwise(expr);
+                        //return uc[0] & !uc[1];
+                        return ExactlyOneOfPairwiseTree(expr);
+                    }
                 case ExactlyOneOfMethod.SortTotalizer:
                     return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
                 case ExactlyOneOfMethod.SortPairwise:
-                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortPairwise);
+                    {
+                        var uc = SortPairwise(expr);
+                        return uc[0] & !uc[1];
+                    }
                 case ExactlyOneOfMethod.BinaryCount:
                     return SumUInt(expr) == 1;
                 case ExactlyOneOfMethod.SequentialUnary:

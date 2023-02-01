@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Xml.Linq;
 
 namespace SATInterface
 {
@@ -11,19 +14,9 @@ namespace SATInterface
     internal class BoolVar : BoolExpr
     {
         internal readonly int Id;
-        internal bool Value;
-        internal readonly Model? Model;
-        private BoolExpr? negated;
+        internal readonly Model Model;
 
-        internal BoolExpr Negated
-        {
-            get
-            {
-                if (negated is null)
-                    negated = new NotExpr(this);
-                return negated;
-            }
-        }
+        internal BoolExpr Negated => NotVar.Create(this);
 
         public override BoolExpr Flatten() => this;
 
@@ -34,12 +27,22 @@ namespace SATInterface
             Model.RegisterVariable(this);
         }
 
+        internal BoolVar(Model _model, int _id)
+        {
+            Debug.Assert(_id > 0);
+
+            Model = _model;
+            Id = _id;
+        }
+
         /// <summary>
         /// This is only used for the global True and False constants which should be
         /// short-circuited away anyway before hitting the solver.
         /// </summary>
         internal BoolVar(int _id)
         {
+            Debug.Assert(_id > 0);
+
             Model = null!;
             Id = _id;
         }
@@ -54,7 +57,6 @@ namespace SATInterface
             return $"b{Id}";
         }
 
-
         public override bool X
         {
             get
@@ -67,16 +69,12 @@ namespace SATInterface
                 if (Model!.State == State.Unsatisfiable)
                     throw new InvalidOperationException("Model is UNSAT");
 
-                return Value;
+                return Model.GetAssignment(Id);
             }
         }
 
         public override int VarCount => 1;
 
-        internal override IEnumerable<BoolVar> EnumVars()
-        {
-            yield return this;
-        }
         internal override Model? GetModel() => Model;
 
         public override int GetHashCode() => Id;

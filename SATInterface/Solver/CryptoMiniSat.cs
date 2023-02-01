@@ -99,6 +99,7 @@ namespace SATInterface.Solver
     }
 
     public static class CryptoMiniSatNative
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     {
         //https://github.com/msoos/cryptominisat/blob/master/src/cryptominisat_c.h.in
 
@@ -162,6 +163,6 @@ namespace SATInterface.Solver
 
         [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void cmsat_set_max_time(IntPtr self, double max_time);
-
     }
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

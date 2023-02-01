@@ -198,11 +198,11 @@ namespace SATInterface.Solver
                 cts.Cancel();
 
                 if (FilenameInput is null)
-                    p.StandardInput.Dispose();
+                    p?.StandardInput.Dispose();
                 if (FilenameOutput is null)
-                    p.StandardOutput.Dispose();
+                    p?.StandardOutput.Dispose();
 
-                p.Dispose();
+                p?.Dispose();
 
                 try
                 {

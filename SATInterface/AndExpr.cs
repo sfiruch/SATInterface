@@ -13,7 +13,7 @@ namespace SATInterface
     {
         internal readonly BoolExpr[] Elements;
 
-        private AndExpr(BoolExpr[] _elems)
+        private AndExpr(BoolExpr[] _elems, Model _model)
         {
             Elements = _elems;
         }
@@ -100,19 +100,21 @@ namespace SATInterface
                 return res[0];
 
             for (var i = 0; i < res.Length; i++)
-                if (res[i] is NotExpr ne && res.Contains(ne.inner))
+                if (res[i] is NotVar ne && res.Contains(ne.inner))
                     return Model.False;
+
+            var m = res[0].GetModel()!;
 
             if (res.Length < 10)
             {
                 for (var i = 0; i < res.Length; i++)
                     for (var j = i + 1; j < res.Length; j++)
-                        if (ReferenceEquals(res[j], res[i]))
-                            return new AndExpr(res.Distinct().ToArray());
-                return new AndExpr(res);
+                        if (res[j].Equals(res[i]))
+                            return new AndExpr(res.Distinct().ToArray(), m);
+                return new AndExpr(res, m);
             }
             else
-                return new AndExpr(res.Distinct().ToArray());
+                return new AndExpr(res.Distinct().ToArray(), m);
         }
 
         public override BoolExpr Flatten()
@@ -123,13 +125,6 @@ namespace SATInterface
             var res = !(OrExpr.Create(be.AsSpan().Slice(0, Elements.Length)).Flatten());
             ArrayPool<BoolExpr>.Shared.Return(be);
             return res;
-        }
-
-        internal override IEnumerable<BoolVar> EnumVars()
-        {
-            foreach (var e in Elements)
-                foreach (var v in e.EnumVars())
-                    yield return v;
         }
 
         internal override Model? GetModel()
@@ -149,8 +144,7 @@ namespace SATInterface
 
         public override bool Equals(object? _obj)
         {
-            var other = _obj as AndExpr;
-            if (ReferenceEquals(other, null))
+            if (_obj is not AndExpr other)
                 return false;
 
             if (Elements.Length != other.Elements.Length)
@@ -158,17 +152,9 @@ namespace SATInterface
 
             //as elements are distinct by construction, one-sided comparison is enough
             foreach (var a in Elements)
-            {
-                var found = false;
-                foreach (var b in other.Elements)
-                    if (ReferenceEquals(a, b))
-                    {
-                        found = true;
-                        break;
-                    }
-                if (!found)
+                if (!other.Elements.Contains(a))
                     return false;
-            }
+
             return true;
         }
 

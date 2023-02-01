@@ -11,11 +11,31 @@ namespace SATInterface
 {
     internal class OrExpr : BoolExpr
     {
-        internal readonly BoolExpr[] Elements;
+        internal readonly int[] Elements;
+        internal readonly Model Model;
 
-        private OrExpr(BoolExpr[] _elems)
+        private OrExpr(BoolExpr[] _elems, Model _model)
         {
+            Debug.Assert(_elems.Length > 0);
+
+            Elements = new int[_elems.Length];
+            for (var i = 0; i < _elems.Length; i++)
+                if (_elems[i] is NotVar nv)
+                    Elements[i] = -nv.inner.Id;
+                else if (_elems[i] is BoolVar bv)
+                    Elements[i] = bv.Id;
+                else
+                    throw new Exception();
+
+            Model = _model;
+        }
+
+        private OrExpr(int[] _elems, Model _model)
+        {
+            Debug.Assert(_elems.Length > 0);
+
             Elements = _elems;
+            Model = _model;
         }
 
         internal static BoolExpr Create(BoolExpr _a, BoolExpr _b)
@@ -81,7 +101,7 @@ namespace SATInterface
                         res[count++] = oe.Flatten();
                     else
                         foreach (var e in oe.Elements)
-                            res[count++] = e;
+                            res[count++] = oe.Model.GetVariable(e);
                 }
                 else if (es is AndExpr ae)
                     res[count++] = ae.Flatten();
@@ -96,11 +116,11 @@ namespace SATInterface
             if (res.Length < 10)
                 for (var i = 0; i < res.Length; i++)
                 {
-                    if (res[i] is NotExpr ne && res.Contains(ne.inner))
+                    if (res[i] is NotVar ne && res.Contains(ne.inner))
                         return Model.True;
 
                     for (var j = i + 1; j < res.Length; j++)
-                        if (ReferenceEquals(res[i], res[j]))
+                        if (res[i].Equals(res[j]))
                         {
                             (res[i], res[0]) = (res[0], res[i]);
                             return OrExpr.Create(res[1..]);
@@ -108,21 +128,23 @@ namespace SATInterface
                 }
             else
             {
-                var posVars = new HashSet<BoolExpr>(res.Length);
-                var negVars = new HashSet<BoolExpr>(res.Length);
+                var posVars = new HashSet<int>(res.Length);
+                var negVars = new HashSet<int>(res.Length);
                 foreach (var v in res)
-                    if (v is NotExpr ne)
+                    if (v is NotVar ne)
                     {
-                        if (posVars.Contains(ne.inner))
+                        if (posVars.Contains(ne.inner.Id))
                             return Model.True;
-                        negVars.Add(ne.inner);
+                        negVars.Add(ne.inner.Id);
+                    }
+                    else if (v is BoolVar bv)
+                    {
+                        if (negVars.Contains(bv.Id))
+                            return Model.True;
+                        posVars.Add(bv.Id);
                     }
                     else
-                    {
-                        if (negVars.Contains(v))
-                            return Model.True;
-                        posVars.Add(v);
-                    }
+                        throw new Exception();
 
                 var distinct = res.Distinct().ToArray();
                 if (distinct.Length != res.Length)
@@ -142,62 +164,45 @@ namespace SATInterface
                 return OrExpr.Create(l);
             }
 
-
-            return new OrExpr(res);
+            return new OrExpr(res, m);
         }
 
-        public override string ToString() => "(" + string.Join(" | ", Elements.Select(e => e.ToString()).ToArray()) + ")";
+        public override string ToString() => "(" + string.Join(" | ", Elements.Select(e => Model.GetVariable(e).ToString()).ToArray()) + ")";
 
-        internal bool FlatCached => (Elements.Length == 0) || GetModel()!.OrCache.ContainsKey(this);
+        internal bool FlatCached => Model.OrCache.ContainsKey(this);
 
         public override BoolExpr Flatten()
         {
-            if (Elements.Length == 0)
-                return Model.False;
-
-            var m = GetModel()!;
-            if (m.OrCache.TryGetValue(this, out var res))
+            if (Model.OrCache.TryGetValue(this, out var res))
                 return res;
 
-            m.OrCache[this] = res = m.AddVar();
+            Model.OrCache[this] = res = (BoolVar)Model.AddVar();
 
-            var l = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length + 1);
-            for (var i = 0; i < Elements.Length; i++)
-                l[i] = Elements[i];
-            l[Elements.Length] = !res;
-            m.AddConstr(OrExpr.Create(l.AsSpan().Slice(0, Elements.Length + 1)));
-            ArrayPool<BoolExpr>.Shared.Return(l);
+            Span<int> l = stackalloc int[Elements.Length + 1];
+            Elements.CopyTo(l);
+            l[^1] = -res.Id;
+            Model.AddClauseToSolver(l);
 
+            Span<int> param = stackalloc int[2];
+            param[0] = res.Id;
             foreach (var e in Elements)
-                m.AddConstr(!e | res);
+            {
+                param[1] = -e;
+                Model.AddClauseToSolver(param);
+            }
 
             return res;
         }
 
-        internal override IEnumerable<BoolVar> EnumVars()
-        {
-            foreach (var e in Elements)
-                foreach (var v in e.EnumVars())
-                    yield return v;
-        }
+        internal override Model? GetModel() => Model;
 
-        internal override Model? GetModel()
-        {
-            foreach (var e in Elements)
-                if (e.GetModel() is Model m)
-                    return m;
-
-            return null;
-        }
-
-        public override bool X => Elements.Any(e => e.X);
+        public override bool X => Elements.Any(e => Model.GetAssignment(e));
 
         public override int VarCount => Elements.Length;
 
         public override bool Equals(object? _obj)
         {
-            var other = _obj as OrExpr;
-            if (ReferenceEquals(other, null))
+            if (_obj is not OrExpr other)
                 return false;
 
             if (Elements.Length != other.Elements.Length)
@@ -205,17 +210,9 @@ namespace SATInterface
 
             //as elements are distinct by construction, one-sided comparison is enough
             foreach (var a in Elements)
-            {
-                var found = false;
-                foreach (var b in other.Elements)
-                    if (ReferenceEquals(a, b))
-                    {
-                        found = true;
-                        break;
-                    }
-                if (!found)
+                if (!other.Elements.Contains(a))
                     return false;
-            }
+
             return true;
         }
 
