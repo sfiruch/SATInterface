@@ -449,7 +449,7 @@ namespace Tests
                 Verbosity = 0
             });
             var v2 = m2.AddVars(100);
-            m2.AddConstr(m2.Sum(v2.Select((v, i) => i % 3 == 0 ? v : !v)) == 1);
+            m2.AddConstr((m2.Sum(v2.Select((v, i) => i % 3 == 0 ? v : !v)) == 1).Flatten());
 
             Assert.AreEqual(m1.ClauseCount, m2.ClauseCount);
         }
