@@ -100,7 +100,7 @@ namespace SATInterface
                 return res[0];
 
             for (var i = 0; i < res.Length; i++)
-                if (res[i] is NotVar ne && res.Contains(ne.inner))
+                if (res[i] is BoolVar bv && res.Contains(bv.Negated))
                     return Model.False;
 
             var m = res[0].GetModel()!;

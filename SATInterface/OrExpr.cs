@@ -14,27 +14,12 @@ namespace SATInterface
         internal readonly int[] Elements;
         internal readonly Model Model;
 
-        private OrExpr(BoolExpr[] _elems, Model _model)
-        {
-            Debug.Assert(_elems.Length > 0);
-
-            Elements = new int[_elems.Length];
-            for (var i = 0; i < _elems.Length; i++)
-                if (_elems[i] is NotVar nv)
-                    Elements[i] = -nv.inner.Id;
-                else if (_elems[i] is BoolVar bv)
-                    Elements[i] = bv.Id;
-                else
-                    throw new Exception();
-
-            Model = _model;
-        }
-
         private OrExpr(int[] _elems, Model _model)
         {
             Debug.Assert(_elems.Length > 0);
 
             Elements = _elems;
+            Array.Sort(Elements);
             Model = _model;
         }
 
@@ -78,8 +63,10 @@ namespace SATInterface
             if (_elems.Length == 1)
                 return _elems[0];
 
+            var model = (Model?)null;
             var count = 0;
             foreach (var es in _elems)
+            {
                 if (ReferenceEquals(es, null))
                     throw new ArgumentNullException();
                 else if (ReferenceEquals(es, Model.True))
@@ -89,82 +76,78 @@ namespace SATInterface
                 else if (!ReferenceEquals(es, Model.False))
                     count++;
 
+                model ??= es.GetModel();
+            }
+
             if (count == 0)
                 return Model.False;
 
-            var res = new BoolExpr[count];
+            Debug.Assert(model is not null);
+
+            var res = new int[count];
             count = 0;
             foreach (var es in _elems)
                 if (es is OrExpr oe)
                 {
                     if (oe.FlatCached)
-                        res[count++] = oe.Flatten();
+                        res[count++] = ((BoolVar)oe.Flatten()).Id;
                     else
                         foreach (var e in oe.Elements)
-                            res[count++] = oe.Model.GetVariable(e);
+                            res[count++] = ((BoolVar)oe.Model.GetVariable(e)).Id;
                 }
                 else if (es is AndExpr ae)
-                    res[count++] = ae.Flatten();
-                else if (!ReferenceEquals(es, Model.False))
-                    res[count++] = es;
+                    res[count++] = ((BoolVar)ae.Flatten()).Id;
+                else if (es is BoolVar bv)
+                {
+                    if (!ReferenceEquals(es, Model.False))
+                        res[count++] = ((BoolVar)es).Id;
+                }
+                else
+                    throw new ArgumentException();
 
             Debug.Assert(count == res.Length);
 
             if (res.Length == 1)
-                return res[0];
+                return model.GetVariable(res[0]);
 
+            var containsDuplicates = false;
             if (res.Length < 10)
                 for (var i = 0; i < res.Length; i++)
                 {
-                    if (res[i] is NotVar ne && res.Contains(ne.inner))
+                    if (res[i] < 0 && res.Contains(-res[i]))
                         return Model.True;
 
                     for (var j = i + 1; j < res.Length; j++)
-                        if (res[i].Equals(res[j]))
-                        {
-                            (res[i], res[0]) = (res[0], res[i]);
-                            return OrExpr.Create(res[1..]);
-                        }
+                        if (res[i] == res[j])
+                            containsDuplicates = true;
                 }
-            else
-            {
-                var posVars = new HashSet<int>(res.Length);
-                var negVars = new HashSet<int>(res.Length);
-                foreach (var v in res)
-                    if (v is NotVar ne)
-                    {
-                        if (posVars.Contains(ne.inner.Id))
-                            return Model.True;
-                        negVars.Add(ne.inner.Id);
-                    }
-                    else if (v is BoolVar bv)
-                    {
-                        if (negVars.Contains(bv.Id))
-                            return Model.True;
-                        posVars.Add(bv.Id);
-                    }
-                    else
-                        throw new Exception();
 
-                var distinct = res.Distinct().ToArray();
-                if (distinct.Length != res.Length)
-                    return OrExpr.Create(distinct);
+            if (res.Length >= 10 || containsDuplicates)
+            {
+                var vars = new HashSet<int>(res.Length);
+                foreach (var v in res)
+                {
+                    if (vars.Contains(-v))
+                        return Model.True;
+                    vars.Add(v);
+                }
+
+                if (vars.Count != res.Length)
+                    return OrExpr.Create(vars.Select(v => model.GetVariable(v)).ToArray());
             }
 
-            var m = res[0].GetModel()!;
-
             //work around O(n^2)-algorithms in SAT solvers
-            if (res.Length > m.Configuration.MaxClauseSize)
+            if (res.Length > model.Configuration.MaxClauseSize)
             {
-                var chunkSize = m.Configuration.MaxClauseSize - 1;
+                var chunkSize = model.Configuration.MaxClauseSize - 1;
                 var l = new BoolExpr[(count + chunkSize - 1) / chunkSize];
                 for (var i = 0; i < l.Length; i++)
-                    l[i] = OrExpr.Create(res.AsSpan()[(i * chunkSize)..Math.Min(res.Length, (i + 1) * chunkSize)]).Flatten();
+                    l[i] = new OrExpr(res.AsSpan()[(i * chunkSize)..Math.Min(res.Length, (i + 1) * chunkSize)].ToArray(), model).Flatten();
 
                 return OrExpr.Create(l);
             }
 
-            return new OrExpr(res, m);
+            return new OrExpr(res, model);
         }
 
         public override string ToString() => "(" + string.Join(" | ", Elements.Select(e => Model.GetVariable(e).ToString()).ToArray()) + ")";
@@ -174,24 +157,24 @@ namespace SATInterface
         public override BoolExpr Flatten()
         {
             if (Model.OrCache.TryGetValue(this, out var res))
-                return res;
+                return new BoolVar(Model, res);
 
-            Model.OrCache[this] = res = (BoolVar)Model.AddVar();
+            Model.OrCache[this] = res = Model.AllocateVar();
 
             Span<int> l = stackalloc int[Elements.Length + 1];
             Elements.CopyTo(l);
-            l[^1] = -res.Id;
+            l[^1] = -res;
             Model.AddClauseToSolver(l);
 
             Span<int> param = stackalloc int[2];
-            param[0] = res.Id;
+            param[0] = res;
             foreach (var e in Elements)
             {
                 param[1] = -e;
                 Model.AddClauseToSolver(param);
             }
 
-            return res;
+            return new BoolVar(Model, res);
         }
 
         internal override Model? GetModel() => Model;
@@ -208,9 +191,8 @@ namespace SATInterface
             if (Elements.Length != other.Elements.Length)
                 return false;
 
-            //as elements are distinct by construction, one-sided comparison is enough
-            foreach (var a in Elements)
-                if (!other.Elements.Contains(a))
+            for (var i = 0; i < Elements.Length; i++)
+                if (Elements[i] != other.Elements[i])
                     return false;
 
             return true;
@@ -221,15 +203,13 @@ namespace SATInterface
         {
             if (hashCode == 0)
             {
-                hashCode = GetType().GetHashCode();
-
-                //deliberatly stupid implementation to produce
-                //order-independent hashcodes
+                var hc = new HashCode();
                 foreach (var e in Elements)
-                    hashCode += HashCode.Combine(e);
+                    hc.Add(e);
 
+                hashCode = hc.ToHashCode();
                 if (hashCode == 0)
-                    hashCode++;
+                    hashCode = 1;
             }
             return hashCode;
         }

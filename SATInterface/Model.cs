@@ -17,8 +17,8 @@ namespace SATInterface
     /// </summary>
     public class Model : IDisposable
     {
-        public static readonly BoolExpr True = new BoolVar(int.MaxValue);
-        public static readonly BoolExpr False = new BoolVar(int.MaxValue - 1);
+        public static readonly BoolExpr True = new BoolVar(null!, int.MaxValue);
+        public static readonly BoolExpr False = new BoolVar(null!, int.MaxValue - 1);
 
         private List<bool> varsX = new List<bool>();
 
@@ -34,7 +34,7 @@ namespace SATInterface
         public readonly Configuration Configuration;
 
         internal bool GetAssignment(int _id) => _id > 0 ? varsX[_id - 1] : !varsX[-_id - 1];
-        internal BoolExpr GetVariable(int _id) => _id > 0 ? new BoolVar(this, _id) : !new BoolVar(this, -_id);
+        internal BoolExpr GetVariable(int _id) => new BoolVar(this, _id);
 
         /// <summary>
         /// Number of variables in this model.
@@ -91,18 +91,7 @@ namespace SATInterface
                 if (!ReferenceEquals(boolVar.Model, this))
                     throw new ArgumentException("Mixing variables from different models is not supported.");
 
-                Debug.Assert(boolVar.Id > 0);
-
                 AddClauseToSolver(stackalloc[] { boolVar.Id });
-            }
-            else if (_c is NotVar notExpr)
-            {
-                if (!ReferenceEquals(notExpr.inner.Model, this))
-                    throw new ArgumentException("Mixing variables from different models is not supported.");
-
-                Debug.Assert(notExpr.inner.Id > 0);
-
-                AddClauseToSolver(stackalloc[] { -notExpr.inner.Id });
             }
             else if (_c is OrExpr orExpr)
             {
@@ -110,7 +99,7 @@ namespace SATInterface
                     throw new ArgumentException("Mixing variables from different models is not supported.");
 
                 if (OrCache.TryGetValue(orExpr, out var res))
-                    AddConstrInternal(res);
+                    AddClauseToSolver(stackalloc[] { res });
                 else
                     AddClauseToSolver(orExpr.Elements);
             }
@@ -122,8 +111,7 @@ namespace SATInterface
         {
             Configuration.Solver.AddClause(_x);
             ClauseCount++;
-            if (DIMACSOutput is not null)
-                DIMACSOutput.WriteLine(string.Join(' ', _x.ToArray().Append(0)));
+            DIMACSOutput?.WriteLine(string.Join(' ', _x.ToArray().Append(0)));
         }
 
         /// <summary>
@@ -172,7 +160,16 @@ namespace SATInterface
         /// <summary>
         /// Allocate a new boolean variable. This variable takes the value True or False in a SAT model.
         /// </summary>
-        public BoolExpr AddVar() => new BoolVar(this);
+        public BoolExpr AddVar() => new BoolVar(this, AllocateVar());
+
+        internal int AllocateVar()
+        {
+            if (!InOptimization && State == State.Satisfiable)
+                State = State.Undecided;
+
+            varsX.Add(false);
+            return VariableCount;
+        }
 
         /// <summary>
         /// Allocate a new one-dimensional array of boolean variables.
@@ -222,16 +219,6 @@ namespace SATInterface
                         for (var i1 = 0; i1 < _n1; i1++)
                             res[i1, i2, i3, i4] = AddVar();
             return res;
-        }
-
-        internal void RegisterVariable(BoolVar boolVar)
-        {
-            varsX.Add(false);
-
-            Debug.Assert(boolVar.Id == varsX.Count);
-
-            if (!InOptimization && State == State.Satisfiable)
-                State = State.Undecided;
         }
 
         /// <summary>
@@ -363,7 +350,7 @@ namespace SATInterface
                         //no new lazy-added constraints
                         lastAssignment = assignment;
 
-                        var somethingDifferent = new BoolVar(this);
+                        var somethingDifferent = new BoolVar(this, AllocateVar());
                         AddConstrInternal(somethingDifferent == OrExpr.Create(modelVariables.Select(v => v != v.X).ToArray()));
                         assumptions.Add(somethingDifferent.Id);
                     }
@@ -541,8 +528,6 @@ namespace SATInterface
                         var ge = (_obj >= cur).Flatten();
                         if (ge is BoolVar v)
                             assumptionGE.Add(v.Id);
-                        else if (ge is NotVar ne && ne.inner is BoolVar iv)
-                            assumptionGE.Add(-iv.Id);
                         else
                             throw new Exception();
                     }
@@ -621,11 +606,9 @@ namespace SATInterface
                     assumptions[i] = _assumptions[i] switch
                     {
                         BoolVar bv => bv.Id,
-                        NotVar ne => -ne.inner.Id,
                         BoolExpr be => be.Flatten() switch
                         {
                             BoolVar ibv => ibv.Id,
-                            NotVar ine => -ine.inner.Id,
                             _ => throw new Exception()
                         }
                     };
@@ -998,7 +981,7 @@ namespace SATInterface
         }
 
         private Dictionary<(BoolExpr _i, BoolExpr _t, BoolExpr _e), BoolExpr> ITECache = new();
-        internal Dictionary<OrExpr, BoolVar> OrCache = new();
+        internal Dictionary<OrExpr, int> OrCache = new();
 
         private BoolExpr ITEInternal(BoolExpr _if, BoolExpr _then, BoolExpr _else)
         {

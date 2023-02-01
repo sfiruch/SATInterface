@@ -161,8 +161,8 @@ namespace SATInterface
         public ExpectedOutcome ExpectedOutcome = ExpectedOutcome.Unknown;
 
         /// <summary>
-        /// Break large clauses into multiple smaller clauses. This helps
-        /// to work around O(n^2)-algorithms in some solvers.
+        /// Break large clauses into multiple smaller clauses. This is
+        /// a work around for O(n^2)-algorithms in certain solvers.
         /// 
         /// Default: 64
         /// </summary>

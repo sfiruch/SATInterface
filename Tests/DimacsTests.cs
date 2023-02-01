@@ -32,7 +32,7 @@ namespace Tests
             using (var sw = new StreamWriter(ms))
                     m.Write(sw);
 
-            Assert.AreEqual("c Created by SATInterface\r\np cnf 10 7\r\n1 0\r\n2 0\r\n-2 0\r\n1 -2 0\r\n3 0\r\n4 0\r\n10 0\r\n", Encoding.UTF8.GetString(ms.ToArray()));
+            Assert.AreEqual("c Created by SATInterface\r\np cnf 10 7\r\n1 0\r\n2 0\r\n-2 0\r\n-2 1 0\r\n3 0\r\n4 0\r\n10 0\r\n", Encoding.UTF8.GetString(ms.ToArray()));
         }
 
         [TestMethod]

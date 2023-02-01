@@ -84,13 +84,26 @@ namespace SATInterface
             if (ReferenceEquals(_v, Model.True))
                 return Model.False;
 
-            if (_v is NotVar ne)
-                return ne.inner;
-
             if (_v is BoolVar bv)
                 return bv.Negated;
 
-            return NotVar.Create(_v);
+            if (_v is AndExpr ae)
+            {
+                var be = new BoolExpr[ae.Elements.Length];
+                for (var i = 0; i < be.Length; i++)
+                    be[i] = !ae.Elements[i];
+                return OrExpr.Create(be);
+            }
+            
+            if (_v is OrExpr oe)
+            {
+                var be = new BoolExpr[oe.Elements.Length];
+                for (var i = 0; i < oe.Elements.Length; i++)
+                    be[i] = oe.Model.GetVariable(-oe.Elements[i]);
+                return AndExpr.Create(be);
+            }
+            
+            throw new NotImplementedException();
         }
 
         public abstract int VarCount { get; }

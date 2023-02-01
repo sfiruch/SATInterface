@@ -16,34 +16,15 @@ namespace SATInterface
         internal readonly int Id;
         internal readonly Model Model;
 
-        internal BoolExpr Negated => NotVar.Create(this);
+        internal BoolExpr Negated => new BoolVar(Model, -Id);
 
         public override BoolExpr Flatten() => this;
 
-        internal BoolVar(Model _model)
-        {
-            Model = _model;
-            Id = _model.VariableCount + 1;
-            Model.RegisterVariable(this);
-        }
-
         internal BoolVar(Model _model, int _id)
         {
-            Debug.Assert(_id > 0);
+            Debug.Assert(_id != 0);
 
             Model = _model;
-            Id = _id;
-        }
-
-        /// <summary>
-        /// This is only used for the global True and False constants which should be
-        /// short-circuited away anyway before hitting the solver.
-        /// </summary>
-        internal BoolVar(int _id)
-        {
-            Debug.Assert(_id > 0);
-
-            Model = null!;
             Id = _id;
         }
 
