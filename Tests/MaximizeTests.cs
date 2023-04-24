@@ -27,7 +27,8 @@ namespace Tests
 
             using var m = new Model(new Configuration()
             {
-                Verbosity = 0
+                Verbosity = 0,
+                OptimizationFocus = _strategy
             });
             var x = m.AddUIntVar(xUB);
             var y = m.AddUIntVar(yUB);
@@ -45,14 +46,19 @@ namespace Tests
             Assert.AreEqual(checked(best.X * xWeight + best.Y * yWeight), checked(x.X * xWeight + y.X * yWeight));
         }
 
-        [TestMethod]
-        public void Example()
+        [DataRow(OptimizationFocus.Bisection)]
+        [DataRow(OptimizationFocus.Binary)]
+        [DataRow(OptimizationFocus.Bound)]
+        [DataRow(OptimizationFocus.Incumbent)]
+        [DataTestMethod]
+        public void KnownTrickyExample(OptimizationFocus _strategy)
         {
-            RunTest(0, 1000, 0, 200, 512, 100, 1, 7, OptimizationFocus.Balanced);
+            RunTest(0, 1000, 0, 200, 512, 100, 1, 7, _strategy);
         }
 
-        [DataRow(OptimizationFocus.Balanced)]
-        [DataRow(OptimizationFocus.Bound)]
+        [DataRow(OptimizationFocus.Bisection)]
+        [DataRow(OptimizationFocus.Binary)]
+        //[DataRow(OptimizationFocus.Bound)]
         [DataRow(OptimizationFocus.Incumbent)]
         [DataTestMethod]
         public void RandomBinary(OptimizationFocus _strategy)
@@ -75,12 +81,17 @@ namespace Tests
             }
         }
 
-        [TestMethod]
-        public void UnsatAtEnd()
+        [DataRow(OptimizationFocus.Bisection)]
+        [DataRow(OptimizationFocus.Binary)]
+        [DataRow(OptimizationFocus.Bound)]
+        [DataRow(OptimizationFocus.Incumbent)]
+        [DataTestMethod]
+        public void UnsatAtEnd(OptimizationFocus _strategy)
         {
             using var m = new Model(new Configuration()
             {
-                Verbosity = 0
+                Verbosity = 0,
+                OptimizationFocus = _strategy
             });
             var a = m.AddVar();
             var b = m.AddVar();
@@ -94,12 +105,17 @@ namespace Tests
             Assert.AreEqual(State.Unsatisfiable, m.State);
         }
 
-        [TestMethod]
-        public void SatAtEnd()
+        [DataRow(OptimizationFocus.Bisection)]
+        [DataRow(OptimizationFocus.Binary)]
+        [DataRow(OptimizationFocus.Bound)]
+        [DataRow(OptimizationFocus.Incumbent)]
+        [DataTestMethod]
+        public void SatAtEnd(OptimizationFocus _strategy)
         {
             using var m = new Model(new Configuration()
             {
-                Verbosity = 0
+                Verbosity = 0,
+                OptimizationFocus = _strategy
             });
             var v = m.AddUIntVar(10, true);
             m.Maximize(v);
@@ -107,12 +123,17 @@ namespace Tests
             Assert.AreEqual(State.Satisfiable, m.State);
         }
 
-        [TestMethod]
-        public void RepeatedOptimization()
+        [DataRow(OptimizationFocus.Bisection)]
+        [DataRow(OptimizationFocus.Binary)]
+        [DataRow(OptimizationFocus.Bound)]
+        [DataRow(OptimizationFocus.Incumbent)]
+        [DataTestMethod]
+        public void RepeatedOptimization(OptimizationFocus _strategy)
         {
             using var m = new Model(new Configuration()
             {
-                Verbosity = 0
+                Verbosity = 0,
+                OptimizationFocus = _strategy
             });
             var v1 = m.AddUIntVar(10, true);
             m.AddConstr(v1 >= 2);

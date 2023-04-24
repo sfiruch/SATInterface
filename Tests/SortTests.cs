@@ -68,8 +68,6 @@ namespace Tests
                 Verbosity = 0
             });
 
-            var trueCount = 0;
-
             var v = m.AddVars(_n);
             var sorted = _sortFunc(m, v);
 

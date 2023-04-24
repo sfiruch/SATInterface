@@ -58,7 +58,8 @@ namespace Tests
             m.Solve();
         }
 
-        [DataRow(OptimizationFocus.Balanced)]
+        [DataRow(OptimizationFocus.Bisection)]
+        [DataRow(OptimizationFocus.Binary)]
         [DataRow(OptimizationFocus.Incumbent)]
         [DataRow(OptimizationFocus.Bound)]
         [DataTestMethod]

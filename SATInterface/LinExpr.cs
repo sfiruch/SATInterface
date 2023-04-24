@@ -13,8 +13,7 @@ namespace SATInterface
     /// </summary>
     public class LinExpr
     {
-        //TODO: optimize for Int storage instad of BoolVar
-        private Dictionary<int, int> Weights;
+        internal Dictionary<int, int> Weights;
         public int Offset { get; private set; }
 
         private Model? Model;
@@ -220,7 +219,7 @@ namespace SATInterface
 
         public static BoolExpr operator <(LinExpr _a, int _b) => _a <= (_b - 1);
 
-        private UIntVar ToUInt()
+        internal UIntVar ToUInt()
         {
             Debug.Assert(Model is not null);
 

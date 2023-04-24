@@ -9,9 +9,14 @@ namespace SATInterface
     public enum OptimizationFocus
     {
         /// <summary>
+        /// Bisection
+        /// </summary>
+        Bisection,
+
+        /// <summary>
         /// Binary search
         /// </summary>
-        Balanced,
+        Binary,
 
         /// <summary>
         /// Focus on finding incumbents

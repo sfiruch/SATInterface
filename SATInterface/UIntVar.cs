@@ -482,7 +482,16 @@ namespace SATInterface
             return new UIntVar(_a.Model, _a.UB, bits);
         }
 
+        /// <summary>
+        /// Multiplication by a positive constant
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown in case of negative constants</exception>
         public static UIntVar operator *(int _b, UIntVar _a) => _a * _b;
+
+        /// <summary>
+        /// Multiplication by a positive constant
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown in case of negative constants</exception>
         public static UIntVar operator *(UIntVar _a, int _b)
         {
             if (_b < 0)
@@ -569,7 +578,9 @@ namespace SATInterface
             return new UIntVar(_a.Model, _a.UB == -1 ? -1 : _a.UB + 1, bits);
         }
 
-
+        /// <summary>
+        /// Binary XOR
+        /// </summary>
         public static UIntVar operator ^(UIntVar _a, UIntVar _b)
         {
             var bits = new BoolExpr[Math.Max(_a.Bits.Length, _b.Bits.Length)];
@@ -578,6 +589,9 @@ namespace SATInterface
             return new UIntVar(_a.Model, Unbounded, bits);
         }
 
+        /// <summary>
+        /// Binary OR
+        /// </summary>
         public static UIntVar operator |(UIntVar _a, UIntVar _b)
         {
             var bits = new BoolExpr[(_a.UB == Unbounded || _b.UB == Unbounded) ? Math.Max(_a.Bits.Length, _b.Bits.Length) : RequiredBitsForUB(_a.UB | _b.UB)];
@@ -586,6 +600,9 @@ namespace SATInterface
             return new UIntVar(_a.Model, (_a.UB == Unbounded || _b.UB == Unbounded) ? Unbounded : (_a.UB | _b.UB), bits);
         }
 
+        /// <summary>
+        /// Binary AND operation
+        /// </summary>
         public static UIntVar operator &(UIntVar _a, UIntVar _b)
         {
             int ub;
@@ -623,6 +640,9 @@ namespace SATInterface
         }
         private UIntVar? flattened;
 
+        /// <summary>
+        /// Addition of two numbers
+        /// </summary>
         public static UIntVar operator +(UIntVar _a, UIntVar _b)
         {
             if (_a.UB == 0)
