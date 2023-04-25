@@ -456,7 +456,7 @@ namespace SATInterface
                         Console.WriteLine($"Maximizing objective, range {_obj.LB} - {_obj.UB}");
                 }
 
-                var obj = _obj.ToUInt();
+                var obj = _obj.LB == _obj.UB ? UIntVar.Const(this, 0) : _obj.ToUInt();
                 var objOffset = _obj.Offset;
                 foreach (var e in _obj.Weights)
                     checked
@@ -510,7 +510,7 @@ namespace SATInterface
 
                 //start search
                 var lb = obj.X;
-                var ub = Math.Min(_obj.UB-objOffset, obj.UB);
+                var ub = Math.Min(_obj.UB - objOffset, obj.UB);
                 while (lb != ub && !AbortOptimization)
                 {
                     //determine common leading bits of lb and ub
