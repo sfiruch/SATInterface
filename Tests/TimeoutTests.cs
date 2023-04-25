@@ -17,7 +17,7 @@ namespace Tests
         private void BuildAndTestModel(Model m)
         {
             m.Configuration.Verbosity = 0;
-            m.Configuration.TimeLimit = TimeSpan.FromSeconds(0.1);
+            m.Configuration.TimeLimit = TimeSpan.FromSeconds(0.2);
 
             const int holes = 50;
             const int pigeons = 51;
@@ -34,7 +34,7 @@ namespace Tests
             var elapsed = Environment.TickCount64 - start;
 
             Assert.AreEqual(State.Undecided, m.State);
-            Assert.IsTrue(elapsed >= 100 && elapsed < 2100, $"Completed in {elapsed}ms");
+            Assert.IsTrue(elapsed >= 190 && elapsed < 2100, $"Completed in {elapsed}ms");
         }
 
         [TestMethod]
