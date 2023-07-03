@@ -121,8 +121,11 @@ namespace SATInterface
             if (_b == 0)
                 return _a;
 
-            var res = new LinExpr();
-            res.Offset = _a.Offset + _b;
+            var res = new LinExpr()
+            {
+                Model = _a.Model,
+                Offset = _a.Offset + _b
+            };
             foreach (var w in _a.Weights)
                 res[w.Key] += w.Value;
             return res;
@@ -1243,7 +1246,7 @@ namespace SATInterface
                     else
                         throw new Exception();
                 }
-                sb.Append(e.Key);
+                sb.Append($"v{e.Key}");
             }
 
             if (Offset > 0)
@@ -1299,6 +1302,8 @@ namespace SATInterface
 
         public void AddTerm(LinExpr _le, int _weight = 1)
         {
+            Model ??= _le.Model;
+
             if (_weight == 0)
                 return;
 
@@ -1312,6 +1317,8 @@ namespace SATInterface
 
         public void AddTerm(BoolExpr _be, int _weight = 1)
         {
+            Model ??= _be.GetModel();
+
             ClearCached();
 
             var be = _be.Flatten();
