@@ -35,7 +35,10 @@ namespace SATInterface
             if (ReferenceEquals(this, Model.False))
                 return "false";
 
-            return $"b{Id}";
+            if(Id>0)
+                return $"b{Id}";
+            else
+                return $"!b{-Id}";
         }
 
         public override bool X
