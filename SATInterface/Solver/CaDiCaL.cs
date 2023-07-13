@@ -44,7 +44,7 @@ namespace SATInterface.Solver
 
                 var satisfiable = CaDiCaLNative.ccadical_solve(Handle);
 
-                if (Model.Configuration.Verbosity >= 2)
+                if (Model.Configuration.Verbosity >= 3)
                     CaDiCaLNative.ccadical_print_statistics(Handle);
 
                 switch (satisfiable)
