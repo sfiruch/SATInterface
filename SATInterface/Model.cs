@@ -1435,18 +1435,12 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    {
-                        //var uc = SortPairwise(expr);
-                        //return uc[0] & !uc[1];
-                        return ExactlyOneOfPairwiseTree(expr);
-                    }
+                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
+                    //return ExactlyOneOfPairwiseTree(expr);
                 case ExactlyOneOfMethod.SortTotalizer:
                     return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
                 case ExactlyOneOfMethod.SortPairwise:
-                    {
-                        var uc = SortPairwise(expr);
-                        return uc[0] & !uc[1];
-                    }
+                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortPairwise);
                 case ExactlyOneOfMethod.BinaryCount:
                     return SumUInt(expr) == 1;
                 case ExactlyOneOfMethod.SequentialUnary:

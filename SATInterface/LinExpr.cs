@@ -19,8 +19,11 @@ namespace SATInterface
         private Model? Model;
         private LinExpr? Negated;
 
-        public IEnumerable<(BoolExpr Var, int Weight)> Terms => Weights.Select(w => ((BoolExpr)new BoolVar(Model, w.Key), w.Value));
+        public IEnumerable<(BoolExpr Var, int Weight)> Terms => Weights.Select(w => ((BoolExpr)new BoolVar(Model!, w.Key), w.Value));
 
+        /// <summary>
+        /// Creates a new linear expression representing an integer constant (default 0)
+        /// </summary>
         public LinExpr(int _c = 0)
         {
             Weights = new();
@@ -535,7 +538,7 @@ namespace SATInterface
             if (limit == 0)
                 return null;
 
-            var vars = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => w.Value > 0 ? _a.Model.GetVariable(w.Key) : _a.Model.GetVariable(-w.Key)).ToArray();
+            var vars = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => w.Value > 0 ? _a.Model!.GetVariable(w.Key) : _a.Model!.GetVariable(-w.Key)).ToArray();
             var weights = _a.Weights.OrderByDescending(w => Math.Abs(w.Value)).Select(w => Math.Abs(w.Value)).ToArray();
 
             var resolvent = new List<BoolExpr[]>(limit + 1);
@@ -1067,9 +1070,34 @@ namespace SATInterface
 
             if (rhs == 0)
                 return AndExpr.Create(_a.Weights.Select(x => x.Value > 0 ? _a.Model.GetVariable(-x.Key) : _a.Model.GetVariable(x.Key)).ToArray());
+            if (rhs == _a.Weights.Sum(x => Math.Abs(x.Value)))
+                return AndExpr.Create(_a.Weights.Select(x => x.Value < 0 ? _a.Model.GetVariable(-x.Key) : _a.Model.GetVariable(x.Key)).ToArray());
 
             if (_a.Model.LinExprLECache.TryGetValue((_a, _b - 1), out var res1) && _a.Model.LinExprLECache.TryGetValue((_a, _b), out var res2))
                 return !res1 & res2;
+
+            var gcd = _a.Weights.Values.Select(w => Math.Abs(w)).Aggregate(GCD);
+            if (rhs % gcd != 0)
+            {
+                //Debug.WriteLine($"RHS GCD is nonzero");
+                return Model.False;
+            }
+
+            if (gcd > 1)
+            {
+                var vDiv = new LinExpr()
+                {
+                    Model = _a.Model
+                };
+                foreach (var w in _a.Weights)
+                    if (w.Value > 0)
+                        vDiv.AddTerm(_a.Model.GetVariable(w.Key), w.Value / gcd);
+                    else if (w.Value < 0)
+                        vDiv.AddTerm(_a.Model.GetVariable(-w.Key), -w.Value / gcd);
+
+                //Debug.WriteLine($"GCD: {vDiv} == {rhs / gcd}");
+                return vDiv == rhs / gcd;
+            }
 
             var absEqRHSCnt = 0;
             var maxVar = new KeyValuePair<int, int>(0, 0);
@@ -1118,29 +1146,6 @@ namespace SATInterface
                 return AndExpr.Create(_a.Weights.Where(w => Math.Abs(w.Value) != minAbsWeight).Select(w => w.Value > 0 ? _a.Model.GetVariable(-w.Key) : _a.Model.GetVariable(w.Key))
                     .Append(_a.Model.ExactlyOneOf(_a.Weights.Where(w => Math.Abs(w.Value) == minAbsWeight).Select(w => w.Value > 0 ? _a.Model.GetVariable(w.Key) : _a.Model.GetVariable(-w.Key))))
                     .ToArray());
-            }
-
-            var gcd = _a.Weights.Values.Select(w => Math.Abs(w)).Aggregate(GCD);
-            if (rhs % gcd != 0)
-            {
-                //Debug.WriteLine($"RHS GCD is nonzero");
-                return Model.False;
-            }
-
-            if (gcd > 1)
-            {
-                var vDiv = new LinExpr()
-                {
-                    Model = _a.Model
-                };
-                foreach (var w in _a.Weights)
-                    if (w.Value > 0)
-                        vDiv.AddTerm(_a.Model.GetVariable(w.Key), w.Value / gcd);
-                    else if (w.Value < 0)
-                        vDiv.AddTerm(_a.Model.GetVariable(-w.Key), -w.Value / gcd);
-
-                //Debug.WriteLine($"GCD: {vDiv} == {rhs / gcd}");
-                return vDiv == rhs / gcd;
             }
 
             if (absEqRHSCnt >= 1)
@@ -1204,7 +1209,7 @@ namespace SATInterface
             }
 
             if (ub <= 8)
-                return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => w.Value > 0 ? Enumerable.Repeat(_a.Model.GetVariable(w.Key), w.Value) : Enumerable.Repeat(_a.Model.GetVariable(-w.Key), -w.Value)), rhs, Model.ExactlyKOfMethod.SortPairwise);
+                return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => w.Value > 0 ? Enumerable.Repeat(_a.Model.GetVariable(w.Key), w.Value) : Enumerable.Repeat(_a.Model.GetVariable(-w.Key), -w.Value)), rhs, Model.ExactlyKOfMethod.SortTotalizer);
 
             if (Math.Abs(maxVar.Value) > 1 && ub - Math.Abs(maxVar.Value) * 2 < rhs)
             {
