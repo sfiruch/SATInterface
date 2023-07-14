@@ -1435,8 +1435,10 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
-                    //return ExactlyOneOfPairwiseTree(expr);
+                    if (expr.Length <= 4)
+                        return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
+                    else
+                        return ExactlyOneOfPairwiseTree(expr);
                 case ExactlyOneOfMethod.SortTotalizer:
                     return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
                 case ExactlyOneOfMethod.SortPairwise:
@@ -1911,8 +1913,8 @@ namespace SATInterface
                             var r = a + b;
                             if (r < R.Length)
                             {
-                                AddConstr(OrExpr.Create(!A[a], !B[b], R[r]).Flatten());
-                                AddConstr(OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]).Flatten());
+                                AddConstr(OrExpr.Create(!A[a], !B[b], R[r]));
+                                AddConstr(OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]));
                             }
                         }
 
