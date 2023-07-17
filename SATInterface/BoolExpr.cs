@@ -118,6 +118,8 @@ namespace SATInterface
 
             if (ReferenceEquals(lhsS, rhsS))
                 return Model.True;
+            //if (lhsS is BoolVar a && rhsS is BoolVar b && a.Id == -b.Id)
+            //    return Model.False;
 
             if (ReferenceEquals(lhsS, Model.True))
                 return rhsS;
@@ -152,7 +154,6 @@ namespace SATInterface
             //if (!(rhsS is OrExpr) && lhsS is OrExpr)
             //    return (rhsS == lhsS);
 
-            lhsS = lhsS.Flatten();
             rhsS = rhsS.Flatten();
             return lhsS.GetModel()!.ITE(lhsS, rhsS, !rhsS);
         }

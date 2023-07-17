@@ -860,6 +860,14 @@ namespace SATInterface
         /// </summary>
         /// <param name="_elems"></param>
         /// <returns></returns>
+        public BoolExpr And(ReadOnlySpan<BoolExpr> _elems) => AndExpr.Create(_elems);
+
+        /// <summary>
+        /// Returns an expression equivalent to a conjunction of the supplied
+        /// expressions.
+        /// </summary>
+        /// <param name="_elems"></param>
+        /// <returns></returns>
         [Pure]
         public BoolExpr And(params BoolExpr[] _elems) => AndExpr.Create(_elems);
 
@@ -872,6 +880,14 @@ namespace SATInterface
         [Pure]
         public BoolExpr Or(IEnumerable<BoolExpr> _elems) => OrExpr.Create(_elems.ToArray());
 
+        /// <summary>
+        /// Returns an expression equivalent to a disjunction of the supplied
+        /// expressions.
+        /// </summary>
+        /// <param name="_elems"></param>
+        /// <returns></returns>
+        [Pure]
+        public BoolExpr Or(ReadOnlySpan<BoolExpr> _elems) => OrExpr.Create(_elems);
 
         /// <summary>
         /// Returns an expression equivalent to the exclusive-or of the
@@ -1233,7 +1249,8 @@ namespace SATInterface
             OneHot,
             Sequential,
             SequentialUnary,
-            BinaryCount
+            BinaryCount,
+            Heule
         }
 
         public enum ExactlyKOfMethod
@@ -1337,6 +1354,8 @@ namespace SATInterface
                     return AtMostOneOfSequentialUnary(expr);
                 case AtMostOneOfMethod.BinaryCount:
                     return SumUInt(expr) < 2;
+                case AtMostOneOfMethod.Heule:
+                    return AtMostOneOfHeule(expr);
                 default:
                     throw new ArgumentException(nameof(_method));
             }
@@ -1354,6 +1373,17 @@ namespace SATInterface
                 v1 = ((v0Old & _expr[i]) | v1).Flatten();
             }
             return !v1;
+        }
+
+        private BoolExpr AtMostOneOfHeule(ReadOnlySpan<BoolExpr> _expr)
+        {
+            //inspired by https://www.cs.upc.edu/~erodri/webpage/cps/theory/sat/encodings/slides.pdf, pg5
+            if (_expr.Length <= 3)
+                return AtMostOneOfPairwise(_expr);
+
+            var a = _expr[..(_expr.Length / 2)];
+            var b = _expr[(_expr.Length / 2)..];
+            return (AtMostOneOfHeule(a) & !Or(b).Flatten()) | (!Or(a).Flatten() & AtMostOneOfHeule(b)).Flatten();
         }
 
         private BoolExpr AtMostOneOfCommander(ReadOnlySpan<BoolExpr> _expr)
@@ -1435,7 +1465,7 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    if (expr.Length <= 4)
+                    if (expr.Length <= 8)
                         return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
                     else
                         return ExactlyOneOfPairwiseTree(expr);
