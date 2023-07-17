@@ -411,22 +411,11 @@ namespace SATInterface
         /// </summary>
         public static BoolExpr operator <(UIntVar _a, UIntVar _b)
         {
-            var res = new BoolExpr[Math.Max(_a.bit.Length, _b.bit.Length)];
-            var allesDavorEq = Model.True;
-            for (var i = res.Length - 1; i >= 0; i--)
-            {
-                if (ReferenceEquals(allesDavorEq, Model.False))
-                    res[i] = Model.False;
-                else if (ReferenceEquals(allesDavorEq, Model.True))
-                    res[i] = AndExpr.Create(!_a.Bits[i], _b.Bits[i]);
-                else
-                    res[i] = AndExpr.Create(allesDavorEq, !_a.Bits[i], _b.Bits[i]);
+            var res = Model.False;
+            for (var i = 0; i < Math.Max(_a.bit.Length, _b.bit.Length); i++)
+                res = _a.Model.ITE(_b.Bits[i], !_a.Bits[i] | res, !_a.Bits[i] & res);
 
-                if (i != 0)
-                    allesDavorEq = (allesDavorEq & _a.Bits[i] == _b.Bits[i]).Flatten();
-            }
-
-            return OrExpr.Create(res).Flatten();
+            return res;
         }
 
         /// <summary>
