@@ -22,12 +22,14 @@ namespace BrentEquations
         //research cases: 3x3x3_22, 3x3x3_21
         const int ARows = 2;
         const int ACols = 3;
-        const int BCols = 2;
-        const int NoOfProducts = 11;
 
         const int BRows = ACols;
+        const int BCols = 2;
+
         const int CRows = ARows;
         const int CCols = BCols;
+
+        const int NoOfProducts = 11;
 
         static void Main(string[] args)
         {
@@ -47,9 +49,9 @@ namespace BrentEquations
             //symmetry breaking: permutations of k
             for (var k = 1; k < NoOfProducts; k++)
             {
-                var akm1 = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => a[r, c, k - 1])).ToArray());
-                var ak = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, ARows).SelectMany(r => Enumerable.Range(0, ACols).Select(c => a[r, c, k])).ToArray());
-                m.AddConstr(akm1 >= ak);
+                var c_km1 = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, CRows).SelectMany(y => Enumerable.Range(0, CCols).Select(x => c[y, x, k - 1])).ToArray());
+                var c_k = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, CRows).SelectMany(y => Enumerable.Range(0, CCols).Select(x => c[y, x, k])).ToArray());
+                m.AddConstr(c_km1 >= c_k);
             }
 
             for (var ra = 0; ra < ARows; ra++)
