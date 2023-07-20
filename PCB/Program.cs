@@ -106,7 +106,7 @@ namespace PCB
                             m.AddConstr(!vXYLC[x, y, l, c] | m.Sum(sV) == 2);
                         }
 
-                        m.AddConstr(m.AtMostOneOf(sum));
+                        m.AddConstr(m.Sum(sum) <= 1);
                     }
 
             var obj = new LinExpr();
@@ -114,8 +114,8 @@ namespace PCB
                 for (var x = 0; x < W; x++)
                     for (var c = 0; c < C; c++)
                     {
-                        obj.AddTerm(vXYLC[x, y, 0, c],1);
-                        obj.AddTerm(vXYLC[x, y, 1, c],3);
+                        obj.AddTerm(vXYLC[x, y, 0, c], 1);
+                        obj.AddTerm(vXYLC[x, y, 1, c], 3);
                     }
 
             m.Minimize(obj, () =>
