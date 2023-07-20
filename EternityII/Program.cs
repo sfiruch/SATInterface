@@ -42,7 +42,7 @@ for (var y = 0; y < H; y++)
         for (var p = 0; p < pieces.Length; p++)
             for (var r = 0; r < 4; r++)
                 any.Add(vXYPR[x, y, p, r]);
-        m.AddConstr(m.ExactlyOneOf(any));
+        m.AddConstr(m.Sum(any) == 1);
     }
 
 //each piece used once
@@ -53,7 +53,7 @@ for (var p = 0; p < pieces.Length; p++)
         for (var x = 0; x < W; x++)
             for (var r = 0; r < 4; r++)
                 any.Add(vXYPR[x, y, p, r]);
-    m.AddConstr(m.ExactlyOneOf(any));
+    m.AddConstr(m.Sum(any) == 1);
 }
 
 for (var y = 0; y < H; y++)
