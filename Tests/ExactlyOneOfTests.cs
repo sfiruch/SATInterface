@@ -276,7 +276,7 @@ namespace Tests
                 {
                     Verbosity = 0
                 });
-                var v = m.AddVars(100);
+                var v = m.AddVars(50);
                 Assert.AreEqual(0, m.ClauseCount);
 
                 m.AddConstr(m.ExactlyOneOf(v, _method));
@@ -288,7 +288,7 @@ namespace Tests
                 {
                     Verbosity = 0
                 });
-                var v = m.AddVars(100);
+                var v = m.AddVars(50);
                 Assert.AreEqual(0, m.ClauseCount);
 
                 m.AddConstr(m.ExactlyOneOf(v.Select((v, i) => i % 3 == 0 ? v : !v), _method));

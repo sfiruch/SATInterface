@@ -19,7 +19,6 @@ namespace SATInterface
             Debug.Assert(_elems.Length > 0);
 
             Elements = _elems;
-            Array.Sort(Elements);
             Model = _model;
         }
 
@@ -110,33 +109,37 @@ namespace SATInterface
             if (res.Length == 1)
                 return model.GetVariable(res[0]);
 
-            var containsDuplicates = false;
-            if (res.Length < 10)
-                for (var i = 0; i < res.Length; i++)
-                {
-                    if (res[i] < 0 && res.Contains(-res[i]))
-                        return Model.True;
+            Array.Sort(res);
 
-                    for (var j = i + 1; j < res.Length; j++)
-                        if (res[i] == res[j])
-                            containsDuplicates = true;
+            for (var i = 1; i < res.Length; i++)
+                if (res[i - 1] == res[i])
+                    return OrExpr.Create(new HashSet<int>(res).Select(v => model.GetVariable(v)).ToArray());
+
+            var negIndex = 0;
+            var posIndex = res.Length - 1;
+            if (res[negIndex] < 0 && res[posIndex] > 0)
+                for (; ; )
+                {
+                    Debug.Assert(res[negIndex] < 0);
+                    Debug.Assert(res[posIndex] > 0);
+
+                    if (-res[negIndex] >= res[posIndex])
+                    {
+                        negIndex++;
+                        if (res[negIndex] > 0)
+                            break;
+                    }
+                    else if (-res[negIndex] <= res[posIndex])
+                    {
+                        posIndex--;
+                        if (res[posIndex] < 0)
+                            break;
+                    }
+                    else
+                        return Model.True;
                 }
 
-            if (res.Length >= 10 || containsDuplicates)
-            {
-                var vars = new HashSet<int>(res.Length);
-                foreach (var v in res)
-                {
-                    if (vars.Contains(-v))
-                        return Model.True;
-                    vars.Add(v);
-                }
-
-                if (vars.Count != res.Length)
-                    return OrExpr.Create(vars.Select(v => model.GetVariable(v)).ToArray());
-            }
-
-            //work around O(n^2)-algorithms in SAT solvers
+            //work around O(n^2)-algorithms in certain SAT solvers
             if (res.Length > model.Configuration.MaxClauseSize)
             {
                 var chunkSize = model.Configuration.MaxClauseSize - 1;
