@@ -1235,8 +1235,7 @@ namespace SATInterface
             Pairwise,
             PairwiseTree,
             OneHot,
-            Sequential,
-            SequentialUnary
+            Sequential
         }
 
         public enum AtMostOneOfMethod
@@ -1248,7 +1247,6 @@ namespace SATInterface
             SortPairwise,
             OneHot,
             Sequential,
-            SequentialUnary,
             BinaryCount,
             Heule
         }
@@ -1334,8 +1332,10 @@ namespace SATInterface
             switch (_method)
             {
                 case null:
-                    //return !SortPairwise(expr)[1];
-                    return AtMostOneOfPairwiseTree(expr);
+                    if (expr.Length <= 8)
+                        return !SortTotalizer(expr)[1];
+                    else
+                        return AtMostOneOfPairwiseTree(expr);
                 case AtMostOneOfMethod.SortTotalizer:
                     return !SortTotalizer(expr)[1];
                 case AtMostOneOfMethod.SortPairwise:
@@ -1350,8 +1350,6 @@ namespace SATInterface
                     return AtMostOneOfOneHot(expr);
                 case AtMostOneOfMethod.Sequential:
                     return AtMostOneOfSequential(expr);
-                case AtMostOneOfMethod.SequentialUnary:
-                    return AtMostOneOfSequentialUnary(expr);
                 case AtMostOneOfMethod.BinaryCount:
                     return SumUInt(expr) < 2;
                 case AtMostOneOfMethod.Heule:
@@ -1367,12 +1365,11 @@ namespace SATInterface
             var v1 = False;
             for (var i = 0; i < _expr.Length; i++)
             {
-                var v0Old = v0;
-                if (i < _expr.Length - 1)
-                    v0 = (_expr[i] | v0).Flatten();
-                v1 = ((v0Old & _expr[i]) | v1).Flatten();
+                var v0Old = v0.Flatten();
+                v0 = _expr[i] | v0Old;
+                v1 |= (v0Old & _expr[i]).Flatten();
             }
-            return !v1;
+            return !v1.Flatten();
         }
 
         private BoolExpr AtMostOneOfHeule(ReadOnlySpan<BoolExpr> _expr)
@@ -1475,8 +1472,6 @@ namespace SATInterface
                     return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortPairwise);
                 case ExactlyOneOfMethod.BinaryCount:
                     return SumUInt(expr) == 1;
-                case ExactlyOneOfMethod.SequentialUnary:
-                    return ExactlyOneOfSequentialUnary(expr);
                 case ExactlyOneOfMethod.Sequential:
                     return ExactlyOneOfSequential(expr);
                 case ExactlyOneOfMethod.Commander:
@@ -1805,38 +1800,11 @@ namespace SATInterface
             var v1 = False;
             foreach (var e in _expr)
             {
-                var v0Old = v0;
-                v0 = (e | v0).Flatten();
-                v1 = ((v0Old & e) | v1).Flatten();
+                var v0Old = v0.Flatten();
+                v0 = e | v0Old;
+                v1 |= (v0Old & e).Flatten();
             }
-            return v0 & !v1;
-        }
-
-        private BoolExpr ExactlyOneOfSequentialUnary(ReadOnlySpan<BoolExpr> _expr)
-        {
-            var prev = False;
-            var valid = new List<BoolExpr>(_expr.Length + 1);
-            foreach (var be in _expr)
-            {
-                valid.Add((!be | !prev).Flatten());
-                prev = (be | prev).Flatten();
-            }
-            valid.Add(prev);
-            return And(valid).Flatten();
-        }
-
-        private BoolExpr AtMostOneOfSequentialUnary(ReadOnlySpan<BoolExpr> _expr)
-        {
-            var prev = False;
-            var valid = new List<BoolExpr>(_expr.Length);
-            foreach (var be in _expr)
-            {
-                prev = prev.Flatten();
-
-                valid.Add((!be | !prev).Flatten());
-                prev = be | prev;
-            }
-            return And(valid).Flatten();
+            return v0.Flatten() & !v1.Flatten();
         }
 
         /// <summary>
