@@ -92,7 +92,9 @@ namespace MaxMaze
                 for (int x = 0; x < W - 1; x++)
                     m.AddConstr(m.Or(!free[x, y], !free[x + 1, y], !free[x, y + 1], !free[x + 1, y + 1]));
 
-            m.Maximize(m.Sum(free.Cast<BoolExpr>()), () =>
+            var obj = m.Sum(free.Cast<BoolExpr>());
+            
+            m.Maximize(obj, () =>
             {
                 var sb = new StringBuilder();
                 for (int y = 0; y < H; y++)
@@ -107,7 +109,7 @@ namespace MaxMaze
                     for (int x = 0; x < W; x++)
                         notVisited[x, y] = free[x, y].X;
 
-                var elimLoops = 0;
+                var loops = new List<BoolExpr[]>();
                 void Visit(int _x, int _y, Stack<(int X, int Y)> _visited)
                 {
                     if (_x < 0 || _y < 0 || _x >= W || _y >= H)
@@ -121,8 +123,7 @@ namespace MaxMaze
                         var start = _visited.Last();
                         if (_x == start.X && _y == start.Y)
                         {
-                            m.AddConstr(m.Or(_visited.Select(c => !free[c.X, c.Y])));
-                            elimLoops++;
+                            loops.Add(_visited.Select(c => !free[c.X, c.Y]).ToArray());
                             return;
                         }
                     }
@@ -147,7 +148,10 @@ namespace MaxMaze
                         if (notVisited[x, y])
                             Visit(x, y, new Stack<(int X, int Y)>());
 
-                sb.AppendLine($"Eliminated {elimLoops} loops");
+                if (loops.Any())
+                    m.AddConstr(m.Or(loops.OrderBy(l => l.Length).First()));
+
+                sb.AppendLine($"Found {loops.Count} loops");
                 Console.WriteLine(sb.ToString());
             });
         }
