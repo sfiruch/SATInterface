@@ -7,29 +7,30 @@ const int N = 3;
 
 using var m = new Model(new Configuration()
 {
-    Solver = new Kissat(),
-    ConsoleSolverLines = null
+	Solver = new Kissat(),
+	ConsoleSolverLines = null
 });
 
 
 var vN = new UIntVar[N, N];
 var vN2 = new UIntVar[N, N];
+var UB = 1 << 15;
 
 for (var y = 0; y < N; y++)
-    for (var x = 0; x < N; x++)
-    {
-        vN[x, y] = m.AddUIntVar(1 << 15, false);
-        m.AddConstr(m.Or(vN[x, y].Bits));
-        vN2[x, y] = vN[x, y] * vN[x, y];
-        m.AddConstr(!vN2[x,y].Bits[1]);
-    }
+	for (var x = 0; x < N; x++)
+	{
+		vN[x, y] = m.AddUIntVar(UB);
+		m.AddConstr(m.Or(vN[x, y].Bits));
+		vN2[x, y] = vN[x, y] * vN[x, y];
+		m.AddConstr(!vN2[x, y].Bits[1]);
+	}
 
 
-var sum = m.AddUIntVar(UIntVar.Unbounded, false);
+var sum = m.AddUIntVar(UB * UB * N);
 for (var i = 0; i < N; i++)
 {
-    m.AddConstr(sum == m.Sum(Enumerable.Range(0, N).Select(x => vN2[x, i])));
-    m.AddConstr(sum == m.Sum(Enumerable.Range(0, N).Select(y => vN2[i, y])));
+	m.AddConstr(sum == m.Sum(Enumerable.Range(0, N).Select(x => vN2[x, i])));
+	m.AddConstr(sum == m.Sum(Enumerable.Range(0, N).Select(y => vN2[i, y])));
 }
 m.AddConstr(sum == m.Sum(Enumerable.Range(0, N).Select(i => vN2[i, i])));
 m.AddConstr(sum == m.Sum(Enumerable.Range(0, N).Select(i => vN2[N - 1 - i, i])));
@@ -43,11 +44,11 @@ m.AddConstr(vN[N - 1, 0] < vN[0, N - 1]);
 m.Solve();
 
 if (m.State != State.Satisfiable)
-    return;
+	return;
 
 for (var y = 0; y < N; y++)
 {
-    for (var x = 0; x < N; x++)
-        Console.Write($" {vN2[x, y].X,10}");
-    Console.WriteLine();
+	for (var x = 0; x < N; x++)
+		Console.Write($" {vN2[x, y].X,10}");
+	Console.WriteLine();
 }

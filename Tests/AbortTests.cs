@@ -3,6 +3,7 @@ using SATInterface;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 
 namespace Tests
@@ -50,7 +51,7 @@ namespace Tests
             var obj = m.Sum(vars);
 
             var abortCalled = false;
-            var objVal = -1;
+            var objVal = BigInteger.MinusOne;
             m.Maximize(obj, () =>
             {
                 if (abortCalled)
@@ -82,7 +83,7 @@ namespace Tests
             var obj = m.Sum(vars);
 
             var abortCalled = false;
-            var objVal = 0;
+            var objVal = BigInteger.Zero;
             m.Maximize(obj, () =>
             {
                 if (abortCalled)
@@ -93,7 +94,7 @@ namespace Tests
                 if (obj.X > 90)
                     m.AddConstr(!vars.First(v => v.X));
                 else
-                    objVal = Math.Max(objVal, obj.X);
+                    objVal = BigInteger.Max(objVal, obj.X);
 
                 if (obj.X == 90)
                 {

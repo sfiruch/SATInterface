@@ -77,7 +77,7 @@ namespace Tests
         }
 
         [TestMethod]
-        public void kissatInternal()
+        public void TestKissatInternal()
         {
             TestSat(new Kissat());
             TestUnsat(new Kissat());
@@ -85,7 +85,7 @@ namespace Tests
         }
 
         [TestMethod]
-        public void kissatWin32Pipe()
+        public void TestKissatWin32Pipe()
         {
             TestSat(new ExternalSolver("kissat.exe"));
             TestUnsat(new ExternalSolver("kissat.exe"));
@@ -94,7 +94,7 @@ namespace Tests
 
         [TestMethod]
         [Ignore]
-        public void kissatWSLPipe()
+        public void TestKissatWSLPipe()
         {
             TestSat(new ExternalSolver(
                     $@"{(Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "sysnative") : Environment.GetFolderPath(Environment.SpecialFolder.System))}\wsl.exe",
@@ -109,7 +109,7 @@ namespace Tests
 
         [TestMethod]
         [Ignore]
-        public void kissatWSLFile()
+        public void TestKissatWSLFile()
         {
             TestSat(new ExternalSolver(
                     $@"{(Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "sysnative") : Environment.GetFolderPath(Environment.SpecialFolder.System))}\wsl.exe",
@@ -129,7 +129,7 @@ namespace Tests
         }
 
         [TestMethod]
-        public void kissatWin32File()
+        public void TestKissatWin32File()
         {
             var input = Path.GetTempFileName();
             var output = Path.GetTempFileName();

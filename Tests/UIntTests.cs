@@ -21,7 +21,7 @@ namespace Tests
                 });
 
                 var UB = rng.Next(100000) + 1;
-                var v = m.AddUIntVar(UB, true);
+                var v = m.AddUIntVar(UB);
 
                 var cLB = rng.Next(UB + 20) - 10;
                 m.AddConstr(v >= cLB);
@@ -54,7 +54,7 @@ namespace Tests
                         Verbosity = 0,
                         OptimizationFocus = strategy
                     });
-                    var v = m.AddUIntVar(100, true);
+                    var v = m.AddUIntVar(100);
                     m.AddConstr(v <= i);
 
                     m.Maximize(v);
@@ -82,7 +82,7 @@ namespace Tests
                         Verbosity = 0,
                         OptimizationFocus = strategy
                     });
-                    var v = m.AddUIntVar(100, true);
+                    var v = m.AddUIntVar(100);
                     m.AddConstr(v >= i);
 
                     m.Minimize(v);
@@ -154,7 +154,7 @@ namespace Tests
                 {
                     var ub = rng.Next(100);
                     sumUBs += ub;
-                    vars.Add(m.AddUIntVar(ub, true));
+                    vars.Add(m.AddUIntVar(ub));
                 }
 
                 var sumVar = m.Sum(vars);

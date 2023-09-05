@@ -1,7 +1,6 @@
 ﻿using SATInterface.Solver;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text;
 
 namespace SATInterface
@@ -82,8 +81,8 @@ namespace SATInterface
         All = 7
     }
 
-    public class Configuration
-    {
+    public class Configuration //<T> where T : struct, IBinaryInteger<T>
+	{
         /// <summary>
         /// Strategy to solve minimization/maximization problems.
         /// 

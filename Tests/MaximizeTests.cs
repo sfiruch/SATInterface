@@ -99,7 +99,7 @@ namespace Tests
             m.AddConstr(!b);
             m.AddConstr(a==b);
 
-            var v = m.AddUIntVar(10, true);
+            var v = m.AddUIntVar(10);
             m.Maximize(v);
 
             Assert.AreEqual(State.Unsatisfiable, m.State);
@@ -117,7 +117,7 @@ namespace Tests
                 Verbosity = 0,
                 OptimizationFocus = _strategy
             });
-            var v = m.AddUIntVar(10, true);
+            var v = m.AddUIntVar(10);
             m.Maximize(v);
 
             Assert.AreEqual(State.Satisfiable, m.State);
@@ -135,10 +135,10 @@ namespace Tests
                 Verbosity = 0,
                 OptimizationFocus = _strategy
             });
-            var v1 = m.AddUIntVar(10, true);
+            var v1 = m.AddUIntVar(10);
             m.AddConstr(v1 >= 2);
 
-            var v2 = m.AddUIntVar(5, true);
+            var v2 = m.AddUIntVar(5);
             m.AddConstr(v2 >= 3);
 
             m.Maximize(v1);

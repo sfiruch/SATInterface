@@ -49,8 +49,8 @@ namespace BrentEquations
             //symmetry breaking: permutations of k
             for (var k = 1; k < NoOfProducts; k++)
             {
-                var c_km1 = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, CRows).SelectMany(y => Enumerable.Range(0, CCols).Select(x => c[y, x, k - 1])).ToArray());
-                var c_k = m.AddUIntVar(UIntVar.Unbounded, Enumerable.Range(0, CRows).SelectMany(y => Enumerable.Range(0, CCols).Select(x => c[y, x, k])).ToArray());
+                var c_km1 = m.AddUIntVar(Enumerable.Range(0, CRows).SelectMany(y => Enumerable.Range(0, CCols).Select(x => c[y, x, k - 1])).ToArray());
+                var c_k = m.AddUIntVar(Enumerable.Range(0, CRows).SelectMany(y => Enumerable.Range(0, CCols).Select(x => c[y, x, k])).ToArray());
                 m.AddConstr(c_km1 >= c_k);
             }
 

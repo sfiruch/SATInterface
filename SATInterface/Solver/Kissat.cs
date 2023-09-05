@@ -4,15 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SATInterface.Solver
 {
     /// <summary>
     /// Managed-code facade of the native Kissat solver
     /// </summary>
-    public class Kissat : Solver
-    {
-        private List<int> clauses = new List<int>();
+    public class Kissat:Solver //<T> : Solver where T : struct, IBinaryInteger<T>
+	{
+        private readonly List<int> clauses = new();
 
         public Kissat()
         {
@@ -128,49 +130,60 @@ namespace SATInterface.Solver
         }
     }
 
-    public static class KissatNative
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+	[SuppressMessage("Style", "IDE1006:Naming Styles")]
+	[SuppressMessage("Interoperability", "CA1401:P/Invokes should not be visible")]
+	public static partial class KissatNative
     {
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr kissat_init();
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial IntPtr kissat_init();
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void kissat_release(IntPtr wrapper);
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void kissat_release(IntPtr wrapper);
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("kissat.dll")]
         [SuppressGCTransition]
-        public static extern void kissat_add(IntPtr wrapper, int lit);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void kissat_add(IntPtr wrapper, int lit);
 
         //[DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
         //[SuppressGCTransition]
         //public static extern void kissat_assume(IntPtr wrapper, int lit);
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int kissat_solve(IntPtr wrapper);
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int kissat_solve(IntPtr wrapper);
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void kissat_terminate(IntPtr wrapper);
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void kissat_terminate(IntPtr wrapper);
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("kissat.dll")]
         [SuppressGCTransition]
-        public static extern int kissat_value(IntPtr wrapper, int lit);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int kissat_value(IntPtr wrapper, int lit);
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void kissat_print_statistics(IntPtr wrapper);
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void kissat_print_statistics(IntPtr wrapper);
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int kissat_set_option(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int kissat_set_option(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int kissat_banner([In, MarshalAs(UnmanagedType.LPStr)] string line_prefix, [In, MarshalAs(UnmanagedType.LPStr)] string name_of_app);
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int kissat_banner([MarshalAs(UnmanagedType.LPStr)] string line_prefix, [MarshalAs(UnmanagedType.LPStr)] string name_of_app);
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr kissat_signature();
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial IntPtr kissat_signature();
 
-        [DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void kissat_set_terminate(IntPtr wrapper, IntPtr state, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate);
+        [LibraryImport("kissat.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void kissat_set_terminate(IntPtr wrapper, IntPtr state, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int TerminateCallback(IntPtr State);
     }
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,8 +13,8 @@ namespace SATInterface.Solver
     /// This NULL solver can be used to save memory when no
     /// solver is needed.
     /// </summary>
-    public class NullSolver : Solver
-    {
+    public class NullSolver : Solver //where T : struct, IBinaryInteger<T>
+	{
         public override void AddClause(ReadOnlySpan<int> _clause)
         {
         }

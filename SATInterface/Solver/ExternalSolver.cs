@@ -9,21 +9,22 @@ using System.Threading;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using System.Numerics;
 
 namespace SATInterface.Solver
 {
     /// <summary>
     /// Supports execution of an external solver in a separate process
     /// </summary>
-    public class ExternalSolver : Solver
-    {
-        private string SolverExecutable;
-        private string? SolverArguments;
-        private string? FilenameInput;
-        private string? FilenameOutput;
-        private string NewLine;
+    public class ExternalSolver : Solver //where T : struct, IBinaryInteger<T>
+	{
+        private readonly string SolverExecutable;
+        private readonly string? SolverArguments;
+        private readonly string? FilenameInput;
+        private readonly string? FilenameOutput;
+        private readonly string NewLine;
 
-        private List<int[]> clauses = new List<int[]>();
+        private readonly List<int[]> clauses = new();
 
         /// <summary>
         /// 
@@ -107,7 +108,7 @@ namespace SATInterface.Solver
             if (timeout <= 0)
                 yield break;
 
-            var UNSAT = new bool[0];
+            var UNSAT = Array.Empty<bool>();
 
             using var cts = timeout == int.MaxValue ? new CancellationTokenSource() : new CancellationTokenSource(timeout);
             using var bc = new BlockingCollection<bool[]>(1);

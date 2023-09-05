@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Numerics;
 
 namespace SATInterface.Solver
 {
     /// <summary>
     /// Managed-code facade of the native CaDiCaL solver
     /// </summary>
-    public class CaDiCaL : Solver
-    {
+    public class CaDiCaL:Solver //<T> : Solver where T : struct, IBinaryInteger<T>
+	{
         private IntPtr Handle;
 
         public CaDiCaL()
@@ -139,53 +140,65 @@ namespace SATInterface.Solver
         }
     }
 
-    public static class CaDiCaLNative
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1401:P/Invokes should not be visible")]
+    public static partial class CaDiCaLNative
     {
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr ccadical_init();
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial IntPtr ccadical_init();
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void ccadical_release(IntPtr wrapper);
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void ccadical_release(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("CaDiCaL.dll")]
         [SuppressGCTransition]
-        public static extern void ccadical_add(IntPtr wrapper, int lit);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void ccadical_add(IntPtr wrapper, int lit);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("CaDiCaL.dll")]
         [SuppressGCTransition]
-        public static extern void ccadical_assume(IntPtr wrapper, int lit);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void ccadical_assume(IntPtr wrapper, int lit);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int ccadical_solve(IntPtr wrapper);
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int ccadical_solve(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int ccadical_simplify(IntPtr wrapper);
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int ccadical_simplify(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int ccadical_lookahead(IntPtr wrapper);
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int ccadical_lookahead(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("CaDiCaL.dll")]
         [SuppressGCTransition]
-        public static extern int ccadical_val(IntPtr wrapper, int lit);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int ccadical_val(IntPtr wrapper, int lit);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int ccadical_print_statistics(IntPtr wrapper);
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int ccadical_print_statistics(IntPtr wrapper);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void ccadical_set_option(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void ccadical_set_option(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void ccadical_limit(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void ccadical_limit(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr ccadical_signature();
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial IntPtr ccadical_signature();
 
-        [DllImport("CaDiCaL.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void ccadical_set_terminate(IntPtr wrapper, IntPtr state, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate);
+        [LibraryImport("CaDiCaL.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void ccadical_set_terminate(IntPtr wrapper, IntPtr state, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int TerminateCallback(IntPtr State);
     }
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

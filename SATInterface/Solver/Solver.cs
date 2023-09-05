@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Text;
 
 namespace SATInterface.Solver
 {
-    public abstract class Solver : IDisposable
+    public abstract class Solver:IDisposable //<T> : IDisposable where T:struct,IBinaryInteger<T>
     {
         internal Model Model = null!;
 

@@ -13,7 +13,6 @@
 using System;
 using System.Linq;
 using SATInterface;
-using SATInterface.Solver;
 
 using var m = new Model(new Configuration()
 {
@@ -22,10 +21,10 @@ using var m = new Model(new Configuration()
 
 var v = m.AddVars(9, 9, 9);
 
-//instead of a variable, use the constant "True" for first number 1
+//instead of a variable, use the constant "True" to fix the number 1
 v[0, 0, 0] = true;
 
-//here's alternative way to set the second number
+//here's alternative way to fix the second number
 m.AddConstr(v[1, 0, 1]);
 
 //assign one number to each cell
@@ -38,7 +37,7 @@ for (var y = 0; y < 9; y++)
     for (var n = 0; n < 9; n++)
         m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, 9).Select(x => v[x, y, n])));
 
-//each number occurs once per column (configured formulation)
+//each number occurs once per column, with a specific SAT encoding
 for (var x = 0; x < 9; x++)
     for (var n = 0; n < 9; n++)
         m.AddConstr(m.ExactlyOneOf(Enumerable.Range(0, 9).Select(y => v[x, y, n]), Model.ExactlyOneOfMethod.PairwiseTree));

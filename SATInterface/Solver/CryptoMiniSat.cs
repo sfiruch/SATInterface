@@ -4,14 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SATInterface.Solver
 {
     /// <summary>
     /// Managed-code facade of the native CryptoMiniSat solver
     /// </summary>
-    public class CryptoMiniSat : Solver
-    {
+    public class CryptoMiniSat:Solver //<T> : Solver where T : struct, IBinaryInteger<T>
+	{
         private IntPtr Handle;
 
         public CryptoMiniSat()
@@ -72,7 +74,7 @@ namespace SATInterface.Solver
 
             var curVars = CryptoMiniSatNative.cmsat_nvars(Handle);
             if (curVars < maxVar)
-                CryptoMiniSatNative.cmsat_new_vars(Handle, (IntPtr)(maxVar - curVars));
+                CryptoMiniSatNative.cmsat_new_vars(Handle, checked((nint)(maxVar - curVars)));
 
             CryptoMiniSatNative.cmsat_add_clause(Handle,
                 _clause.ToArray().Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
@@ -98,15 +100,16 @@ namespace SATInterface.Solver
         }
     }
 
-    public static class CryptoMiniSatNative
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+	[SuppressMessage("Style", "IDE1006:Naming Styles")]
+	[SuppressMessage("Interoperability", "CA1401:P/Invokes should not be visible")]
+	public static partial class CryptoMiniSatNative
     {
-        //https://github.com/msoos/cryptominisat/blob/master/src/cryptominisat_c.h.in
+		//https://github.com/msoos/cryptominisat/blob/master/src/cryptominisat_c.h.in
 
-        //typedef struct slice_Lit { const c_Lit* vals; size_t num_vals; }
-        //typedef struct slice_lbool { const c_lbool* vals; size_t num_vals; }
+		//typedef struct slice_Lit { const c_Lit* vals; size_t num_vals; }
+		//typedef struct slice_lbool { const c_lbool* vals; size_t num_vals; }
 
-        public enum c_lbool : byte
+		public enum c_lbool : byte
         {
             L_TRUE = 0,
             L_FALSE = 1,
@@ -116,53 +119,67 @@ namespace SATInterface.Solver
         [StructLayout(LayoutKind.Sequential)]
         public struct slice_lbool
         {
-            public IntPtr vals;
-            public IntPtr num_vals;
+            public nint vals;
+            public nint num_vals;
         }
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("cryptominisat5win.dll")]
         [SuppressGCTransition]
-        public static extern bool cmsat_add_clause(IntPtr self, [In, MarshalAs(UnmanagedType.LPArray)] Int32[] lits, IntPtr num_lits);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static partial bool cmsat_add_clause(IntPtr self, [MarshalAs(UnmanagedType.LPArray)] Int32[] lits, IntPtr num_lits);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("cryptominisat5win.dll")]
         [SuppressGCTransition]
-        public static extern bool cmsat_add_xor_clause(IntPtr self, [In, MarshalAs(UnmanagedType.LPArray)] UInt32[] vars, IntPtr num_vars, bool rhs);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static partial bool cmsat_add_xor_clause(IntPtr self, [MarshalAs(UnmanagedType.LPArray)] UInt32[] vars, IntPtr num_vars, [MarshalAs(UnmanagedType.Bool)] bool rhs);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void cmsat_free(IntPtr s);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void cmsat_free(IntPtr s);
 
         //[DllImport("cryptominisat5.exe")]
         //public static extern slice_Lit cmsat_get_conflict(SATSolver self);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern slice_lbool cmsat_get_model(IntPtr self);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial slice_lbool cmsat_get_model(IntPtr self);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr cmsat_new();
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial IntPtr cmsat_new();
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void cmsat_new_vars(IntPtr self, IntPtr n);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void cmsat_new_vars(IntPtr self, IntPtr n);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 cmsat_nvars(IntPtr self);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial UInt32 cmsat_nvars(IntPtr self);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void cmsat_set_num_threads(IntPtr self, UInt32 n);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void cmsat_set_num_threads(IntPtr self, UInt32 n);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void cmsat_print_stats(IntPtr self);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void cmsat_print_stats(IntPtr self);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void cmsat_set_verbosity(IntPtr self, UInt32 n);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void cmsat_set_verbosity(IntPtr self, UInt32 n);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern c_lbool cmsat_solve(IntPtr self);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial c_lbool cmsat_solve(IntPtr self);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern c_lbool cmsat_solve_with_assumptions(IntPtr self, [In, MarshalAs(UnmanagedType.LPArray)] Int32[] assumptions, IntPtr num_assumptions);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial c_lbool cmsat_solve_with_assumptions(IntPtr self, [MarshalAs(UnmanagedType.LPArray)] Int32[] assumptions, IntPtr num_assumptions);
 
-        [DllImport("cryptominisat5win.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void cmsat_set_max_time(IntPtr self, double max_time);
+        [LibraryImport("cryptominisat5win.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void cmsat_set_max_time(IntPtr self, double max_time);
     }
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

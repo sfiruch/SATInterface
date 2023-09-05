@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SATInterface.Solver
 {
     /// <summary>
     /// Managed-code facade of the native YalSAT solver
     /// </summary>
-    public class YalSAT : Solver
-    {
-        List<int> clauses = new List<int>();
+    public class YalSAT:Solver //<T> : Solver where T : struct, IBinaryInteger<T>
+	{
+		private readonly List<int> clauses = new();
 
         public YalSAT()
         {
@@ -113,43 +115,53 @@ namespace SATInterface.Solver
         }
     }
 
-    public static class YalSATNative
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+	[SuppressMessage("Style", "IDE1006:Naming Styles")]
+	[SuppressMessage("Interoperability", "CA1401:P/Invokes should not be visible")]
+	public static partial class YalSATNative
     {
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr yals_new();
+        [LibraryImport("YalSAT.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial IntPtr yals_new();
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void yals_del(IntPtr wrapper);
+        [LibraryImport("YalSAT.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void yals_del(IntPtr wrapper);
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void yals_srand(IntPtr wrapper, ulong seed);
+        [LibraryImport("YalSAT.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void yals_srand(IntPtr wrapper, ulong seed);
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int yals_setopt(IntPtr wrapper, [In, MarshalAs(UnmanagedType.LPStr)] string name, int val);
+        [LibraryImport("YalSAT.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int yals_setopt(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void yals_setphase(IntPtr wrapper, int lit);
+        [LibraryImport("YalSAT.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void yals_setphase(IntPtr wrapper, int lit);
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("YalSAT.dll")]
         [SuppressGCTransition]
-        public static extern void yals_add(IntPtr wrapper, int lit);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void yals_add(IntPtr wrapper, int lit);
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int yals_sat(IntPtr wrapper);
+        [LibraryImport("YalSAT.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int yals_sat(IntPtr wrapper);
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void yals_stats(IntPtr wrapper);
+        [LibraryImport("YalSAT.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void yals_stats(IntPtr wrapper);
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)]
+        [LibraryImport("YalSAT.dll")]
         [SuppressGCTransition]
-        public static extern int yals_deref(IntPtr wrapper, int lit);
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial int yals_deref(IntPtr wrapper, int lit);
 
-        [DllImport("YalSAT.dll", CallingConvention = CallingConvention.Cdecl)] 
-        public static extern void yals_seterm(IntPtr wrapper, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate, IntPtr state);
+        [LibraryImport("YalSAT.dll")]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void yals_seterm(IntPtr wrapper, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate, IntPtr state);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int TerminateCallback(IntPtr State);
     }
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

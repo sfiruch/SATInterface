@@ -3,50 +3,51 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
 namespace SATInterface
 {
-    internal class AndExpr : BoolExpr
+    internal class AndExpr : BoolExpr //where T : struct, IBinaryInteger<T>
     {
         internal readonly BoolExpr[] Elements;
 
-        private AndExpr(BoolExpr[] _elems, Model _model)
+        private AndExpr(BoolExpr[] _elems)
         {
             Elements = _elems;
         }
 
         internal static BoolExpr Create(BoolExpr _a, BoolExpr _b)
-        {
+		{
             var arr = ArrayPool<BoolExpr>.Shared.Rent(2);
             arr[0] = _a;
             arr[1] = _b;
-            var result = Create(arr.AsSpan().Slice(0, 2));
+            var result = Create(arr.AsSpan()[..2]);
             ArrayPool<BoolExpr>.Shared.Return(arr);
             return result;
         }
 
         internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c)
-        {
+		{
             var arr = ArrayPool<BoolExpr>.Shared.Rent(3);
             arr[0] = _a;
             arr[1] = _b;
             arr[2] = _c;
-            var result = Create(arr.AsSpan().Slice(0, 3));
+            var result = Create(arr.AsSpan()[..3]);
             ArrayPool<BoolExpr>.Shared.Return(arr);
             return result;
         }
 
         internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c, BoolExpr _d)
-        {
+		{
             var arr = ArrayPool<BoolExpr>.Shared.Rent(4);
             arr[0] = _a;
             arr[1] = _b;
             arr[2] = _c;
             arr[3] = _d;
-            var result = Create(arr.AsSpan().Slice(0, 4));
+            var result = Create(arr.AsSpan()[..4]);
             ArrayPool<BoolExpr>.Shared.Return(arr);
             return result;
         }
@@ -59,13 +60,13 @@ namespace SATInterface
             arr[2] = _c;
             arr[3] = _d;
             arr[4] = _e;
-            var result = Create(arr.AsSpan().Slice(0, 5));
+            var result = Create(arr.AsSpan()[..5]);
             ArrayPool<BoolExpr>.Shared.Return(arr);
             return result;
         }
 
         internal static BoolExpr Create(ReadOnlySpan<BoolExpr> _elems)
-        {
+		{
             if (_elems.Length == 0)
                 return Model.True;
             if (_elems.Length == 1)
@@ -73,8 +74,8 @@ namespace SATInterface
 
             var count = 0;
             foreach (var es in _elems)
-                if (ReferenceEquals(es, null))
-                    throw new ArgumentNullException();
+                if (es is null)
+                    throw new ArgumentNullException(nameof(_elems));
                 else if (ReferenceEquals(es, Model.False))
                     return Model.False;
                 else if (es is AndExpr ae)
@@ -103,18 +104,16 @@ namespace SATInterface
                 if (res[i] is BoolVar bv && res.Contains(bv.Negated))
                     return Model.False;
 
-            var m = res[0].GetModel()!;
-
             if (res.Length < 10)
             {
                 for (var i = 0; i < res.Length; i++)
                     for (var j = i + 1; j < res.Length; j++)
                         if (res[j].Equals(res[i]))
-                            return new AndExpr(res.Distinct().ToArray(), m);
-                return new AndExpr(res, m);
+                            return new AndExpr(res.Distinct().ToArray());
+                return new AndExpr(res);
             }
             else
-                return new AndExpr(res.Distinct().ToArray(), m);
+                return new AndExpr(res.Distinct().ToArray());
         }
 
         public override BoolExpr Flatten()
@@ -122,7 +121,7 @@ namespace SATInterface
             var be = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length);
             for (var i = 0; i < Elements.Length; i++)
                 be[i] = !Elements[i];
-            var res = !(OrExpr.Create(be.AsSpan().Slice(0, Elements.Length)).Flatten());
+            var res = !(OrExpr.Create(be.AsSpan()[..Elements.Length]).Flatten());
             ArrayPool<BoolExpr>.Shared.Return(be);
             return res;
         }

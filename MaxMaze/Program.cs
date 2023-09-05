@@ -75,10 +75,10 @@ namespace MaxMaze
             for (int y = 0; y < H; y++)
                 for (int x = 0; x < W; x++)
                 {
-                    BoolExpr a = x > 0 ? free[x - 1, y] : false;
-                    BoolExpr b = x < W - 1 ? free[x + 1, y] : false;
-                    BoolExpr c = y > 0 ? free[x, y - 1] : false;
-                    BoolExpr d = y < H - 1 ? free[x, y + 1] : false;
+                    var a = x > 0 ? free[x - 1, y] : false;
+                    var b = x < W - 1 ? free[x + 1, y] : false;
+                    var c = y > 0 ? free[x, y - 1] : false;
+                    var d = y < H - 1 ? free[x, y + 1] : false;
 
                     if (x == 0 && y == 0)
                         m.AddConstr(b != d);

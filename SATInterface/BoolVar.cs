@@ -2,17 +2,15 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Text;
-using System.Xml.Linq;
 
 namespace SATInterface
 {
     /// <summary>
     /// A BoolVar is either True or False in a SAT model.
     /// </summary>
-    internal class BoolVar : BoolExpr
-    {
+    internal class BoolVar:BoolExpr //<T> : BoolExpr where T: struct, IBinaryInteger<T>
+	{
         internal readonly int Id;
         internal readonly Model Model;
 
