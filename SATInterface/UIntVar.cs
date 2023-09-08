@@ -95,7 +95,7 @@ namespace SATInterface
 
 				if (_enforceUB && !T.IsPow2(UB + 1))
 				{
-					//work around shortcut evaluation of comparison
+					//do a UB dance to work around shortcut evaluation of comparisons
 					UB++;
 					Model.AddConstr(this <= (UB - 1));
 					UB--;
@@ -192,51 +192,36 @@ namespace SATInterface
 		}
 
 		/// <summary>
-		/// Returns a new UIntVar representing the sum of the first and second parameter.
+		/// Returns a LinExpr representing the sum of the first and second parameter.
 		/// </summary>
-		public static UIntVar operator +(UIntVar _a, T _add)
-		{
-			if (_add > T.Zero)
-				return _a + _a.Model.AddUIntConst(_add);
-			else if (_add < T.Zero)
-				return _a - _a.Model.AddUIntConst(-_add);
-			else
-				return _a;
-		}
+		public static LinExpr operator +(UIntVar _a, T _add) => _a.ToLinExpr() + _add;
 
 		/// <summary>
-		/// Returns a new UIntVar representing the sum of the first and second parameter.
+		/// Returns a LinExpr representing the sum of the first and second parameter.
 		/// </summary>
-		public static UIntVar operator +(T _add, UIntVar _a) => _a + _add;
+		public static LinExpr operator +(T _add, UIntVar _a) => _a.ToLinExpr() + _add;
 
 		/// <summary>
-		/// Returns a new UIntVar representing the difference of the first and second parameter.
-		/// Please note that this also implies that the first number must be greater than or equal
-		/// to the second number.
+		/// Returns a LinExpr representing the difference of the first and second parameter.
 		/// </summary>
-		public static UIntVar operator -(UIntVar _a, T _add)
-		{
-			if (_add > T.Zero)
-				return _a - _a.Model.AddUIntConst(_add);
-			else if (_add < T.Zero)
-				return _a + _a.Model.AddUIntConst(-_add);
-			else
-				return _a;
-		}
+		public static LinExpr operator -(UIntVar _a, T _add) => _a.ToLinExpr() - _add;
+
+		/// <summary>
+		/// Returns a LinExpr representing the difference of the first and second parameter.
+		/// </summary>
+		public static LinExpr operator -(T _add, UIntVar _a) => _add - _a.ToLinExpr();
+
+		/// <summary>
+		/// Returns a LinExpr representing the difference of the first and second parameter.
+		/// </summary>
+		public static LinExpr operator -(UIntVar _a, UIntVar _b) => _a.ToLinExpr() - _b.ToLinExpr();
 
 		/// <summary>
 		/// Returns a new UIntVar representing the difference of the first and second parameter.
 		/// Please note that this also implies that the first number must be greater than or equal
 		/// to the second number.
 		/// </summary>
-		public static UIntVar operator -(T _add, UIntVar _a) => _a.Model.AddUIntConst(_add) - _a;
-
-		/// <summary>
-		/// Returns a new UIntVar representing the difference of the first and second parameter.
-		/// Please note that this also implies that the first number must be greater than or equal
-		/// to the second number.
-		/// </summary>
-		public static UIntVar operator -(UIntVar _a, UIntVar _b)
+		public static UIntVar SubtractUInt(UIntVar _a, UIntVar _b)
 		{
 			var res = new UIntVar(_a.Model, _a.UB, false);
 			_a.Model.AddConstr((_b + res) == _a);
