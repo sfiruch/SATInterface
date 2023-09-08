@@ -146,14 +146,18 @@ namespace SATInterface
 
         public static LinExpr operator +(LinExpr _a, LinExpr _b)
         {
-            Debug.Assert(ReferenceEquals(_a.Model, _b.Model));
+			Debug.Assert(ReferenceEquals(_a.Model, _b.Model) || _a.Model is null || _b.Model is null);
+
+			if (_a.Weights.Count < _b.Weights.Count)
+				(_a, _b) = (_b, _a);
+
             var res = new LinExpr()
             {
                 Offset = _a.Offset + _b.Offset,
-                Model = _a.Model
+				Model = _a.Model ?? _b.Model,
+				Weights = new(_a.Weights)
             };
-            foreach (var w in _a.Weights)
-                res[w.Key] += w.Value;
+			res.Weights.EnsureCapacity(res.Weights.Count + _b.Weights.Count);
             foreach (var w in _b.Weights)
                 res[w.Key] += w.Value;
             return res;
@@ -421,6 +425,7 @@ namespace SATInterface
                 {
                     Model = _a.Model
                 };
+				vDiv.Weights.EnsureCapacity(_a.Weights.Count);
                 foreach (var w in _a.Weights)
                     if (w.Value > T.Zero)
                     {
@@ -1102,6 +1107,7 @@ namespace SATInterface
                 {
                     Model = _a.Model
                 };
+				vDiv.Weights.EnsureCapacity(_a.Weights.Count);
                 foreach (var w in _a.Weights)
                     if (w.Value > T.Zero)
                         vDiv.AddTerm(_a.Model.GetVariable(w.Key), w.Value / gcd);
