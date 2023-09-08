@@ -128,8 +128,8 @@ namespace Tests
                     });
 
                     var v = m.AddUIntConst(0);
-                    v += i;
-                    v += j;
+                    v += m.AddUIntConst(i);
+                    v += m.AddUIntConst(j);
                     m.Solve();
                     Assert.AreEqual(State.Satisfiable, m.State);
                     Assert.AreEqual(i + j, v.X);
