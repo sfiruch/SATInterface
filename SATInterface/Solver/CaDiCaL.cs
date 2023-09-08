@@ -12,7 +12,7 @@ namespace SATInterface.Solver
     /// </summary>
     public class CaDiCaL:Solver //<T> : Solver where T : struct, IBinaryInteger<T>
 	{
-        private IntPtr Handle;
+        public IntPtr Handle;
 
         public CaDiCaL()
         {
@@ -91,7 +91,17 @@ namespace SATInterface.Solver
             Handle = IntPtr.Zero;
         }
 
-        internal override void ApplyConfiguration()
+		internal override void SetPhase(int _variable, bool? _phase)
+        {
+            if (_phase == true)
+                CaDiCaLNative.ccadical_phase(Handle, _variable);
+            else if(_phase == false)
+				CaDiCaLNative.ccadical_phase(Handle, -_variable);
+            else
+                CaDiCaLNative.ccadical_unphase(Handle, _variable);
+		}
+
+		internal override void ApplyConfiguration()
         {
             if (Handle == IntPtr.Zero)
             {
@@ -178,7 +188,17 @@ namespace SATInterface.Solver
 		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
 		public static partial int ccadical_val(IntPtr wrapper, int lit);
 
-        [LibraryImport("CaDiCaL.dll")]
+		[LibraryImport("CaDiCaL.dll")]
+		[SuppressGCTransition]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void ccadical_phase(IntPtr wrapper, int lit);
+
+		[LibraryImport("CaDiCaL.dll")]
+		[SuppressGCTransition]
+		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		public static partial void ccadical_unphase(IntPtr wrapper, int lit);
+
+		[LibraryImport("CaDiCaL.dll")]
 		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
 		public static partial int ccadical_print_statistics(IntPtr wrapper);
 

@@ -34,6 +34,8 @@ namespace SATInterface.Solver
         public virtual IEnumerable<bool[]> RandomSample(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
             => throw new NotImplementedException();
 
+        internal virtual void SetPhase(int _variable, bool? _phase) { }
+
         internal abstract void ApplyConfiguration();
 
         protected virtual void DisposeManaged()
