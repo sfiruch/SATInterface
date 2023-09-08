@@ -434,7 +434,7 @@ namespace SATInterface
 			}
 		}
 
-		private void OptimizeBinary(LinExpr _obj, Action? _solutionCallback, bool _minimization)
+		private void Optimize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
 		{
 			if (State == State.Unsatisfiable && !UnsatWithAssumptions)
 				return;
@@ -508,63 +508,72 @@ namespace SATInterface
 						break;
 				}
 
-				//start search
+				//guide search towards better solutions
+				if (Configuration.SetVariablePhaseFromObjective)
+					foreach (var t in _obj.Terms)
+						if (t.Var is BoolVar bv)
+							bv.SetPhase(t.Weight > 0 ? !_minimization : _minimization);
+
+				//if (Configuration.SetVariablePhaseFromObjective)
+				//	foreach (var t in obj.Bits)
+				//		if (t is BoolVar bv)
+				//			bv.SetPhase(!_minimization);
+
 				var lb = obj.X;
 				var ub = T.Min(_obj.UB - objOffset, obj.UB);
+				var objGELB = T.Zero;
+				var assumptions = new List<int>();
 				while (lb != ub && !AbortOptimization)
 				{
 					//determine common leading bits of lb and ub
-					var assumptionBits = new List<int>();
-					var msb = checked((int)ub.GetBitLength() - 1);
-					var diffBit = -1;
-					for (var i = msb; ; i--)
+					var diffBit = checked((int)ub.GetBitLength() - 1);
+					for (; (ub >> diffBit) == (lb >> diffBit); diffBit--) ;
+					Debug.Assert(diffBit >= -1);
+
+					var cur = Configuration.OptimizationFocus switch
 					{
-						Debug.Assert(i >= 0);
+						OptimizationFocus.Bisection => (lb + T.One + ub) >> 1,
+						OptimizationFocus.Incumbent => lb + T.One,
+						OptimizationFocus.Bound => ub,
+						OptimizationFocus.Binary => (ub >> diffBit) << diffBit,
+						_ => throw new NotImplementedException()
+					};
 
-						if ((ub >> i) != (lb >> i))
+					//is the current round only a repetition with additional lazy constraints,
+					//and we already added the GE constraint?
+					if (assumptions.Count == 0 || objGELB != cur)
+					{
+						objGELB = cur;
+						var ge = (obj >= cur).Flatten();
+						if (ge is BoolVar v)
 						{
-							diffBit = i;
-
-							if (ReferenceEquals(obj.Bits[i], Model.True))
-							{
-							}
-							else if (ReferenceEquals(obj.Bits[i], Model.False))
-							{
-								assumptionBits.Add(1);
-								assumptionBits.Add(-1);
-							}
-							else if (obj.Bits[i] is BoolVar bv)
-								assumptionBits.Add(bv.Id);
-							else
-								throw new Exception();
-
-							break;
+							Debug.Assert(!ReferenceEquals(v, Model.True) && !ReferenceEquals(v, Model.False));
+							assumptions.Add(v.Id);
 						}
-						else if (obj.Bits[i] is BoolVar bv)
-							assumptionBits.Add((((ub >> i) & T.One) == T.One) ? bv.Id : -bv.Id);
+						else
+							throw new Exception();
 					}
-					Debug.Assert(diffBit != -1);
 
 					if (Configuration.Verbosity > 0)
 					{
 						if (_minimization)
-							Console.WriteLine($"Minimizing objective, range {-(ub + objOffset)} - {-(lb + objOffset)}, testing {-(((ub >> diffBit) << diffBit) + objOffset)}");
+							Console.WriteLine($"Minimizing objective, range {-(ub + objOffset)} - {-(lb + objOffset)}, testing {-(cur + objOffset)}");
 						else
-							Console.WriteLine($"Maximizing objective, range {(lb + objOffset)} - {(ub + objOffset)}, testing {((ub >> diffBit) << diffBit) + objOffset}");
+							Console.WriteLine($"Maximizing objective, range {(lb + objOffset)} - {(ub + objOffset)}, testing {(cur + objOffset)}");
 					}
 
-					(var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, assumptionBits.ToArray());
+					(var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, assumptions.ToArray());
+
 					if (subState == State.Satisfiable)
 					{
 						Debug.Assert(assignment is not null);
-
 						State = State.Satisfiable;
 						for (var i = 0; i < assignment.Length; i++)
 							varsX[i] = assignment[i];
 
 						Debug.Assert(obj.X >= lb);
 						Debug.Assert(obj.X <= ub);
-						Debug.Assert(((obj.X >> diffBit) & T.One) == T.One);
+						Debug.Assert(obj.X >= cur);
 
 						//callback might add lazy constraints
 						var mClauses = ClauseCount;
@@ -582,164 +591,8 @@ namespace SATInterface
 					}
 					else if (subState == State.Unsatisfiable)
 					{
-						ub = ((ub >> diffBit) << diffBit) - T.One;
-					}
-					else
-					{
-						Debug.Assert(subState == State.Undecided);
-						break;
-					}
-
-					Debug.Assert(lb <= ub);
-				}
-
-				//restore best known solution
-				State = State.Satisfiable;
-				UnsatWithAssumptions = false;
-				for (var i = 0; i < bestAssignment.Length; i++)
-					varsX[i] = bestAssignment[i];
-			}
-			finally
-			{
-				InOptimization = false;
-			}
-		}
-
-		private void Optimize(LinExpr _obj, Action? _solutionCallback, bool _minimization)
-		{
-			if (Configuration.OptimizationFocus == OptimizationFocus.Binary)
-			{
-				OptimizeBinary(_obj, _solutionCallback, _minimization);
-				return;
-			}
-
-			if (State == State.Unsatisfiable && !UnsatWithAssumptions)
-				return;
-
-			var timeout = long.MaxValue;
-			if (Configuration.TimeLimit != TimeSpan.Zero)
-				timeout = Environment.TickCount64 + (long)Configuration.TimeLimit.TotalMilliseconds;
-
-			try
-			{
-				InOptimization = true;
-				AbortOptimization = false;
-
-				if (Configuration.Verbosity > 0)
-				{
-					if (_minimization)
-						Console.WriteLine($"Minimizing objective, range {-_obj.UB} - {-_obj.LB}");
-					else
-						Console.WriteLine($"Maximizing objective, range {_obj.LB} - {_obj.UB}");
-				}
-
-				bool[]? bestAssignment;
-				for (; ; )
-				{
-					(State, bestAssignment) = InvokeSolver(timeout, null);
-					if (State != State.Satisfiable)
-					{
-						UnsatWithAssumptions = false;
-						return;
-					}
-
-					Debug.Assert(bestAssignment is not null);
-
-					//found initial, potentially feasible solution
-					for (var i = 0; i < bestAssignment.Length; i++)
-						varsX[i] = bestAssignment[i];
-
-					State = State.Satisfiable;
-					var mClauses = ClauseCount;
-
-					//callback might add lazy constraints or abort
-					_solutionCallback?.Invoke();
-
-					if (State == State.Unsatisfiable)
-					{
-						UnsatWithAssumptions = false;
-						return;
-					}
-
-					if (AbortOptimization)
-					{
-						if (State == State.Satisfiable && ClauseCount != mClauses)
-						{
-							State = State.Undecided;
-							UnsatWithAssumptions = false;
-						}
-						return;
-					}
-
-					//if it didn't, we have a feasible solution
-					if (mClauses == ClauseCount)
-						break;
-				}
-
-				//start search
-				var lb = _obj.X;
-				var ub = _obj.UB;
-				var objGELB = _obj.LB;
-				var assumptionGE = new List<int>();
-				while (lb != ub && !AbortOptimization)
-				{
-					var cur = Configuration.OptimizationFocus switch
-					{
-						OptimizationFocus.Bisection => (lb + T.One + ub) >> 1,
-						OptimizationFocus.Incumbent => lb + T.One,
-						OptimizationFocus.Bound => ub,
-						_ => throw new NotImplementedException()
-					};
-
-					if (Configuration.Verbosity > 0)
-					{
-						if (_minimization)
-							Console.WriteLine($"Minimizing objective, range {-ub} - {-lb}, testing {-cur}");
-						else
-							Console.WriteLine($"Maximizing objective, range {lb} - {ub}, testing {cur}");
-					}
-
-					//perhaps we already added this GE constraint, and the current
-					//round is only a repetition with additional lazy constraints?
-					if (assumptionGE.Count == 0 || objGELB != cur)
-					{
-						objGELB = cur;
-						var ge = (_obj >= cur).Flatten();
-						if (ge is BoolVar v)
-							assumptionGE.Add(v.Id);
-						else
-							throw new Exception();
-					}
-
-					(var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, assumptionGE.ToArray());
-					if (subState == State.Satisfiable)
-					{
-						Debug.Assert(assignment is not null);
-
-						State = State.Satisfiable;
-						for (var i = 0; i < assignment.Length; i++)
-							varsX[i] = assignment[i];
-
-						Debug.Assert(_obj.X >= cur);
-
-						//callback might add lazy constraints
-						var mClauses = ClauseCount;
-						_solutionCallback?.Invoke();
-
-						if (State == State.Satisfiable && ClauseCount == mClauses)
-						{
-							//no new lazy constraints
-							lb = _obj.X;
-							bestAssignment = assignment;
-						}
-
-						if (AbortOptimization)
-							break;
-					}
-					else if (subState == State.Unsatisfiable)
-					{
 						ub = cur - T.One;
-						assumptionGE.Clear();
+						assumptions.Clear();
 					}
 					else
 					{
@@ -758,6 +611,11 @@ namespace SATInterface
 			}
 			finally
 			{
+				if (Configuration.SetVariablePhaseFromObjective)
+					foreach (var t in _obj.Terms)
+						if (t.Var is BoolVar bv)
+							bv.SetPhase(null);
+
 				InOptimization = false;
 			}
 		}
@@ -1067,7 +925,7 @@ namespace SATInterface
 			if (arr is not null)
 				ArrayPool<BoolExpr>.Shared.Return(arr);
 
-			return res + trueCount;
+			return res + AddUIntConst(trueCount);
 		}
 
 		private readonly Dictionary<(BoolExpr, BoolExpr), UIntVar> UIntSumTwoCache = new();
@@ -1325,6 +1183,7 @@ namespace SATInterface
 						return !SortTotalizer(expr)[1];
 					else
 						return AtMostOneOfPairwiseTree(expr);
+						//return AtMostOneOfCommander(expr);
 				case AtMostOneOfMethod.SortTotalizer:
 					return !SortTotalizer(expr)[1];
 				case AtMostOneOfMethod.SortPairwise:
@@ -1455,6 +1314,7 @@ namespace SATInterface
 						return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
 					else
 						return ExactlyOneOfPairwiseTree(expr);
+						//return ExactlyOneOfCommander(expr);
 				case ExactlyOneOfMethod.SortTotalizer:
 					return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
 				case ExactlyOneOfMethod.SortPairwise:

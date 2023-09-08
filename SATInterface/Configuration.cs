@@ -98,7 +98,7 @@ namespace SATInterface
         public int Verbosity = 2;
 
         /// <summary>
-        /// Bundled SAT solver to use.
+        /// SAT solver to use.
         /// 
         /// Default: new SATInterface.Solver.CaDiCaL()
         /// </summary>
@@ -186,5 +186,13 @@ namespace SATInterface
         /// Default: 4
         /// </summary>
         public int EnumerateLinExprComparisonsLimit = 4;
+
+        /// <summary>
+        /// Set the initial phase of all variables in the objective towards the
+        /// optimization direction.
+        /// 
+        /// Default: true
+        /// </summary>
+        public bool SetVariablePhaseFromObjective = true;
     }
 }
