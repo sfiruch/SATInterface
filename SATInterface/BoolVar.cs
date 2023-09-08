@@ -6,61 +6,63 @@ using System.Text;
 
 namespace SATInterface
 {
-    /// <summary>
-    /// A BoolVar is either True or False in a SAT model.
-    /// </summary>
-    internal class BoolVar:BoolExpr //<T> : BoolExpr where T: struct, IBinaryInteger<T>
+	/// <summary>
+	/// A BoolVar is either True or False in a SAT model.
+	/// </summary>
+	public class BoolVar : BoolExpr //<T> : BoolExpr where T: struct, IBinaryInteger<T>
 	{
-        internal readonly int Id;
-        internal readonly Model Model;
+		public readonly int Id;
+		internal readonly Model Model;
 
-        internal BoolExpr Negated => new BoolVar(Model, -Id);
+		internal BoolExpr Negated => new BoolVar(Model, -Id);
 
-        public override BoolExpr Flatten() => this;
+		public override BoolExpr Flatten() => this;
 
-        internal BoolVar(Model _model, int _id)
-        {
-            Debug.Assert(_id != 0);
+		internal BoolVar(Model _model, int _id)
+		{
+			Debug.Assert(_id != 0);
 
-            Model = _model;
-            Id = _id;
-        }
+			Model = _model;
+			Id = _id;
+		}
 
-        public override string ToString()
-        {
-            if (ReferenceEquals(this, Model.True))
-                return "true";
-            if (ReferenceEquals(this, Model.False))
-                return "false";
+		public void SetPhase(bool? _phase) => Model?.Configuration.Solver.SetPhase(Id, _phase);
 
-            if(Id>0)
-                return $"b{Id}";
-            else
-                return $"!b{-Id}";
-        }
+		public override string ToString()
+		{
+			if (ReferenceEquals(this, Model.True))
+				return "true";
+			if (ReferenceEquals(this, Model.False))
+				return "false";
 
-        public override bool X
-        {
-            get
-            {
-                if (ReferenceEquals(this, Model.True))
-                    return true;
-                if (ReferenceEquals(this, Model.False))
-                    return false;
+			if (Id > 0)
+				return $"b{Id}";
+			else
+				return $"!b{-Id}";
+		}
 
-                if (Model!.State == State.Unsatisfiable)
-                    throw new InvalidOperationException("Model is UNSAT");
+		public override bool X
+		{
+			get
+			{
+				if (ReferenceEquals(this, Model.True))
+					return true;
+				if (ReferenceEquals(this, Model.False))
+					return false;
 
-                return Model.GetAssignment(Id);
-            }
-        }
+				if (Model!.State == State.Unsatisfiable)
+					throw new InvalidOperationException("Model is UNSAT");
 
-        public override int VarCount => 1;
+				return Model.GetAssignment(Id);
+			}
+		}
 
-        internal override Model? GetModel() => Model;
+		public override int VarCount => 1;
 
-        public override int GetHashCode() => Id;
+		internal override Model? GetModel() => Model;
 
-        public override bool Equals(object? obj) => (obj is BoolVar bv) && bv.Id == Id;
-    }
+		public override int GetHashCode() => Id;
+
+		public override bool Equals(object? obj) => (obj is BoolVar bv) && bv.Id == Id;
+	}
 }
