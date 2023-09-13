@@ -363,7 +363,7 @@ namespace SATInterface
 			if (rhs == T.Zero)
 			{
 				//Debug.WriteLine($"And({string.Join(',', _a.Weights.Select(w => w.Value > 0 ? -w.Key : w.Key))})");
-				return AndExpr.Create(_a.Weights.Select(w => w.Value > T.Zero ? _a.Model.GetVariable(-w.Key) : _a.Model.GetVariable(w.Key)).ToArray());
+				return AndExpr.Create(_a.Weights.Select(w => _a.Model.GetVariable(w.Value > T.Zero ? -w.Key : w.Key)).ToArray());
 			}
 
 			//if (_a.Weights.Count <= 18)
@@ -403,7 +403,7 @@ namespace SATInterface
 
 					return _a.Model.And(_a.Weights
 						.Where(w => T.Abs(w.Value) > rhs)
-						.Select(w => w.Value > T.Zero ? _a.Model.GetVariable(-w.Key) : _a.Model.GetVariable(w.Key))
+						.Select(w => _a.Model.GetVariable(w.Value > T.Zero ? -w.Key : w.Key))
 						.Append(vWithout <= rhs));
 				}
 			}
@@ -415,7 +415,7 @@ namespace SATInterface
 				//    .ToArray());
 
 				Debug.Assert(_a.Weights.All(w => T.Abs(w.Value) == rhs));
-				return _a.Model.AtMostOneOf(_a.Weights.Select(w => w.Value > T.Zero ? _a.Model.GetVariable(w.Key) : _a.Model.GetVariable(-w.Key)));
+				return _a.Model.AtMostOneOf(_a.Weights.Select(w => _a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key)));
 			}
 
 			Debug.Assert(_a.Weights.All(w => T.Abs(w.Value) <= rhs));
@@ -453,8 +453,8 @@ namespace SATInterface
 				foreach (var w in _a.Weights)
 					if (T.Abs(w.Value) != rhs)
 					{
-						vWithout.AddTerm(w.Value > T.Zero ? _a.Model.GetVariable(w.Key) : _a.Model.GetVariable(-w.Key), T.Abs(w.Value));
-						lWithout.Add(w.Value > T.Zero ? _a.Model.GetVariable(w.Key) : _a.Model.GetVariable(-w.Key));
+						vWithout.AddTerm(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), T.Abs(w.Value));
+						lWithout.Add(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key));
 					}
 
 				var vRHS = _a.Weights.Where(v => T.Abs(v.Value) == rhs).Select(v => v.Value > T.Zero ? _a.Model.GetVariable(v.Key) : _a.Model.GetVariable(-v.Key)).ToArray();
@@ -504,10 +504,13 @@ namespace SATInterface
 				}
 			}
 
-			if (ub <= T.CreateChecked(8))
-				return !_a.Model.SortPairwise(_a.Weights.SelectMany(w => w.Value > T.Zero ? Enumerable.Repeat(_a.Model.GetVariable(w.Key), int.CreateChecked(w.Value)) : Enumerable.Repeat(_a.Model.GetVariable(-w.Key), int.CreateChecked(-w.Value))).ToArray())[int.CreateChecked(rhs)];
+			if (rhs == T.CreateChecked(2))
+				return _a.Model.AtMostTwoOfSequential(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))));
 
-			if (T.Abs(maxVar.Value) > T.One && ub - T.Abs(maxVar.Value) << 1 <= rhs)
+			if (ub <= T.CreateChecked(8))
+				return !_a.Model.SortTotalizer(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))).ToArray())[int.CreateChecked(rhs)];
+
+			if (T.Abs(maxVar.Value) > T.One && ub - (T.Abs(maxVar.Value) << 1) <= rhs)
 			{
 				//Debug.WriteLine($"BDD on {maxVar.Key}");
 				var withoutMaxVar = _a - _a.Model.GetVariable(maxVar.Key) * maxVar.Value;
@@ -555,7 +558,7 @@ namespace SATInterface
 			if (limit == 0)
 				return null;
 
-			var vars = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => w.Value > T.Zero ? _a.Model!.GetVariable(w.Key) : _a.Model!.GetVariable(-w.Key)).ToArray();
+			var vars = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => _a.Model!.GetVariable(w.Value > T.Zero ? w.Key : -w.Key)).ToArray();
 			var weights = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => T.Abs(w.Value)).ToArray();
 
 			var resolvent = new List<BoolExpr[]>(limit + 1);
@@ -633,7 +636,7 @@ namespace SATInterface
 				return null;
 
 			var varCnt = weights.Select(wi => m.Sum(_a.Weights.Where(w => T.Abs(w.Value) == wi)
-				.Select(w => w.Value > T.Zero ? m.GetVariable(w.Key) : m.GetVariable(-w.Key)))).ToArray();
+				.Select(w => m.GetVariable(w.Value > T.Zero ? w.Key : -w.Key)))).ToArray();
 
 			return AndExpr.Create(resolvent.Select(a => OrExpr.Create(
 					a.Select((cnt, i) => varCnt[i] < T.CreateChecked(cnt)).ToArray()
@@ -648,7 +651,7 @@ namespace SATInterface
 			if (limit == 0)
 				return null;
 
-			var vars = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => w.Value > T.Zero ? m.GetVariable(w.Key) : m.GetVariable(-w.Key)).ToArray();
+			var vars = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => m.GetVariable(w.Value > T.Zero ? w.Key : -w.Key)).ToArray();
 			var _weights = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => T.Abs(w.Value)).ToArray();
 
 			var res = new List<BoolExpr[]>(limit + 1);
@@ -735,7 +738,7 @@ namespace SATInterface
 				return null;
 
 			var varCnt = weights.Select(wi => m.Sum(_a.Weights.Where(w => T.Abs(w.Value) == wi)
-				.Select(w => w.Value > T.Zero ? m.GetVariable(w.Key) : m.GetVariable(-w.Key)))).ToArray();
+				.Select(w => m.GetVariable(w.Value > T.Zero ? w.Key : -w.Key)))).ToArray();
 
 			return OrExpr.Create(validAssignments.Select(a => AndExpr.Create(
 					a.Select((cnt, i) => varCnt[i] == T.CreateChecked(cnt)).ToArray()
@@ -826,7 +829,7 @@ namespace SATInterface
 				return true;
 			}
 
-			var vars = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => w.Value > T.Zero ? m.GetVariable(w.Key) : m.GetVariable(-w.Key)).ToArray();
+			var vars = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => m.GetVariable(w.Value > T.Zero ? w.Key : -w.Key)).ToArray();
 			var oldWeights = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => T.Abs(w.Value)).ToArray();
 			var resolvent = ComputeResolvent(oldWeights, _rhs);
 			if (abortEarly)
@@ -967,7 +970,7 @@ namespace SATInterface
 
 
 
-			var vars = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => w.Value > T.Zero ? m.GetVariable(w.Key) : m.GetVariable(-w.Key)).ToArray();
+			var vars = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => m.GetVariable(w.Value > T.Zero ? w.Key : -w.Key)).ToArray();
 			var oldWeights = _a.Weights.OrderByDescending(w => T.Abs(w.Value)).Select(w => T.Abs(w.Value)).ToArray();
 			var resolvent = ComputeResolvent(oldWeights, _rhs);
 			if (abortEarly)
@@ -1152,7 +1155,7 @@ namespace SATInterface
 					//Debug.WriteLine($"And({string.Join(',', _a.Weights.Where(w => T.Abs(w.Value) > rhs).Select(w => w.Value > 0 ? -w.Key : w.Key))}, {vWithout == rhs})");
 					return _a.Model.And(_a.Weights
 						.Where(w => T.Abs(w.Value) > rhs)
-						.Select(w => w.Value > T.Zero ? _a.Model.GetVariable(-w.Key) : _a.Model.GetVariable(w.Key))
+						.Select(w => _a.Model.GetVariable(w.Value > T.Zero ? -w.Key : w.Key))
 						.Append(vWithout == rhs));
 				}
 			}
@@ -1160,8 +1163,8 @@ namespace SATInterface
 			if (rhs == minAbsWeight)
 			{
 				//Debug.Write($"And({string.Join(',', _a.Weights.Where(w => T.Abs(w.Value) != minAbsWeight).Select(w => w.Value > T.Zero ? -w.Key : w.Key))}, EOO({string.Join(',', _a.Weights.Where(w => T.Abs(w.Value) == minAbsWeight).Select(w => w.Value > T.Zero ? w.Key : -w.Key))}))");
-				return AndExpr.Create(_a.Weights.Where(w => T.Abs(w.Value) != minAbsWeight).Select(w => w.Value > T.Zero ? _a.Model.GetVariable(-w.Key) : _a.Model.GetVariable(w.Key))
-					.Append(_a.Model.ExactlyOneOf(_a.Weights.Where(w => T.Abs(w.Value) == minAbsWeight).Select(w => w.Value > T.Zero ? _a.Model.GetVariable(w.Key) : _a.Model.GetVariable(-w.Key))))
+				return AndExpr.Create(_a.Weights.Where(w => T.Abs(w.Value) != minAbsWeight).Select(w => _a.Model.GetVariable(w.Value > T.Zero ? -w.Key : w.Key))
+					.Append(_a.Model.ExactlyOneOf(_a.Weights.Where(w => T.Abs(w.Value) == minAbsWeight).Select(w => _a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key))))
 					.ToArray());
 			}
 
@@ -1172,8 +1175,8 @@ namespace SATInterface
 				foreach (var w in _a.Weights)
 					if (T.Abs(w.Value) != rhs)
 					{
-						vWithout.AddTerm(w.Value > T.Zero ? _a.Model.GetVariable(w.Key) : _a.Model.GetVariable(-w.Key), T.Abs(w.Value));
-						lWithout.Add(w.Value > T.Zero ? _a.Model.GetVariable(w.Key) : _a.Model.GetVariable(-w.Key));
+						vWithout.AddTerm(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), T.Abs(w.Value));
+						lWithout.Add(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key));
 					}
 
 				var vRHS = _a.Weights.Where(v => T.Abs(v.Value) == rhs).Select(v => v.Value > T.Zero ? _a.Model.GetVariable(v.Key) : _a.Model.GetVariable(-v.Key)).ToArray();
@@ -1226,9 +1229,12 @@ namespace SATInterface
 			}
 
 			if (ub <= T.CreateChecked(8))
-				return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => w.Value > T.Zero ? Enumerable.Repeat(_a.Model.GetVariable(w.Key), int.CreateChecked(w.Value)) : Enumerable.Repeat(_a.Model.GetVariable(-w.Key), int.CreateChecked(-w.Value))), int.CreateChecked(rhs), Model.ExactlyKOfMethod.SortTotalizer);
+				return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.ExactlyKOfMethod.SortTotalizer);
 
-			if (T.Abs(maxVar.Value) > T.One && ub - T.Abs(maxVar.Value) << 1 < rhs)
+			if (rhs <= T.CreateChecked(8))
+				return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), (int)rhs, Model.ExactlyKOfMethod.Sequential);
+
+			if (T.Abs(maxVar.Value) > T.One && ub - (T.Abs(maxVar.Value) << 1) <= rhs)
 			{
 				//Debug.WriteLine($"BDD on {maxVar.Key}");
 				var withoutMaxVar = _a - _a.Model.GetVariable(maxVar.Key) * maxVar.Value;

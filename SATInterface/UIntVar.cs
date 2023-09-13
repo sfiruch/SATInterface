@@ -79,27 +79,36 @@ namespace SATInterface
 		/// <param name="_enforceUB">If TRUE, additional constraints enforcing the upper bound will be added to the model</param>
 		internal UIntVar(Model _model, T _ub, bool _enforceUB = true)
 		{
-			if (T.IsNegative(_ub))
-				throw new ArgumentException("Invalid upper bound", nameof(_ub));
-
-			Model = _model;
-			UB = _ub;
-
-			if (UB == T.Zero)
-				bit = Array.Empty<BoolExpr>();
-			else
+			try
 			{
-				bit = new BoolExpr[UB.GetBitLength()];
-				for (var i = 0; i < bit.Length; i++)
-					bit[i] = _model.AddVar();
+				_model.StartStatistics("UInt", (int)_ub.GetBitLength());
 
-				if (_enforceUB && !T.IsPow2(UB + 1))
+				if (T.IsNegative(_ub))
+					throw new ArgumentException("Invalid upper bound", nameof(_ub));
+
+				Model = _model;
+				UB = _ub;
+
+				if (UB == T.Zero)
+					bit = Array.Empty<BoolExpr>();
+				else
 				{
-					//do a UB dance to work around shortcut evaluation of comparisons
-					UB++;
-					Model.AddConstr(this <= (UB - 1));
-					UB--;
+					bit = new BoolExpr[UB.GetBitLength()];
+					for (var i = 0; i < bit.Length; i++)
+						bit[i] = _model.AddVar();
+
+					if (_enforceUB && !T.IsPow2(UB + 1))
+					{
+						//do a UB dance to work around shortcut evaluation of comparisons
+						UB++;
+						Model.AddConstr(this <= (UB - 1));
+						UB--;
+					}
 				}
+			}
+			finally
+			{
+				_model.StopStatistics("UInt");
 			}
 		}
 
@@ -367,11 +376,20 @@ namespace SATInterface
 		/// </summary>
 		public static BoolExpr operator <(UIntVar _a, UIntVar _b)
 		{
-			var res = Model.False;
-			for (var i = 0; i < Math.Max(_a.bit.Length, _b.bit.Length); i++)
-				res = _a.Model.ITE(_b.Bits[i], !_a.Bits[i] | res, !_a.Bits[i] & res);
+			try
+			{
+				_a.Model.StartStatistics("UInt <", Math.Max(_a.bit.Length, _b.bit.Length));
 
-			return res;
+				var res = Model.False;
+				for (var i = 0; i < Math.Max(_a.bit.Length, _b.bit.Length); i++)
+					res = _a.Model.ITE(_b.Bits[i], !_a.Bits[i] | res, !_a.Bits[i] & res);
+
+				return res;
+			}
+			finally
+			{
+				_a.Model.StopStatistics("UInt <");
+			}
 		}
 
 		/// <summary>
@@ -488,39 +506,48 @@ namespace SATInterface
 		/// </summary>
 		public static UIntVar operator +(UIntVar _a, BoolExpr _b)
 		{
-			if (ReferenceEquals(_b, Model.False))
-				return _a;
-
-			var bits = new BoolExpr[(_a.UB + T.One).GetBitLength()];
-			var m = _a.Model;
-
-			var carry = _b;
-			for (var i = 0; i < bits.Length; i++)
+			try
 			{
-				bits[i] = (_a.Bits[i] ^ carry).Flatten();
+				_a.Model.StartStatistics("UInt +", _a.bit.Length);
 
-				if (i < bits.Length - 1)
+				if (ReferenceEquals(_b, Model.False))
+					return _a;
+
+				var bits = new BoolExpr[(_a.UB + T.One).GetBitLength()];
+				var m = _a.Model;
+
+				var carry = _b;
+				for (var i = 0; i < bits.Length; i++)
 				{
-					var oldCarry = carry;
-					carry = (_a.Bits[i] & carry).Flatten();
+					bits[i] = (_a.Bits[i] ^ carry).Flatten();
 
-					//unitprop
-					if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.PartialArith))
+					if (i < bits.Length - 1)
 					{
-						m.AddConstr(OrExpr.Create(carry, bits[i], !(i == 0 ? _b : Model.False)));
-						m.AddConstr(OrExpr.Create(!carry, !bits[i], i == 0 ? _b : Model.False));
-					}
-					if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
-					{
-						m.AddConstr(OrExpr.Create(carry, bits[i], !_a.Bits[i]));
-						m.AddConstr(OrExpr.Create(carry, bits[i], !oldCarry));
-						m.AddConstr(OrExpr.Create(!carry, !bits[i], _a.Bits[i]));
-						m.AddConstr(OrExpr.Create(!carry, !bits[i], oldCarry));
+						var oldCarry = carry;
+						carry = (_a.Bits[i] & carry).Flatten();
+
+						//unitprop
+						if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.PartialArith))
+						{
+							m.AddConstr(OrExpr.Create(carry, bits[i], !(i == 0 ? _b : Model.False)));
+							m.AddConstr(OrExpr.Create(!carry, !bits[i], i == 0 ? _b : Model.False));
+						}
+						if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
+						{
+							m.AddConstr(OrExpr.Create(carry, bits[i], !_a.Bits[i]));
+							m.AddConstr(OrExpr.Create(carry, bits[i], !oldCarry));
+							m.AddConstr(OrExpr.Create(!carry, !bits[i], _a.Bits[i]));
+							m.AddConstr(OrExpr.Create(!carry, !bits[i], oldCarry));
+						}
 					}
 				}
-			}
 
-			return new UIntVar(_a.Model, _a.UB + T.One, bits);
+				return new UIntVar(_a.Model, _a.UB + T.One, bits);
+			}
+			finally
+			{
+				_a.Model.StopStatistics("UInt +");
+			}
 		}
 
 		/// <summary>
@@ -581,55 +608,64 @@ namespace SATInterface
 		/// </summary>
 		public static UIntVar operator +(UIntVar _a, UIntVar _b)
 		{
-			if (_a.UB == T.Zero)
-				return _b;
-			if (_b.UB == T.Zero)
-				return _a;
-
-			var m = _a.Model;
-
-			if (m.UIntSumCache.TryGetValue((_a, _b), out var res))
-				return res;
-			if (m.UIntSumCache.TryGetValue((_b, _a), out res))
-				return res;
-
-			var bits = new BoolExpr[checked(_a.UB + _b.UB).GetBitLength()];
-
-			var carry = Model.False;
-			for (var i = 0; i < bits.Length; i++)
+			try
 			{
-				bits[i] = (carry ^ _a.Bits[i] ^ _b.Bits[i]).Flatten();
-				if (i < bits.Length - 1)
+				_a.Model.StartStatistics("UInt +", Math.Max(_a.bit.Length, _b.bit.Length));
+
+				if (_a.UB == T.Zero)
+					return _b;
+				if (_b.UB == T.Zero)
+					return _a;
+
+				var m = _a.Model;
+
+				if (m.UIntSumCache.TryGetValue((_a, _b), out var res))
+					return res;
+				if (m.UIntSumCache.TryGetValue((_b, _a), out res))
+					return res;
+
+				var bits = new BoolExpr[checked(_a.UB + _b.UB).GetBitLength()];
+
+				var carry = Model.False;
+				for (var i = 0; i < bits.Length; i++)
 				{
-					var oldCarry = carry;
-					carry = OrExpr.Create(carry & _a.Bits[i], carry & _b.Bits[i], _a.Bits[i] & _b.Bits[i]).Flatten();
-
-					//unitprop
-					if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
+					bits[i] = (carry ^ _a.Bits[i] ^ _b.Bits[i]).Flatten();
+					if (i < bits.Length - 1)
 					{
-						m.AddConstr(OrExpr.Create(!carry, !bits[i], _a.Bits[i]));
-						m.AddConstr(OrExpr.Create(!carry, !bits[i], _b.Bits[i]));
-						m.AddConstr(OrExpr.Create(!carry, !bits[i], oldCarry));
-						m.AddConstr(OrExpr.Create(carry, bits[i], !_b.Bits[i]));
-						m.AddConstr(OrExpr.Create(carry, bits[i], !_a.Bits[i]));
-						m.AddConstr(OrExpr.Create(carry, bits[i], !oldCarry));
-					}
-					else if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.PartialArith))
-					{
-						if (ReferenceEquals(_a.Bits[i], Model.False) |
-							ReferenceEquals(_b.Bits[i], Model.False) |
-							ReferenceEquals(oldCarry, Model.False))
-							m.AddConstr(OrExpr.Create(!carry, !bits[i]));
+						var oldCarry = carry;
+						carry = OrExpr.Create(carry & _a.Bits[i], carry & _b.Bits[i], _a.Bits[i] & _b.Bits[i]).Flatten();
 
-						if (ReferenceEquals(_a.Bits[i], Model.True) |
-							ReferenceEquals(_b.Bits[i], Model.True) |
-							ReferenceEquals(oldCarry, Model.True))
-							m.AddConstr(OrExpr.Create(carry, bits[i]));
+						//unitprop
+						if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
+						{
+							m.AddConstr(OrExpr.Create(!carry, !bits[i], _a.Bits[i]));
+							m.AddConstr(OrExpr.Create(!carry, !bits[i], _b.Bits[i]));
+							m.AddConstr(OrExpr.Create(!carry, !bits[i], oldCarry));
+							m.AddConstr(OrExpr.Create(carry, bits[i], !_b.Bits[i]));
+							m.AddConstr(OrExpr.Create(carry, bits[i], !_a.Bits[i]));
+							m.AddConstr(OrExpr.Create(carry, bits[i], !oldCarry));
+						}
+						else if (m.Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.PartialArith))
+						{
+							if (ReferenceEquals(_a.Bits[i], Model.False) |
+								ReferenceEquals(_b.Bits[i], Model.False) |
+								ReferenceEquals(oldCarry, Model.False))
+								m.AddConstr(OrExpr.Create(!carry, !bits[i]));
+
+							if (ReferenceEquals(_a.Bits[i], Model.True) |
+								ReferenceEquals(_b.Bits[i], Model.True) |
+								ReferenceEquals(oldCarry, Model.True))
+								m.AddConstr(OrExpr.Create(carry, bits[i]));
+						}
 					}
 				}
-			}
 
-			return m.UIntSumCache[(_a, _b)] = new UIntVar(m, checked(_a.UB + _b.UB), bits);
+				return m.UIntSumCache[(_a, _b)] = new UIntVar(m, checked(_a.UB + _b.UB), bits);
+			}
+			finally
+			{
+				_a.Model.StopStatistics("UInt +");
+			}
 		}
 	}
 }
