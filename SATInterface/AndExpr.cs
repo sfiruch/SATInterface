@@ -10,169 +10,169 @@ using System.Threading;
 
 namespace SATInterface
 {
-    internal class AndExpr : BoolExpr //where T : struct, IBinaryInteger<T>
-    {
-        internal readonly BoolExpr[] Elements;
+	internal class AndExpr : BoolExpr //where T : struct, IBinaryInteger<T>
+	{
+		internal readonly BoolExpr[] Elements;
 
-        private AndExpr(BoolExpr[] _elems)
-        {
-            Elements = _elems;
-        }
-
-        internal static BoolExpr Create(BoolExpr _a, BoolExpr _b)
+		private AndExpr(BoolExpr[] _elems)
 		{
-            var arr = ArrayPool<BoolExpr>.Shared.Rent(2);
-            arr[0] = _a;
-            arr[1] = _b;
-            var result = Create(arr.AsSpan()[..2]);
-            ArrayPool<BoolExpr>.Shared.Return(arr);
-            return result;
-        }
+			Elements = _elems;
+		}
 
-        internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c)
+		internal static BoolExpr Create(BoolExpr _a, BoolExpr _b)
 		{
-            var arr = ArrayPool<BoolExpr>.Shared.Rent(3);
-            arr[0] = _a;
-            arr[1] = _b;
-            arr[2] = _c;
-            var result = Create(arr.AsSpan()[..3]);
-            ArrayPool<BoolExpr>.Shared.Return(arr);
-            return result;
-        }
+			var arr = ArrayPool<BoolExpr>.Shared.Rent(2);
+			arr[0] = _a;
+			arr[1] = _b;
+			var result = Create(arr.AsSpan()[..2]);
+			ArrayPool<BoolExpr>.Shared.Return(arr);
+			return result;
+		}
 
-        internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c, BoolExpr _d)
+		internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c)
 		{
-            var arr = ArrayPool<BoolExpr>.Shared.Rent(4);
-            arr[0] = _a;
-            arr[1] = _b;
-            arr[2] = _c;
-            arr[3] = _d;
-            var result = Create(arr.AsSpan()[..4]);
-            ArrayPool<BoolExpr>.Shared.Return(arr);
-            return result;
-        }
+			var arr = ArrayPool<BoolExpr>.Shared.Rent(3);
+			arr[0] = _a;
+			arr[1] = _b;
+			arr[2] = _c;
+			var result = Create(arr.AsSpan()[..3]);
+			ArrayPool<BoolExpr>.Shared.Return(arr);
+			return result;
+		}
 
-        internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c, BoolExpr _d, BoolExpr _e)
-        {
-            var arr = ArrayPool<BoolExpr>.Shared.Rent(5);
-            arr[0] = _a;
-            arr[1] = _b;
-            arr[2] = _c;
-            arr[3] = _d;
-            arr[4] = _e;
-            var result = Create(arr.AsSpan()[..5]);
-            ArrayPool<BoolExpr>.Shared.Return(arr);
-            return result;
-        }
-
-        internal static BoolExpr Create(ReadOnlySpan<BoolExpr> _elems)
+		internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c, BoolExpr _d)
 		{
-            if (_elems.Length == 0)
-                return Model.True;
-            if (_elems.Length == 1)
-                return _elems[0];
+			var arr = ArrayPool<BoolExpr>.Shared.Rent(4);
+			arr[0] = _a;
+			arr[1] = _b;
+			arr[2] = _c;
+			arr[3] = _d;
+			var result = Create(arr.AsSpan()[..4]);
+			ArrayPool<BoolExpr>.Shared.Return(arr);
+			return result;
+		}
 
-            var count = 0;
-            foreach (var es in _elems)
-                if (es is null)
-                    throw new ArgumentNullException(nameof(_elems));
-                else if (ReferenceEquals(es, Model.False))
-                    return Model.False;
-                else if (es is AndExpr ae)
-                    count += ae.Elements.Length;
-                else if (!ReferenceEquals(es, Model.True))
-                    count++;
+		internal static BoolExpr Create(BoolExpr _a, BoolExpr _b, BoolExpr _c, BoolExpr _d, BoolExpr _e)
+		{
+			var arr = ArrayPool<BoolExpr>.Shared.Rent(5);
+			arr[0] = _a;
+			arr[1] = _b;
+			arr[2] = _c;
+			arr[3] = _d;
+			arr[4] = _e;
+			var result = Create(arr.AsSpan()[..5]);
+			ArrayPool<BoolExpr>.Shared.Return(arr);
+			return result;
+		}
 
-            if (count == 0)
-                return Model.True;
+		internal static BoolExpr Create(ReadOnlySpan<BoolExpr> _elems)
+		{
+			if (_elems.Length == 0)
+				return Model.True;
+			if (_elems.Length == 1)
+				return _elems[0];
 
-            var res = new BoolExpr[count];
-            count = 0;
-            foreach (var es in _elems)
-                if (es is AndExpr ae)
-                    foreach (var e in ae.Elements)
-                        res[count++] = e;
-                else if (!ReferenceEquals(es, Model.True))
-                    res[count++] = es;
+			var count = 0;
+			foreach (var es in _elems)
+				if (es is null)
+					throw new ArgumentNullException(nameof(_elems));
+				else if (ReferenceEquals(es, Model.False))
+					return Model.False;
+				else if (es is AndExpr ae)
+					count += ae.Elements.Length;
+				else if (!ReferenceEquals(es, Model.True))
+					count++;
 
-            Debug.Assert(count == res.Length);
+			if (count == 0)
+				return Model.True;
 
-            if (count == 1)
-                return res[0];
+			var res = new BoolExpr[count];
+			count = 0;
+			foreach (var es in _elems)
+				if (es is AndExpr ae)
+					foreach (var e in ae.Elements)
+						res[count++] = e;
+				else if (!ReferenceEquals(es, Model.True))
+					res[count++] = es;
 
-            for (var i = 0; i < res.Length; i++)
-                if (res[i] is BoolVar bv && res.Contains(bv.Negated))
-                    return Model.False;
+			Debug.Assert(count == res.Length);
 
-            if (res.Length < 10)
-            {
-                for (var i = 0; i < res.Length; i++)
-                    for (var j = i + 1; j < res.Length; j++)
-                        if (res[j].Equals(res[i]))
-                            return new AndExpr(res.Distinct().ToArray());
-                return new AndExpr(res);
-            }
-            else
-                return new AndExpr(res.Distinct().ToArray());
-        }
+			if (count == 1)
+				return res[0];
 
-        public override BoolExpr Flatten()
-        {
-            var be = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length);
-            for (var i = 0; i < Elements.Length; i++)
-                be[i] = !Elements[i];
-            var res = !(OrExpr.Create(be.AsSpan()[..Elements.Length]).Flatten());
-            ArrayPool<BoolExpr>.Shared.Return(be);
-            return res;
-        }
+			for (var i = 0; i < res.Length; i++)
+				if (res[i] is BoolVar bv && bv.Id > 0 && res.Contains(bv.Negated))
+					return Model.False;
 
-        internal override Model? GetModel()
-        {
-            foreach (var e in Elements)
-                if (e.GetModel() is Model m)
-                    return m;
+			if (res.Length < 10)
+			{
+				for (var i = 0; i < res.Length; i++)
+					for (var j = i + 1; j < res.Length; j++)
+						if (res[j].Equals(res[i]))
+							return new AndExpr(res.Distinct().ToArray());
+				return new AndExpr(res);
+			}
+			else
+				return new AndExpr(res.Distinct().ToArray());
+		}
 
-            return null;
-        }
+		public override BoolExpr Flatten()
+		{
+			var be = ArrayPool<BoolExpr>.Shared.Rent(Elements.Length);
+			for (var i = 0; i < Elements.Length; i++)
+				be[i] = !Elements[i];
+			var res = !(OrExpr.Create(be.AsSpan()[..Elements.Length]).Flatten());
+			ArrayPool<BoolExpr>.Shared.Return(be);
+			return res;
+		}
 
-        public override string ToString() => "(" + string.Join(" & ", Elements.Select(e => e.ToString()).ToArray()) + ")";
+		internal override Model? GetModel()
+		{
+			foreach (var e in Elements)
+				if (e.GetModel() is Model m)
+					return m;
 
-        public override bool X => Elements.All(e => e.X);
+			return null;
+		}
 
-        public override int VarCount => Elements.Length;
+		public override string ToString() => "(" + string.Join(" & ", Elements.Select(e => e.ToString()).ToArray()) + ")";
 
-        public override bool Equals(object? _obj)
-        {
-            if (_obj is not AndExpr other)
-                return false;
+		public override bool X => Elements.All(e => e.X);
 
-            if (Elements.Length != other.Elements.Length)
-                return false;
+		public override int VarCount => Elements.Length;
 
-            //as elements are distinct by construction, one-sided comparison is enough
-            foreach (var a in Elements)
-                if (!other.Elements.Contains(a))
-                    return false;
+		public override bool Equals(object? _obj)
+		{
+			if (_obj is not AndExpr other)
+				return false;
 
-            return true;
-        }
+			if (Elements.Length != other.Elements.Length)
+				return false;
 
-        private int hashCode;
-        public override int GetHashCode()
-        {
-            if (hashCode == 0)
-            {
-                hashCode = GetType().GetHashCode();
+			//as elements are distinct by construction, one-sided comparison is enough
+			foreach (var a in Elements)
+				if (!other.Elements.Contains(a))
+					return false;
 
-                //deliberatly stupid implementation to produce
-                //order-independent hashcodes
-                foreach (var e in Elements)
-                    hashCode += HashCode.Combine(e);
+			return true;
+		}
 
-                if (hashCode == 0)
-                    hashCode++;
-            }
-            return hashCode;
-        }
-    }
+		private int hashCode;
+		public override int GetHashCode()
+		{
+			if (hashCode == 0)
+			{
+				hashCode = GetType().GetHashCode();
+
+				//deliberatly stupid implementation to produce
+				//order-independent hashcodes
+				foreach (var e in Elements)
+					hashCode += HashCode.Combine(e);
+
+				if (hashCode == 0)
+					hashCode++;
+			}
+			return hashCode;
+		}
+	}
 }
