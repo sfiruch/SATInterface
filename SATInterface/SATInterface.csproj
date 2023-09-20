@@ -16,6 +16,7 @@
     <PackageId>deiruch.SATInterface</PackageId>
     <Authors>Simon Felix</Authors>
     <Description>Library to formulate and solve SAT problems in .NET. Includes CaDiCaL, Kissat, CryptoMiniSat and YalSAT as solvers.</Description>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Copyright>Copyright 2023 Simon Felix</Copyright>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>1701;1702;1591;1822</NoWarn>
