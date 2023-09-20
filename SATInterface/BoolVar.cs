@@ -36,9 +36,9 @@ namespace SATInterface
 				return "false";
 
 			if (Id > 0)
-				return $"b{Id}";
+				return $"v{Id}";
 			else
-				return $"!b{-Id}";
+				return $"!v{-Id}";
 		}
 
 		public override bool X
