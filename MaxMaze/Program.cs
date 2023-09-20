@@ -98,12 +98,12 @@ namespace MaxMaze
                     sb.AppendLine();
                 }
 
+                var loops = 0;
                 var notVisited = new bool[W, H];
                 for (int y = 0; y < H; y++)
                     for (int x = 0; x < W; x++)
                         notVisited[x, y] = free[x, y].X;
 
-                var loops = new List<BoolExpr[]>();
                 void Visit(int _x, int _y, Stack<(int X, int Y)> _visited)
                 {
                     if (_x < 0 || _y < 0 || _x >= W || _y >= H)
@@ -117,7 +117,8 @@ namespace MaxMaze
                         var start = _visited.Last();
                         if (_x == start.X && _y == start.Y)
                         {
-                            loops.Add(_visited.Select(c => !free[c.X, c.Y]).ToArray());
+                            m.AddConstr(m.Or(_visited.Select(c => !free[c.X, c.Y])));
+                            loops++;
                             return;
                         }
                     }
@@ -142,10 +143,7 @@ namespace MaxMaze
                         if (notVisited[x, y])
                             Visit(x, y, new Stack<(int X, int Y)>());
 
-                if (loops.Any())
-                    m.AddConstr(m.Or(loops.OrderBy(l => l.Length).First()));
-
-                sb.AppendLine($"Found {loops.Count} loops");
+                sb.AppendLine($"Found {loops} loops");
                 Console.WriteLine(sb.ToString());
             });
         }
