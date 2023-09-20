@@ -12,13 +12,13 @@ namespace Tests
     public class ExactlyKOfTests
     {
         [DataRow(null)]
-        [DataRow(Model.ExactlyKOfMethod.BinaryCount)]
-        [DataRow(Model.ExactlyKOfMethod.LinExpr)]
-        [DataRow(Model.ExactlyKOfMethod.Sequential)]
-        [DataRow(Model.ExactlyKOfMethod.SortPairwise)]
-        [DataRow(Model.ExactlyKOfMethod.SortTotalizer)]
+        [DataRow(Model.KOfMethod.BinaryCount)]
+        [DataRow(Model.KOfMethod.LinExpr)]
+        [DataRow(Model.KOfMethod.Sequential)]
+        [DataRow(Model.KOfMethod.SortPairwise)]
+        [DataRow(Model.KOfMethod.SortTotalizer)]
         [DataTestMethod]
-        public void Random(Model.ExactlyKOfMethod? _method)
+        public void Random(Model.KOfMethod? _method)
         {
             var RNG = new Random(2);
 

@@ -1,9 +1,11 @@
 ﻿global using T = System.Numerics.BigInteger;
+global using VarId = System.Int32;
 
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
@@ -64,7 +66,7 @@ namespace SATInterface
 			{
 				var res = $"{Clauses,10} ({(Clauses / (double)Model.ClauseCount),4:P0}) {Variables,10} ({(Variables / (double)Model.VariableCount),4:P0})";
 				if (Histogram.Any())
-					res += $"       Count:{Histogram.Count} Min:{Histogram.Keys.Min()} Med:{Histogram.MaxBy(e => e.Value).Key} Max:{Histogram.Keys.Max()}";
+					res += $"       Count:{Histogram.Sum(e => e.Value)} Min:{Histogram.Keys.Min()} Med:{Histogram.MaxBy(e => e.Value).Key} Max:{Histogram.Keys.Max()}";
 				return res;
 			}
 		}
@@ -143,19 +145,19 @@ namespace SATInterface
 		{
 			Debug.Assert(ActiveStatKey is null);
 
-			Console.WriteLine($"{"",12}         {"Clauses",10}        {"Variables",10}");
-			Console.WriteLine($"-------------------------------------------------");
+			Console.WriteLine($"{"",20}         {"Clauses",10}        {"Variables",10}");
+			Console.WriteLine($"---------------------------------------------------------");
 			var otherVariables = VariableCount;
 			var otherClauses = ClauseCount;
 			foreach (var s in Statistics.OrderBy(s => s.Key).Where(s => s.Value.Clauses > 0 || s.Value.Variables > 0))
 			{
-				Console.WriteLine($"{s.Key,12}: {s.Value}");
+				Console.WriteLine($"{s.Key,20}: {s.Value}");
 				otherVariables -= s.Value.Variables;
 				otherClauses -= s.Value.Clauses;
 			}
-			Console.WriteLine($"{"Others",12}: {new Counter(this, otherVariables, otherClauses)}");
-			Console.WriteLine($"-------------------------------------------------");
-			Console.WriteLine($"{"",12}  {ClauseCount,10}        {VariableCount,10}");
+			Console.WriteLine($"{"Others",20}: {new Counter(this, otherVariables, otherClauses)}");
+			Console.WriteLine($"---------------------------------------------------------");
+			Console.WriteLine($"{"",20}  {ClauseCount,10}        {VariableCount,10}");
 		}
 
 		private void AddConstrInternal(BoolExpr _c)
@@ -248,7 +250,7 @@ namespace SATInterface
 		/// </summary>
 		public BoolExpr AddVar() => new BoolVar(this, AllocateVar());
 
-		internal int AllocateVar()
+		internal VarId AllocateVar()
 		{
 			if (!InOptimization && State == State.Satisfiable)
 				State = State.Undecided;
@@ -543,7 +545,7 @@ namespace SATInterface
 						Console.WriteLine($"Maximizing objective, range {_obj.LB} - {_obj.UB}");
 				}
 
-				var obj = _obj.LB == _obj.UB ? UIntVar.Const(this, T.Zero) : _obj.ToUInt();
+				//shift the objective such that binary optimization can work on bits
 				var objOffset = _obj.Offset;
 				foreach (var e in _obj.Weights)
 					checked
@@ -551,6 +553,7 @@ namespace SATInterface
 						if (e.Value < T.Zero)
 							objOffset += e.Value;
 					}
+				var obj = _obj - objOffset;
 
 				bool[]? bestAssignment;
 				for (; ; )
@@ -897,13 +900,10 @@ namespace SATInterface
 		/// </summary>
 		public UIntVar SumUInt(ReadOnlySpan<BoolExpr> _elems)
 		{
+			BoolExpr[]? arr = null;
 			try
 			{
 				StartStatistics("UInt BitSum", _elems.Length);
-				//if(_elems.Length>2 && _elems.Length<126)
-				//{
-				//	Console.WriteLine("ahoy");
-				//}
 
 				UIntVar SumTwo(BoolVar _a, BoolVar _b)
 				{
@@ -947,6 +947,7 @@ namespace SATInterface
 					//unitprop
 					if (Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.FullArith))
 					{
+						AddConstr(OrExpr.Create(!sum, _a, _b, _c));
 						AddConstr(OrExpr.Create(!carry, !sum, _a));
 						AddConstr(OrExpr.Create(!carry, !sum, _b));
 						AddConstr(OrExpr.Create(!carry, !sum, _c));
@@ -966,7 +967,6 @@ namespace SATInterface
 					else if (!ReferenceEquals(e, False))
 						beCount++;
 
-				BoolExpr[]? arr = null;
 				if (beCount != _elems.Length)
 				{
 					arr = ArrayPool<BoolExpr>.Shared.Rent(beCount);
@@ -981,8 +981,7 @@ namespace SATInterface
 				switch (_elems.Length)
 				{
 					case 0:
-						res = AddUIntConst(trueCount);
-						trueCount = T.Zero;
+						res = AddUIntConst(T.Zero);
 						break;
 					case 1:
 						res = UIntVar.ITE(_elems[0], AddUIntConst(trueCount + T.One), AddUIntConst(trueCount));
@@ -996,13 +995,30 @@ namespace SATInterface
 						break;
 					default:
 						{
+							//var ub = _elems.Length + trueCount;
+							//var newBits = new BoolExpr[ub.GetBitLength()];
+							//var oldBits = new BoolExpr[newBits.Length];
+							//for (var b = 0; b < newBits.Length; b++)
+							//{
+							//	newBits[b] = !(trueCount >> b).IsEven ? True : False;
+							//	oldBits[b] = False;
+							//}
+							//for (var i = 0; i < _elems.Length; i++)
+							//{
+							//	newBits[0] ^= _elems[i];
+							//	for(var b=1;b<newBits.Length;b++)
+							//		newBits[b] ^= (oldBits[b-1] & !newBits[b-1]).Flatten();
+							//	(oldBits, newBits) = (newBits, oldBits);
+							//}
+							//return new UIntVar(this, ub, oldBits);
+
 							var cnt = (_elems.Length + 2) / 3;
 							var vars = ArrayPool<UIntVar>.Shared.Rent(cnt);
 							for (var i = 0; i < cnt; i++)
 								if (i * 3 + 2 < _elems.Length)
-									vars[i] = SumThree((BoolVar)_elems[i * 3], (BoolVar)_elems[i * 3 + 1], (BoolVar)_elems[i * 3 + 2]);
+									vars[i] = SumThree((BoolVar)_elems[i * 3].Flatten(), (BoolVar)_elems[i * 3 + 1].Flatten(), (BoolVar)_elems[i * 3 + 2].Flatten());
 								else if (i * 3 + 1 < _elems.Length)
-									vars[i] = SumTwo((BoolVar)_elems[i * 3], (BoolVar)_elems[i * 3 + 1]);
+									vars[i] = SumTwo((BoolVar)_elems[i * 3].Flatten(), (BoolVar)_elems[i * 3 + 1].Flatten());
 								else
 								{
 									vars[i] = UIntVar.ITE(_elems[i * 3], AddUIntConst(trueCount + T.One), AddUIntConst(trueCount));
@@ -1015,25 +1031,114 @@ namespace SATInterface
 						break;
 				}
 
-				if (arr is not null)
-					ArrayPool<BoolExpr>.Shared.Return(arr);
-
 				return res + AddUIntConst(trueCount);
 			}
 			finally
 			{
+				if (arr is not null)
+					ArrayPool<BoolExpr>.Shared.Return(arr);
+
 				StopStatistics("UInt BitSum");
+			}
+		}
+
+		class IgnoreLinExprOffsetComparer : IEqualityComparer<LinExpr>
+		{
+			public bool Equals(LinExpr? _x, LinExpr? _y)
+			{
+				if (_x is null && _y is null)
+					return true;
+				if (_x is null)
+					return false;
+				if (_y is null)
+					return false;
+
+				if (_x.Weights.Count != _y.Weights.Count)
+					return false;
+
+				return _x.Weights.OrderBy(e => e.Key).SequenceEqual(_y.Weights.OrderBy(e => e.Key));
+			}
+
+			public int GetHashCode([DisallowNull] LinExpr _x)
+			{
+				var hc = new HashCode();
+				foreach (var e in _x.Weights.OrderBy(e => e.Key))
+				{
+					hc.Add(e.Key);
+					hc.Add(e.Value);
+				}
+				return hc.ToHashCode();
+			}
+		}
+
+		class IgnoreLinExprOffsetTupleComparer : IEqualityComparer<(LinExpr, T)>
+		{
+			public bool Equals((LinExpr, T) _x, (LinExpr, T) _y)
+			{
+				if (_x.Item2 != _y.Item2)
+					return false;
+
+				if (_x.Item1.Weights.Count != _y.Item1.Weights.Count)
+					return false;
+
+				return _x.Item1.Weights.OrderBy(e => e.Key).SequenceEqual(_y.Item1.Weights.OrderBy(e => e.Key));
+			}
+
+			public int GetHashCode([DisallowNull] (LinExpr, T) _x)
+			{
+				var hc = new HashCode();
+				hc.Add(_x.Item2);
+				foreach (var e in _x.Item1.Weights.OrderBy(e => e.Key))
+				{
+					hc.Add(e.Key);
+					hc.Add(e.Value);
+				}
+				return hc.ToHashCode();
+			}
+		}
+
+		class SetBoolExprComparer : IEqualityComparer<BoolExpr[]>
+		{
+			public bool Equals(BoolExpr[]? _x, BoolExpr[]? _y)
+			{
+				if (_x is null && _y is null)
+					return true;
+				if (_x is null)
+					return false;
+				if (_y is null)
+					return false;
+
+				if (_x.Length != _y.Length)
+					return false;
+
+				foreach (var x in _x)
+					if (!_y.Contains(x))
+						return false;
+
+				return true;
+			}
+
+			public int GetHashCode([DisallowNull] BoolExpr[] _x)
+			{
+				var hash = 0;
+				foreach (var x in _x)
+					hash ^= x.GetHashCode();
+
+				var hc = new HashCode();
+				hc.Add(_x.Length);
+				hc.Add(hash);
+				return hc.ToHashCode();
 			}
 		}
 
 		private readonly Dictionary<(BoolExpr, BoolExpr), UIntVar> UIntSumTwoCache = new();
 		private readonly Dictionary<(BoolExpr, BoolExpr, BoolExpr), UIntVar> UIntSumThreeCache = new();
 		internal readonly Dictionary<(UIntVar, UIntVar), UIntVar> UIntSumCache = new();
-		internal readonly Dictionary<LinExpr, UIntVar> UIntCache = new();
+		internal readonly Dictionary<LinExpr, UIntVar> UIntCache = new(new IgnoreLinExprOffsetComparer());
 		private readonly Dictionary<T, UIntVar> UIntConstCache = new();
-		internal readonly Dictionary<(LinExpr, T), BoolExpr> LinExprEqCache = new();
-		internal readonly Dictionary<(LinExpr, T), BoolExpr> LinExprLECache = new();
-		private readonly Dictionary<LinExpr, BoolExpr[]> SortCache = new();
+		internal readonly Dictionary<(LinExpr, T), BoolExpr> LinExprEqCache = new(new IgnoreLinExprOffsetTupleComparer());
+		internal readonly Dictionary<(LinExpr, T), BoolExpr> LinExprLECache = new(new IgnoreLinExprOffsetTupleComparer());
+		private readonly Dictionary<BoolExpr[], BoolExpr[]> SortCache = new(new SetBoolExprComparer());
 
 		/// <summary>
 		/// Returns the count of the supplied expressions.
@@ -1069,18 +1174,19 @@ namespace SATInterface
 			try
 			{
 				StartStatistics("UInt Sum", _elems.Length);
-			switch (_elems.Length)
-			{
-				case 0:
-					return AddUIntConst(T.Zero);
-				case 1:
-					return _elems[0];
-				case 2:
-					return _elems[0] + _elems[1];
-				default:
-					var mid = _elems.Length / 2;
-					return Sum(_elems[..mid]) + Sum(_elems[mid..]);
-			}
+
+				switch (_elems.Length)
+				{
+					case 0:
+						return AddUIntConst(T.Zero);
+					case 1:
+						return _elems[0];
+					case 2:
+						return _elems[0] + _elems[1];
+					default:
+						var mid = _elems.Length / 2;
+						return Sum(_elems[..mid]) + Sum(_elems[mid..]);
+				}
 			}
 			finally
 			{
@@ -1109,10 +1215,6 @@ namespace SATInterface
 		[Pure]
 		public BoolExpr ITE(BoolExpr _if, BoolExpr _then, BoolExpr _else)
 		{
-			_if = _if.Flatten();
-			_then = _then.Flatten();
-			_else = _else.Flatten();
-
 			if (_then.Equals(_else))
 				return _then;
 			if (ReferenceEquals(_if, True))
@@ -1123,6 +1225,10 @@ namespace SATInterface
 				return _if;
 			if (ReferenceEquals(_then, False) && ReferenceEquals(_else, True))
 				return !_if;
+
+			_if = _if.Flatten();
+			_then = _then.Flatten();
+			_else = _else.Flatten();
 
 			if (ITECache.TryGetValue((_if, _then, _else), out var res))
 				return res;
@@ -1204,7 +1310,7 @@ namespace SATInterface
 			Heule
 		}
 
-		public enum ExactlyKOfMethod
+		public enum KOfMethod
 		{
 			BinaryCount,
 			SortTotalizer,
@@ -1247,7 +1353,7 @@ namespace SATInterface
 		{
 			try
 			{
-				StartStatistics("AMO", _expr.Length);
+				StartStatistics($"AMO {_method}", _expr.Length);
 				var trueCount = 0;
 				var falseCount = 0;
 				foreach (var be in _expr)
@@ -1292,7 +1398,6 @@ namespace SATInterface
 							return !SortTotalizer(expr)[1];
 						else
 							return AtMostOneOfPairwiseTree(expr);
-					//return AtMostOneOfCommander(expr);
 					case AtMostOneOfMethod.SortTotalizer:
 						return !SortTotalizer(expr)[1];
 					case AtMostOneOfMethod.SortPairwise:
@@ -1317,7 +1422,7 @@ namespace SATInterface
 			}
 			finally
 			{
-				StopStatistics("AMO");
+				StopStatistics($"AMO {_method}");
 			}
 		}
 
@@ -1329,9 +1434,9 @@ namespace SATInterface
 			{
 				var v0Old = v0.Flatten();
 				v0 = _expr[i] | v0Old;
-				v1 |= (v0Old & _expr[i]).Flatten();
+				v1 = ((v0Old & _expr[i]) | v1).Flatten();
 			}
-			return !v1.Flatten();
+			return !v1;
 		}
 
 		private BoolExpr AtMostOneOfHeule(ReadOnlySpan<BoolExpr> _expr)
@@ -1385,7 +1490,7 @@ namespace SATInterface
 		{
 			try
 			{
-				StartStatistics("EOO", _expr.Length);
+				StartStatistics($"EOO {_method}", _expr.Length);
 
 				var trueCount = 0;
 				var falseCount = 0;
@@ -1429,14 +1534,16 @@ namespace SATInterface
 				{
 					case null:
 						if (expr.Length <= 8)
-							return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
+						{
+							var uc = SortTotalizer(expr);
+							return uc[0] & !uc[1];
+						}
 						else
 							return ExactlyOneOfPairwiseTree(expr);
-					//return ExactlyOneOfCommander(expr);
 					case ExactlyOneOfMethod.SortTotalizer:
-						return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortTotalizer);
+						return ExactlyKOf(expr.ToArray(), 1, KOfMethod.SortTotalizer);
 					case ExactlyOneOfMethod.SortPairwise:
-						return ExactlyKOf(expr.ToArray(), 1, ExactlyKOfMethod.SortPairwise);
+						return ExactlyKOf(expr.ToArray(), 1, KOfMethod.SortPairwise);
 					case ExactlyOneOfMethod.BinaryCount:
 						return SumUInt(expr) == T.One;
 					case ExactlyOneOfMethod.Sequential:
@@ -1457,7 +1564,7 @@ namespace SATInterface
 			}
 			finally
 			{
-				StopStatistics("EOO");
+				StopStatistics($"EOO {_method}");
 			}
 		}
 
@@ -1647,11 +1754,11 @@ namespace SATInterface
 		/// <param name="_method">Specific SAT encoding of the constraint</param>
 		/// <returns></returns>
 		[Pure]
-		public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, ExactlyKOfMethod? _method = null)
+		public BoolExpr ExactlyKOf(IEnumerable<BoolExpr> _expr, int _k, KOfMethod? _method = null)
 		{
 			try
 			{
-				StartStatistics("EKO", _expr.Count());
+				StartStatistics($"EKO {_method}", _expr.Count());
 
 				var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
@@ -1674,25 +1781,25 @@ namespace SATInterface
 				switch (_method)
 				{
 					case null:
-					case ExactlyKOfMethod.LinExpr:
+					case KOfMethod.LinExpr:
 						return Sum(expr) == T.CreateChecked(_k);
 
-					case ExactlyKOfMethod.BinaryCount:
+					case KOfMethod.BinaryCount:
 						return SumUInt(expr) == T.CreateChecked(_k);
 
-					case ExactlyKOfMethod.SortTotalizer:
+					case KOfMethod.SortTotalizer:
 						{
 							var uc = SortTotalizer(expr);
 							return uc[_k - 1] & !uc[_k];
 						}
 
-					case ExactlyKOfMethod.SortPairwise:
+					case KOfMethod.SortPairwise:
 						{
 							var uc = SortPairwise(expr);
 							return uc[_k - 1] & !uc[_k];
 						}
 
-					case ExactlyKOfMethod.Sequential:
+					case KOfMethod.Sequential:
 						var v = Enumerable.Repeat(False, _k + 1).ToArray();
 						foreach (var e in expr)
 						{
@@ -1710,45 +1817,79 @@ namespace SATInterface
 			}
 			finally
 			{
-				StopStatistics("EKO");
+				StopStatistics($"EKO {_method}");
 			}
 		}
 
-		internal BoolExpr AtMostTwoOfSequential(IEnumerable<BoolExpr> _expr)
+
+		/// <summary>
+		/// Expression is True iff at most K of the supplied expressions are True.
+		/// 
+		/// Consider using LinExpr-based constraints instead.
+		/// </summary>
+		/// <param name="_expr"></param>
+		/// <param name="_k"></param>
+		/// <param name="_method">Specific SAT encoding of the constraint</param>
+		/// <returns></returns>
+		[Pure]
+		internal BoolExpr AtMostKOf(IEnumerable<BoolExpr> _expr, int _k, KOfMethod? _method = null)
 		{
 			try
 			{
-				StartStatistics("AM2", _expr.Count());
+				StartStatistics("AMK", _expr.Count());
+
 				var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
 				var trueCount = expr.Count(e => ReferenceEquals(e, True));
 				if (trueCount > 0)
-					expr = expr.Where(e => !ReferenceEquals(e, True)).ToArray();
-
-				switch (trueCount)
 				{
-					case 2:
-						return !Or(expr).Flatten();
-					case 1:
-						return AtMostOneOf(expr);
-					case 0:
-						var v = Enumerable.Repeat(False, 3).ToArray();
+					_k -= trueCount;
+					expr = expr.Where(e => !ReferenceEquals(e, True)).ToArray();
+				}
+
+				if (_k < 0 || _k > expr.Length)
+					return False;
+				else if (_k == 0)
+					return !OrExpr.Create(expr).Flatten();
+				else if (_k == expr.Length)
+					return AndExpr.Create(expr).Flatten();
+
+				Debug.Assert(_k >= 1 && _k < expr.Length);
+
+				switch (_method)
+				{
+					case null:
+					case KOfMethod.LinExpr:
+						return Sum(expr) <= T.CreateChecked(_k);
+
+					case KOfMethod.BinaryCount:
+						return SumUInt(expr) <= T.CreateChecked(_k);
+
+					case KOfMethod.SortTotalizer:
+						return !SortTotalizer(expr)[_k];
+
+					case KOfMethod.SortPairwise:
+						return !SortPairwise(expr)[_k];
+
+					case KOfMethod.Sequential:
+						var v = Enumerable.Repeat(False, _k + 1).ToArray();
 						foreach (var e in expr)
 						{
-							var vnext = new BoolExpr[3];
+							var vnext = new BoolExpr[_k + 1];
 							vnext[0] = (v[0] | e).Flatten();
-							vnext[1] = ((v[0] & e) | v[1]).Flatten();
-							vnext[2] = ((v[1] & e) | v[2]).Flatten();
+							for (var i = 1; i < _k + 1; i++)
+								vnext[i] = ((v[i - 1] & e) | v[i]).Flatten();
 							v = vnext;
 						}
-						return !v[2];
+						return !v[_k];
+
 					default:
-						return False;
+						throw new ArgumentException("Invalid method", nameof(_method));
 				}
 			}
 			finally
 			{
-				StopStatistics("AM2");
+				StopStatistics("AMK");
 			}
 		}
 
@@ -1792,9 +1933,9 @@ namespace SATInterface
 			{
 				var v0Old = v0.Flatten();
 				v0 = e | v0Old;
-				v1 |= (v0Old & e).Flatten();
+				v1 = ((v0Old & e) | v1).Flatten();
 			}
-			return v0.Flatten() & !v1.Flatten();
+			return v0.Flatten() & !v1;
 		}
 
 		/// <summary>
@@ -1812,8 +1953,7 @@ namespace SATInterface
 					return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
 				default:
 					//adapted from https://en.wikipedia.org/wiki/Pairwise_sorting_network
-
-					var cacheKey = Sum(_elems);
+					var cacheKey = _elems.ToArray();
 					if (SortCache.TryGetValue(cacheKey, out var res))
 						return res;
 
@@ -1886,7 +2026,7 @@ namespace SATInterface
 					case 2:
 						return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
 					default:
-						var cacheKey = Sum(_elems);
+						var cacheKey = _elems.ToArray();
 						if (SortCache.TryGetValue(cacheKey, out var res))
 							return res;
 

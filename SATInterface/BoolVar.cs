@@ -11,14 +11,14 @@ namespace SATInterface
 	/// </summary>
 	public class BoolVar : BoolExpr //<T> : BoolExpr where T: struct, IBinaryInteger<T>
 	{
-		public readonly int Id;
+		public readonly VarId Id;
 		internal readonly Model Model;
 
 		internal BoolExpr Negated => new BoolVar(Model, -Id);
 
 		public override BoolExpr Flatten() => this;
 
-		internal BoolVar(Model _model, int _id)
+		internal BoolVar(Model _model, VarId _id)
 		{
 			Debug.Assert(_id != 0);
 
