@@ -81,7 +81,8 @@ namespace SATInterface
 		{
 			try
 			{
-				_model.StartStatistics("UInt", (int)_ub.GetBitLength());
+				if (_ub > T.One)
+					_model.StartStatistics("UInt", (int)_ub.GetBitLength());
 
 				if (T.IsNegative(_ub))
 					throw new ArgumentException("Invalid upper bound", nameof(_ub));
@@ -108,7 +109,8 @@ namespace SATInterface
 			}
 			finally
 			{
-				_model.StopStatistics("UInt");
+				if (_ub > T.One)
+					_model.StopStatistics("UInt");
 			}
 		}
 
@@ -163,7 +165,7 @@ namespace SATInterface
 
 			var bits = new BoolExpr[_c.GetBitLength()];
 			for (var i = 0; i < bits.Length; i++)
-				bits[i] = ((_c >> i) & T.One) == T.One;
+				bits[i] = !(_c >> i).IsEven;
 			return new UIntVar(_model, _c, bits);
 		}
 
@@ -193,7 +195,7 @@ namespace SATInterface
 		{
 			var bits = new BoolExpr[T.Min(_v.UB, _mask).GetBitLength()];
 			for (var i = 0; i < bits.Length; i++)
-				if (((_mask >> i) & T.One) != T.Zero)
+				if (!(_mask >> i).IsEven)
 					bits[i] = _v.Bits[i];
 				else
 					bits[i] = Model.False;
@@ -278,7 +280,7 @@ namespace SATInterface
 
 			var res = new BoolExpr[_a.bit.Length];
 			for (var i = 0; i < res.Length; i++)
-				res[i] = (((_v >> i) & T.One) == T.One) ? _a.Bits[i] : !_a.Bits[i];
+				res[i] = !(_v >> i).IsEven ? _a.Bits[i] : !_a.Bits[i];
 
 			return AndExpr.Create(res).Flatten();
 		}
@@ -300,7 +302,7 @@ namespace SATInterface
 
 			var res = new BoolExpr[_a.bit.Length];
 			for (var i = 0; i < res.Length; i++)
-				res[i] = (((_v >> i) & T.One) == T.One) ? !_a.Bits[i] : _a.Bits[i];
+				res[i] = !(_v >> i).IsEven ? !_a.Bits[i] : _a.Bits[i];
 
 			return OrExpr.Create(res).Flatten();
 		}
@@ -506,12 +508,12 @@ namespace SATInterface
 		/// </summary>
 		public static UIntVar operator +(UIntVar _a, BoolExpr _b)
 		{
+			if (ReferenceEquals(_b, Model.False))
+				return _a;
+
 			try
 			{
-				_a.Model.StartStatistics("UInt +", _a.bit.Length);
-
-				if (ReferenceEquals(_b, Model.False))
-					return _a;
+				_a.Model.StartStatistics("UInt + Bit", _a.bit.Length);
 
 				var bits = new BoolExpr[(_a.UB + T.One).GetBitLength()];
 				var m = _a.Model;
@@ -546,7 +548,7 @@ namespace SATInterface
 			}
 			finally
 			{
-				_a.Model.StopStatistics("UInt +");
+				_a.Model.StopStatistics("UInt + Bit");
 			}
 		}
 
@@ -608,14 +610,14 @@ namespace SATInterface
 		/// </summary>
 		public static UIntVar operator +(UIntVar _a, UIntVar _b)
 		{
+			if (_a.UB == T.Zero)
+				return _b;
+			if (_b.UB == T.Zero)
+				return _a;
+
 			try
 			{
-				_a.Model.StartStatistics("UInt +", Math.Max(_a.bit.Length, _b.bit.Length));
-
-				if (_a.UB == T.Zero)
-					return _b;
-				if (_b.UB == T.Zero)
-					return _a;
+				_a.Model.StartStatistics("UInt + UInt", Math.Max(_a.bit.Length, _b.bit.Length));
 
 				var m = _a.Model;
 
@@ -664,7 +666,7 @@ namespace SATInterface
 			}
 			finally
 			{
-				_a.Model.StopStatistics("UInt +");
+				_a.Model.StopStatistics("UInt + UInt");
 			}
 		}
 	}
