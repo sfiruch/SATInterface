@@ -256,8 +256,6 @@ namespace SATInterface
 				State = State.Undecided;
 
 			varsX.Add(false);
-			//if (ActiveStatKey is null && (VariableCount % 20000) == 0)
-			//	Console.WriteLine(Environment.StackTrace);
 			return VariableCount;
 		}
 
@@ -800,6 +798,14 @@ namespace SATInterface
 		/// </summary>
 		/// <param name="_elems"></param>
 		/// <returns></returns>
+		public BoolExpr And(List<BoolExpr> _elems) => AndExpr.Create(CollectionsMarshal.AsSpan(_elems));
+
+		/// <summary>
+		/// Returns an expression equivalent to a conjunction of the supplied
+		/// expressions.
+		/// </summary>
+		/// <param name="_elems"></param>
+		/// <returns></returns>
 		public BoolExpr And(ReadOnlySpan<BoolExpr> _elems) => AndExpr.Create(_elems);
 
 		/// <summary>
@@ -819,6 +825,15 @@ namespace SATInterface
 		/// <returns></returns>
 		[Pure]
 		public BoolExpr Or(IEnumerable<BoolExpr> _elems) => OrExpr.Create(_elems.ToArray());
+
+		/// <summary>
+		/// Returns an expression equivalent to a disjunction of the supplied
+		/// expressions.
+		/// </summary>
+		/// <param name="_elems"></param>
+		/// <returns></returns>
+		[Pure]
+		public BoolExpr Or(List<BoolExpr> _elems) => OrExpr.Create(CollectionsMarshal.AsSpan(_elems));
 
 		/// <summary>
 		/// Returns an expression equivalent to a disjunction of the supplied
@@ -877,6 +892,11 @@ namespace SATInterface
 		/// <summary>
 		/// Returns the sum of the supplied expressions.
 		/// </summary>
+		public LinExpr Sum(List<BoolExpr> _elems) => Sum(CollectionsMarshal.AsSpan(_elems));
+
+		/// <summary>
+		/// Returns the sum of the supplied expressions.
+		/// </summary>
 		public LinExpr Sum(IEnumerable<LinExpr> _elems)
 		{
 			var le = new LinExpr();
@@ -889,6 +909,11 @@ namespace SATInterface
 		/// Returns the sum of the supplied expressions as UIntVar.
 		/// </summary>
 		public UIntVar SumUInt(IEnumerable<BoolExpr> _elems) => SumUInt(_elems.ToArray());
+
+		/// <summary>
+		/// Returns the sum of the supplied expressions as UIntVar.
+		/// </summary>
+		public UIntVar SumUInt(List<BoolExpr> _elems) => SumUInt(CollectionsMarshal.AsSpan(_elems));
 
 		/// <summary>
 		/// Returns the sum of the supplied expressions as UIntVar.
@@ -1097,9 +1122,9 @@ namespace SATInterface
 			}
 		}
 
-		class SetBoolExprComparer : IEqualityComparer<BoolExpr[]>
+		class IntArrayComparer : IEqualityComparer<int[]>
 		{
-			public bool Equals(BoolExpr[]? _x, BoolExpr[]? _y)
+			public bool Equals(int[]? _x, int[]? _y)
 			{
 				if (_x is null && _y is null)
 					return true;
@@ -1108,25 +1133,14 @@ namespace SATInterface
 				if (_y is null)
 					return false;
 
-				if (_x.Length != _y.Length)
-					return false;
-
-				foreach (var x in _x)
-					if (!_y.Contains(x))
-						return false;
-
-				return true;
+				return MemoryExtensions.SequenceEqual(_x.AsSpan(), _y.AsSpan());
 			}
 
-			public int GetHashCode([DisallowNull] BoolExpr[] _x)
+			public int GetHashCode([DisallowNull] int[] _x)
 			{
-				var hash = 0;
-				foreach (var x in _x)
-					hash ^= x.GetHashCode();
-
 				var hc = new HashCode();
-				hc.Add(_x.Length);
-				hc.Add(hash);
+				foreach(var x in _x)
+					hc.Add(x);
 				return hc.ToHashCode();
 			}
 		}
@@ -1138,7 +1152,7 @@ namespace SATInterface
 		private readonly Dictionary<T, UIntVar> UIntConstCache = new();
 		internal readonly Dictionary<(LinExpr, T), BoolExpr> LinExprEqCache = new(new IgnoreLinExprOffsetTupleComparer());
 		internal readonly Dictionary<(LinExpr, T), BoolExpr> LinExprLECache = new(new IgnoreLinExprOffsetTupleComparer());
-		private readonly Dictionary<BoolExpr[], BoolExpr[]> SortCache = new(new SetBoolExprComparer());
+		private readonly Dictionary<int[], BoolExpr[]> SortCache = new(new IntArrayComparer());
 
 		/// <summary>
 		/// Returns the count of the supplied expressions.
@@ -1341,6 +1355,14 @@ namespace SATInterface
 		/// Consider using LinExpr-based constraints instead.
 		/// </summary>
 		[Pure]
+		public BoolExpr AtMostOneOf(List<BoolExpr> _expr, AtMostOneOfMethod? _method = null) => AtMostOneOf(CollectionsMarshal.AsSpan(_expr), _method);
+
+		/// <summary>
+		/// Expression is True iff at most one of the supplied expressions is True.
+		/// 
+		/// Consider using LinExpr-based constraints instead.
+		/// </summary>
+		[Pure]
 		public BoolExpr AtMostOneOf(BoolExpr[] _expr, AtMostOneOfMethod? _method = null) => AtMostOneOf(_expr.AsSpan(), _method);
 
 		/// <summary>
@@ -1471,6 +1493,14 @@ namespace SATInterface
 		/// </summary>
 		[Pure]
 		public BoolExpr ExactlyOneOf(IEnumerable<BoolExpr> _expr, ExactlyOneOfMethod? _method = null) => ExactlyOneOf(_expr.ToArray().AsSpan(), _method);
+
+		/// <summary>
+		/// Expression is True iff exactly one of the supplied expressions is True.
+		/// 
+		/// Consider using LinExpr-based constraints instead.
+		/// </summary>
+		[Pure]
+		public BoolExpr ExactlyOneOf(List<BoolExpr> _expr, ExactlyOneOfMethod? _method = null) => ExactlyOneOf(CollectionsMarshal.AsSpan(_expr), _method);
 
 		/// <summary>
 		/// Expression is True iff exactly one of the supplied expressions is True.
@@ -1952,12 +1982,17 @@ namespace SATInterface
 				case 2:
 					return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
 				default:
-					//adapted from https://en.wikipedia.org/wiki/Pairwise_sorting_network
-					var cacheKey = _elems.ToArray();
+					var R = new BoolExpr[_elems.Length];
+					var cacheKey = new int[_elems.Length];
+					for (var i = 0; i < _elems.Length; i++)
+					{
+						R[i] = _elems[i].Flatten();
+						cacheKey[i] = ((BoolVar)R[i]).Id;
+					}
+					Array.Sort(cacheKey);
 					if (SortCache.TryGetValue(cacheKey, out var res))
 						return res;
 
-					var R = _elems.ToArray();
 					void CompSwap(int _i, int _j)
 					{
 						var a = R[_i];
@@ -1967,6 +2002,7 @@ namespace SATInterface
 						R[_j] = AndExpr.Create(a, b).Flatten();
 					}
 
+					//adapted from https://en.wikipedia.org/wiki/Pairwise_sorting_network
 					var a = 1;
 					for (; a < _elems.Length; a *= 2)
 					{
@@ -2026,18 +2062,26 @@ namespace SATInterface
 					case 2:
 						return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
 					default:
-						var cacheKey = _elems.ToArray();
+						var elems = _elems.ToArray();
+						var cacheKey = new int[_elems.Length];
+						for (var i = 0; i < _elems.Length; i++)
+						{
+							elems[i] = _elems[i].Flatten();
+							cacheKey[i] = ((BoolVar)elems[i]).Id;
+						}
+						Array.Sort(cacheKey);
 						if (SortCache.TryGetValue(cacheKey, out var res))
 							return res;
 
-						var R = new BoolExpr[_elems.Length + 2];
+
+						var R = new BoolExpr[elems.Length + 2];
 						R[0] = True;
 						for (var i = 1; i < R.Length - 1; i++)
 							R[i] = AddVar();
 						R[^1] = False;
 
-						var A = new BoolExpr[] { True }.Concat(SortTotalizer(_elems[..(_elems.Length / 2)])).Append(False).ToArray();
-						var B = new BoolExpr[] { True }.Concat(SortTotalizer(_elems[(_elems.Length / 2)..])).Append(False).ToArray();
+						var A = new BoolExpr[] { True }.Concat(SortTotalizer(elems[..(elems.Length / 2)])).Append(False).ToArray();
+						var B = new BoolExpr[] { True }.Concat(SortTotalizer(elems[(elems.Length / 2)..])).Append(False).ToArray();
 						for (var a = 0; a < A.Length - 1; a++)
 							for (var b = 0; b < B.Length - 1; b++)
 							{

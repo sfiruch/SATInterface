@@ -328,6 +328,10 @@ namespace SATInterface
 
 		public static BoolExpr operator <=(LinExpr _a, T _b)
 		{
+			//TODO: Asín, R., Nieuwenhuis, R., Oliveras, A. and Rodríguez-Carbonell, E., 2011. Cardinality networks: a theoretical and empirical study. Constraints, 16, pp.195-221.
+
+			//TODO: https://ii.uni.wroc.pl/~karp/thesis.pdf, page 73pdf
+
 			if (_a.UB <= _b)
 				return Model.True;
 			if (_a.LB > _b)
@@ -418,16 +422,13 @@ namespace SATInterface
 					minAbsWeight = absWeight;
 				if (absWeight > rhs)
 				{
-					//TODO: simplify
 					var vWithout = new LinExpr()
 					{
 						Model = _a.Model
 					};
 					foreach (var wi in _a.Weights)
-						if (wi.Value > T.Zero && wi.Value <= rhs)
-							vWithout.AddTerm(_a.Model.GetVariable(wi.Key), wi.Value);
-						else if (wi.Value < T.Zero && -wi.Value <= rhs)
-							vWithout.AddTerm(_a.Model.GetVariable(-wi.Key), -wi.Value);
+						if (T.Abs(wi.Value) <= rhs)
+							vWithout.AddTerm(_a.Model.GetVariable(wi.Value > T.Zero ? wi.Key : -wi.Key), T.Abs(wi.Value));
 
 					return _a.Model.And(_a.Weights
 						.Where(w => T.Abs(w.Value) > rhs)
@@ -499,10 +500,10 @@ namespace SATInterface
 			if (ub <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
 				return _a.Model.AtMostKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.SortTotalizer);
 
-			if (rhs <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
-				return _a.Model.AtMostKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.Sequential);
+			//if (rhs <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
+			//	return _a.Model.AtMostKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.Sequential);
 
-			if (false && maxVarCnt < 16 && (ub - (T.Abs(maxVar.Value) * (maxVarCnt + 1)) <= rhs))
+			if (maxVarCnt < 8)
 			{
 				var maxVars = new List<BoolExpr>(maxVarCnt);
 				var withoutMaxVars = new LinExpr();
@@ -521,10 +522,28 @@ namespace SATInterface
 			}
 			else
 			{
-				//TODO: implement section 5 with r=2k and c=1 of Ben-Haim, Y., Ivrii, A., Margalit, O. and Matsliah, A., 2012, June. Perfect hashing and CNF encodings of cardinality constraints. In International Conference on Theory and Applications of Satisfiability Testing (pp. 397-409). Berlin, Heidelberg: Springer Berlin Heidelberg.
+				try
+				{
+					_a.Model.StartStatistics("LE Bit", _a.Weights.Count);
 
-				//Debug.WriteLine($"Binary");
-				return _a.ToUInt(_a.Model) <= rhs;
+					if (rhs * 2 <= _a.Model.Configuration.LinExprKOfLimit)
+					{
+						//Ben-Haim, Y., Ivrii, A., Margalit, O. and Matsliah, A., 2012, June. Perfect hashing and CNF encodings of cardinality constraints. In International Conference on Theory and Applications of Satisfiability Testing (pp. 397-409). Berlin, Heidelberg: Springer Berlin Heidelberg.
+						var varForY = Enumerable.Range(0, int.CreateChecked(rhs) * 2).Select(i => new List<BoolExpr>()).ToArray();
+						{
+							var i = 0;
+							foreach (var v in _a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))))
+								varForY[i++ % varForY.Length].Add(v);
+						}
+						return (_a.Model.AtMostKOf(varForY.Select(l => _a.Model.Or(l)), int.CreateChecked(rhs), Model.KOfMethod.SortTotalizer)) & (_a.ToUInt(_a.Model) <= rhs);
+					}
+					else
+						return _a.ToUInt(_a.Model) <= rhs;
+				}
+				finally
+				{
+					_a.Model.StopStatistics("LE Bit");
+				}
 			}
 		}
 
@@ -1143,16 +1162,13 @@ namespace SATInterface
 					minAbsWeight = absWeight;
 				if (absWeight > rhs)
 				{
-					//TODO: simplify
 					var vWithout = new LinExpr()
 					{
 						Model = _a.Model
 					};
 					foreach (var wi in _a.Weights)
-						if (wi.Value > T.Zero && wi.Value <= rhs)
-							vWithout.AddTerm(_a.Model.GetVariable(wi.Key), wi.Value);
-						else if (wi.Value < T.Zero && -wi.Value <= rhs)
-							vWithout.AddTerm(_a.Model.GetVariable(-wi.Key), -wi.Value);
+						if (T.Abs(wi.Value) <= rhs)
+							vWithout.AddTerm(_a.Model.GetVariable(wi.Value > T.Zero ? wi.Key : -wi.Key), T.Abs(wi.Value));
 
 					return _a.Model.And(_a.Weights
 						.Where(w => T.Abs(w.Value) > rhs)
@@ -1221,10 +1237,10 @@ namespace SATInterface
 			if (ub <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
 				return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.SortTotalizer);
 
-			if (rhs <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
-				return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.Sequential);
+			//if (rhs <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
+			//	return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.Sequential);
 
-			if (maxVarCnt < 16)
+			if (maxVarCnt < 8)
 			{
 				var maxVars = new List<BoolExpr>(maxVarCnt);
 				var withoutMaxVars = new LinExpr();
@@ -1243,8 +1259,24 @@ namespace SATInterface
 			}
 			else
 			{
-				//Debug.WriteLine($"Binary");
-				return _a.ToUInt(_a.Model) == rhs;
+				try
+				{
+					_a.Model.StartStatistics("Eq Bit", _a.Weights.Count);
+
+					var ands = new List<BoolExpr>
+					{
+						_a.ToUInt(_a.Model) == rhs
+					};
+
+					if (rhs > 3)
+						ands.Add(_a.EqualsMod(rhs, 3));
+
+					return _a.Model.And(ands);
+				}
+				finally
+				{
+					_a.Model.StopStatistics("Eq Bit");
+				}
 			}
 		}
 
@@ -1282,6 +1314,38 @@ namespace SATInterface
 				sb.Append($" - {-Offset}");
 
 			return sb.ToString();
+		}
+
+		private BoolExpr EqualsMod(T _rhs, T _b)
+		{
+			Debug.Assert(Model is not null);
+
+			if (_rhs < T.Zero)
+				throw new ArgumentException(nameof(_rhs));
+			if (_b < T.One)
+				throw new ArgumentException(nameof(_b));
+
+			if (_b == T.One)
+				return Model.True;
+
+			var oldUnary = new BoolExpr[int.CreateChecked(_b)];
+			var newUnary = new BoolExpr[int.CreateChecked(_b)];
+			newUnary[0] = Model.True;
+			for (var i = 1; i < newUnary.Length; i++)
+				newUnary[i] = Model.False;
+
+			foreach (var e in Weights)
+			{
+				var rot = int.CreateChecked(T.Abs(e.Value) % _b);
+				if (rot == 0)
+					continue;
+
+				(oldUnary, newUnary) = (newUnary, oldUnary);
+				for (var i = 0; i < newUnary.Length; i++)
+					newUnary[i] = Model.ITE(Model.GetVariable(e.Value > T.Zero ? e.Key : -e.Key), oldUnary[(i + oldUnary.Length - rot) % oldUnary.Length], oldUnary[i]);
+			}
+
+			return newUnary[int.CreateChecked(_rhs % _b)];
 		}
 
 		public static BoolExpr operator !=(LinExpr _a, T _b) => !(_a == _b);

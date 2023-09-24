@@ -197,10 +197,10 @@ namespace SATInterface
 
         /// <summary>
         /// The maximum number of variables for which linear constraints are encoded
-        /// using Totalizer or sequentially. Both grow quadratically.
+        /// using Totalizer.
         /// 
-        /// Default: 16
+        /// Default: 32
         /// </summary>
-        public int LinExprKOfLimit = 16;
+        public int LinExprKOfLimit = 32;
 	}
 }
