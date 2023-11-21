@@ -99,7 +99,7 @@ namespace Tests
 							else
 								v[i] = Model.False;
 
-						m.AddConstr(m.AtMostKOf(v, k));
+						m.AddConstr(m.ExactlyKOf(v, k));
 						m.Solve();
 
 						if (pos == k)
@@ -163,7 +163,7 @@ namespace Tests
 							else
 								v[i] = Model.False;
 
-						m.AddConstr(m.AtMostKOf(v, k));
+						m.AddConstr(!m.ExactlyKOf(v, k));
 						m.Solve();
 
 						if (pos != k)
