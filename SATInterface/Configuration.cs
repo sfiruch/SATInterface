@@ -195,12 +195,12 @@ namespace SATInterface
         /// </summary>
         public bool SetVariablePhaseFromObjective = true;
 
-        /// <summary>
-        /// The maximum number of variables for which linear constraints are encoded
-        /// using Totalizer.
-        /// 
-        /// Default: 32
-        /// </summary>
-        public int LinExprKOfLimit = 32;
+		/// <summary>
+		/// The maximum number of variables for which linear constraints or
+        /// EOO constraints are encoded using Totalizer.
+		/// 
+		/// Default: 512
+		/// </summary>
+		public int TotalizerLimit = 512;
 	}
 }

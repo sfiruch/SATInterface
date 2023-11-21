@@ -1,6 +1,7 @@
 ﻿global using T = System.Numerics.BigInteger;
 global using VarId = System.Int32;
 
+using System.Runtime.CompilerServices;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -13,6 +14,8 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+
+[assembly: InternalsVisibleTo("Tests")]
 
 namespace SATInterface
 {
@@ -1139,7 +1142,7 @@ namespace SATInterface
 			public int GetHashCode([DisallowNull] int[] _x)
 			{
 				var hc = new HashCode();
-				foreach(var x in _x)
+				foreach (var x in _x)
 					hc.Add(x);
 				return hc.ToHashCode();
 			}
@@ -1416,7 +1419,7 @@ namespace SATInterface
 				switch (_method)
 				{
 					case null:
-						if (expr.Length <= 8)
+						if (expr.Length <= Configuration.TotalizerLimit)
 							return !SortTotalizer(expr)[1];
 						else
 							return AtMostOneOfPairwiseTree(expr);
@@ -1563,7 +1566,7 @@ namespace SATInterface
 				switch (_method)
 				{
 					case null:
-						if (expr.Length <= 8)
+						if (expr.Length <= Configuration.TotalizerLimit)
 						{
 							var uc = SortTotalizer(expr);
 							return uc[0] & !uc[1];
@@ -1877,12 +1880,14 @@ namespace SATInterface
 					expr = expr.Where(e => !ReferenceEquals(e, True)).ToArray();
 				}
 
-				if (_k < 0 || _k > expr.Length)
+				if (_k < 0)
 					return False;
 				else if (_k == 0)
-					return !OrExpr.Create(expr).Flatten();
-				else if (_k == expr.Length)
-					return AndExpr.Create(expr).Flatten();
+					return !Or(expr).Flatten();
+				else if (_k == expr.Length - 1)
+					return Or(expr.Select(e => !e)).Flatten();
+				else if (_k >= expr.Length)
+					return True;
 
 				Debug.Assert(_k >= 1 && _k < expr.Length);
 

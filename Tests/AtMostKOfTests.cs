@@ -8,43 +8,9 @@ using System.Text;
 
 namespace Tests
 {
-    [TestClass]
-    public class ExactlyKOfTests
-    {
-        [DataRow(null)]
-        [DataRow(Model.KOfMethod.BinaryCount)]
-        [DataRow(Model.KOfMethod.LinExpr)]
-        [DataRow(Model.KOfMethod.Sequential)]
-        [DataRow(Model.KOfMethod.SortPairwise)]
-        [DataRow(Model.KOfMethod.SortTotalizer)]
-        [DataTestMethod]
-        public void Random(Model.KOfMethod? _method)
-        {
-            var RNG = new Random(2);
-
-            var sat = 0;
-            for (var i = 0; i < 20; i++)
-            {
-                using var m = new Model(new Configuration() { Verbosity = 0 });
-                var v = m.AddVars(RNG.Next(100) + 2);
-
-                var constrs = RNG.Next(15) + 25;
-                for (var r = 0; r < constrs; r++)
-                {
-                    var hs = v.Where(vi => RNG.NextDouble() < 10d/v.Length).Select(vi => RNG.Next(2) == 1 ? vi : !vi)
-                        .ToArray();
-                    m.AddConstr(m.ExactlyKOf(hs, hs.Length / 2, _method));
-                }
-
-                m.Solve();
-
-                if (m.State == State.Satisfiable)
-                    sat++;
-            }
-
-            Assert.AreEqual(5, sat);
-        }
-
+	[TestClass]
+	public class AtMostKOfTests
+	{
 		[DataRow(null)]
 		[DataRow(Model.KOfMethod.BinaryCount)]
 		[DataRow(Model.KOfMethod.LinExpr)]
@@ -52,7 +18,7 @@ namespace Tests
 		[DataRow(Model.KOfMethod.SortPairwise)]
 		[DataRow(Model.KOfMethod.SortTotalizer)]
 		[DataTestMethod]
-		public void ExactlyKPositiveDynamic(Model.KOfMethod? _method)
+		public void AtMostKPositiveDynamic(Model.KOfMethod? _method)
 		{
 			for (var size = 0; size < 10; size++)
 				for (var k = -1; k < size + 1; k++)
@@ -67,10 +33,10 @@ namespace Tests
 							else
 								m.AddConstr(!v[i]);
 
-						m.AddConstr(m.ExactlyKOf(v, k));
+						m.AddConstr(m.AtMostKOf(v,k));
 						m.Solve();
 
-						if (pos == k)
+						if(pos<=k)
 							Assert.AreEqual(State.Satisfiable, m.State);
 						else
 							Assert.AreEqual(State.Unsatisfiable, m.State);
@@ -84,7 +50,7 @@ namespace Tests
 		[DataRow(Model.KOfMethod.SortPairwise)]
 		[DataRow(Model.KOfMethod.SortTotalizer)]
 		[DataTestMethod]
-		public void ExactlyKPositiveStatic(Model.KOfMethod? _method)
+		public void AtMostKPositiveStatic(Model.KOfMethod? _method)
 		{
 			for (var size = 0; size < 10; size++)
 				for (var k = -1; k < size + 1; k++)
@@ -102,7 +68,7 @@ namespace Tests
 						m.AddConstr(m.AtMostKOf(v, k));
 						m.Solve();
 
-						if (pos == k)
+						if (pos <= k)
 							Assert.AreEqual(State.Satisfiable, m.State);
 						else
 							Assert.AreEqual(State.Unsatisfiable, m.State);
@@ -116,7 +82,7 @@ namespace Tests
 		[DataRow(Model.KOfMethod.SortPairwise)]
 		[DataRow(Model.KOfMethod.SortTotalizer)]
 		[DataTestMethod]
-		public void ExactlyKNegativeDynamic(Model.KOfMethod? _method)
+		public void AtMostKNegativeDynamic(Model.KOfMethod? _method)
 		{
 			for (var size = 0; size < 10; size++)
 				for (var k = -1; k < size + 1; k++)
@@ -131,10 +97,10 @@ namespace Tests
 							else
 								m.AddConstr(!v[i]);
 
-						m.AddConstr(!m.ExactlyKOf(v, k));
+						m.AddConstr(!m.AtMostKOf(v, k));
 						m.Solve();
 
-						if (pos != k)
+						if (pos > k)
 							Assert.AreEqual(State.Satisfiable, m.State);
 						else
 							Assert.AreEqual(State.Unsatisfiable, m.State);
@@ -148,7 +114,7 @@ namespace Tests
 		[DataRow(Model.KOfMethod.SortPairwise)]
 		[DataRow(Model.KOfMethod.SortTotalizer)]
 		[DataTestMethod]
-		public void ExactlyKNegativeStatic(Model.KOfMethod? _method)
+		public void AtMostKNegativeStatic(Model.KOfMethod? _method)
 		{
 			for (var size = 0; size < 10; size++)
 				for (var k = -1; k < size + 1; k++)
@@ -163,10 +129,10 @@ namespace Tests
 							else
 								v[i] = Model.False;
 
-						m.AddConstr(m.AtMostKOf(v, k));
+						m.AddConstr(!m.AtMostKOf(v, k));
 						m.Solve();
 
-						if (pos != k)
+						if (pos > k)
 							Assert.AreEqual(State.Satisfiable, m.State);
 						else
 							Assert.AreEqual(State.Unsatisfiable, m.State);
