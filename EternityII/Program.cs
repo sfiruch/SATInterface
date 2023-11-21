@@ -8,7 +8,7 @@ var pieces = File.ReadAllLines("e2pieces.txt")
     .Select(l => l.Split(' ').Select(t => int.Parse(t)).ToArray())
     .ToArray();
 
-var MaxEdge = pieces.Max(p => p.Max());
+var MaxColor = pieces.Max(p => p.Max());
 
 const int W = 16;
 const int H = 16;
@@ -57,42 +57,34 @@ for (var p = 0; p < pieces.Length; p++)
 }
 
 for (var y = 0; y < H; y++)
-    for (var x = 0; x < W - 1; x++)
-        for (var e = 1; e <= MaxEdge; e++)
-        {
-            var left = new List<BoolExpr>();
-            var right = new List<BoolExpr>();
-            for (var p = 0; p < pieces.Length; p++)
-                for (var r = 0; r < 4; r++)
-                {
-                    var rot = Rotate(pieces[p], r);
-                    if (rot[2] == e)
-                        left.Add(vXYPR[x, y, p, r]);
-                    if (rot[0] == e)
-                        right.Add(vXYPR[x + 1, y, p, r]);
-                }
+	for (var x = 0; x < W - 1; x++)
+	{
+		var e = new BoolExpr[] { false }.Concat(m.AddVars(MaxColor)).ToArray();
+		for (var p = 0; p < pieces.Length; p++)
+			for (var r = 0; r < 4; r++)
+			{
+				var rot = Rotate(pieces[p], r);
+				m.AddConstr(e[rot[2]] | !vXYPR[x, y, p, r]);
+				m.AddConstr(e[rot[0]] | !vXYPR[x + 1, y, p, r]);
+			}
 
-            m.AddConstr(m.Or(left) == m.Or(right));
-        }
+		m.AddConstr(m.ExactlyOneOf(e));
+	}
 
 for (var y = 0; y < H - 1; y++)
-    for (var x = 0; x < W; x++)
-        for (var e = 1; e <= MaxEdge; e++)
-        {
-            var top = new List<BoolExpr>();
-            var bottom = new List<BoolExpr>();
-            for (var p = 0; p < pieces.Length; p++)
-                for (var r = 0; r < 4; r++)
-                {
-                    var rot = Rotate(pieces[p], r);
-                    if (rot[3] == e)
-                        top.Add(vXYPR[x, y, p, r]);
-                    if (rot[1] == e)
-                        bottom.Add(vXYPR[x, y + 1, p, r]);
-                }
+	for (var x = 0; x < W; x++)
+	{
+		var e = new BoolExpr[] { false }.Concat(m.AddVars(MaxColor)).ToArray();
+		for (var p = 0; p < pieces.Length; p++)
+			for (var r = 0; r < 4; r++)
+			{
+				var rot = Rotate(pieces[p], r);
+				m.AddConstr(e[rot[3]] | !vXYPR[x, y, p, r]);
+				m.AddConstr(e[rot[1]] | !vXYPR[x, y + 1, p, r]);
+			}
 
-            m.AddConstr(m.Or(top) == m.Or(bottom));
-        }
+		m.AddConstr(m.ExactlyOneOf(e));
+	}
 
 
 //clues
