@@ -20,16 +20,16 @@ namespace BrentEquations
         //simple test cases: 1x1x1_1, 1x2x1_2, 1x2x2_4, 2x2x2_7, 2x3x2_11, 3x3x3_27
         //tedious cases: 2x3x3_15, 3x3x3_23
         //research cases: 3x3x3_22, 3x3x3_21
-        const int ARows = 2;
+        const int ARows = 3;
         const int ACols = 3;
 
         const int BRows = ACols;
-        const int BCols = 2;
+        const int BCols = 3;
 
         const int CRows = ARows;
         const int CCols = BCols;
 
-        const int NoOfProducts = 11;
+        const int NoOfProducts = 27;
 
         static void Main(string[] args)
         {
