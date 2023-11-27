@@ -251,6 +251,10 @@ namespace SATInterface
 		{
 			Debug.Assert(Model is null || ReferenceEquals(Model, _m));
 
+			Model ??= _m;
+
+			Debug.Assert(_m is not null);
+
 			if (Model.UIntCache.TryGetValue(this, out var res))
 				return res;
 
