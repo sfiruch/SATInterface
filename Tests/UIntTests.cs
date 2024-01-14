@@ -98,6 +98,24 @@ namespace Tests
         }
 
         [TestMethod]
+        public void ConversionFromLinExpr()
+        {
+            var m = new Model();
+
+            var J0 = m.AddUIntVar(7);
+            var J1 = m.AddUIntVar(7);
+
+            m.AddConstr(J0 == 7);
+
+            m.AddConstr(J1 == ((J0 + 1).ToUInt(m) & 0x7));
+            m.Solve();
+
+            Assert.AreEqual(State.Satisfiable, m.State);
+            Assert.AreEqual(7, J0.X);
+            Assert.AreEqual(0, J1.X);
+        }
+
+        [TestMethod]
         public void UIntAddBool()
         {
             for (var i = 0; i < 100; i++)
