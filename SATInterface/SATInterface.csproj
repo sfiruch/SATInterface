@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <Version>5.1.0</Version>
+    <Version>5.1.2</Version>
     <TargetFramework>net7.0</TargetFramework>
     <Nullable>enable</Nullable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -17,7 +17,7 @@
     <Authors>Simon Felix</Authors>
     <Description>Library to formulate and solve SAT problems in .NET. Includes CaDiCaL, Kissat, CryptoMiniSat and YalSAT as solvers.</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Copyright>Copyright 2023 Simon Felix</Copyright>
+    <Copyright>Copyright 2024 Simon Felix</Copyright>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>1701;1702;1591;1822</NoWarn>
   </PropertyGroup>

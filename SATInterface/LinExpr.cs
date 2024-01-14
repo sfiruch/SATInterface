@@ -243,11 +243,25 @@ namespace SATInterface
 
 		public static BoolExpr operator <(LinExpr _a, T _b) => _a <= (_b - T.One);
 
+        /// <summary>
+        /// Converts to UInt
+        /// </summary>
+        /// <returns></returns>
+        public UIntVar ToUInt(Model _m)
+		{
+			if (LB < 0)
+				throw new InvalidOperationException("Lower bound of expression is negative, this is not supported.");
+
+			var v = new UIntVar(_m, UB, false);
+			_m.AddConstr(v == this);
+			return v;
+		}
+
 		/// <summary>
 		/// Converts to UInt, ignoring offsets and using all-positive weights.
 		/// </summary>
 		/// <returns></returns>
-		internal UIntVar ToUInt(Model _m)
+		internal UIntVar ToUIntAllPosNoOffset(Model _m)
 		{
 			Debug.Assert(Model is null || ReferenceEquals(Model, _m));
 
@@ -554,7 +568,7 @@ namespace SATInterface
 						vAnd.Add(_a.Model.AtMostKOf(varForY.Select(l => _a.Model.Or(l)), int.CreateChecked(rhs), Model.KOfMethod.SortTotalizer));
 					}
 
-					vAnd.Add(_a.ToUInt(_a.Model) <= rhs);
+					vAnd.Add(_a.ToUIntAllPosNoOffset(_a.Model) <= rhs);
 					return _a.Model.And(vAnd);
 				}
 				finally
@@ -1298,7 +1312,7 @@ namespace SATInterface
 
 					var ands = new List<BoolExpr>
 					{
-						_a.ToUInt(_a.Model) == rhs
+						_a.ToUIntAllPosNoOffset(_a.Model) == rhs
 					};
 
 					if (rhs > 3)
