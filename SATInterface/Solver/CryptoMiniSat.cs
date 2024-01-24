@@ -30,7 +30,7 @@ namespace SATInterface.Solver
 
             if (_timeout != long.MaxValue)
                 //CryptoMiniSatNative.cmsat_set_max_time(Handle, (_timeout - Environment.TickCount64) / 1000d);
-                throw new Exception("CryptoMiniSat does not support wall-clock time limits");
+                throw new NotImplementedException("CryptoMiniSat does not support wall-clock time limits");
 
 
             CryptoMiniSatNative.c_lbool result;

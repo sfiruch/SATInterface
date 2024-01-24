@@ -74,14 +74,15 @@ namespace SATInterface
 
 			var count = 0;
 			foreach (var es in _elems)
-				if (es is null)
-					throw new ArgumentNullException(nameof(_elems));
-				else if (ReferenceEquals(es, Model.False))
+			{
+				ArgumentNullException.ThrowIfNull(es, nameof(_elems));
+				if (ReferenceEquals(es, Model.False))
 					return Model.False;
 				else if (es is AndExpr ae)
 					count += ae.Elements.Length;
 				else if (!ReferenceEquals(es, Model.True))
 					count++;
+			}
 
 			if (count == 0)
 				return Model.True;

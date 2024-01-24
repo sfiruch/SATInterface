@@ -1350,7 +1350,7 @@ namespace SATInterface
 					else if (e.Value > T.One)
 						sb.Append($" + {e.Value}*");
 					else
-						throw new Exception();
+						throw new NotImplementedException();
 				}
 				sb.Append($"v{e.Key}");
 			}
@@ -1368,9 +1368,9 @@ namespace SATInterface
 			Debug.Assert(Model is not null);
 
 			if (_rhs < T.Zero)
-				throw new ArgumentException(nameof(_rhs));
+				throw new ArgumentOutOfRangeException(nameof(_rhs));
 			if (_b < T.One)
-				throw new ArgumentException(nameof(_b));
+				throw new ArgumentOutOfRangeException(nameof(_b));
 
 			if (_b == T.One)
 				return Model.True;
@@ -1476,7 +1476,7 @@ namespace SATInterface
 				}
 			}
 			else
-				throw new Exception();
+				throw new NotImplementedException();
 		}
 
 		public override int GetHashCode()

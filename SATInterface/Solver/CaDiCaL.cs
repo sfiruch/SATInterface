@@ -66,7 +66,7 @@ namespace SATInterface.Solver
                         return (State.Undecided, null);
 
                     default:
-                        throw new Exception();
+                        throw new NotImplementedException();
                 }
             }
             finally

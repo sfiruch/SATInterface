@@ -642,7 +642,7 @@ namespace SATInterface
 							assumptions.Add(v.Id);
 						}
 						else
-							throw new Exception();
+							throw new NotImplementedException();
 					}
 
 					if (Configuration.Verbosity > 0)
@@ -737,7 +737,7 @@ namespace SATInterface
 						BoolExpr be => be.Flatten() switch
 						{
 							BoolVar ibv => ibv.Id,
-							_ => throw new Exception()
+							_ => throw new NotImplementedException()
 						}
 					};
 			}
@@ -771,7 +771,7 @@ namespace SATInterface
 		public void Write(TextWriter _out)
 		{
 			if (DIMACSBuffer is null)
-				throw new Exception("Configuration.EnableDIMACSWriting must be set");
+				throw new InvalidOperationException("Configuration.EnableDIMACSWriting must be set");
 
 			_out.WriteLine("c Created by SATInterface");
 			_out.WriteLine($"p cnf {VariableCount} {ClauseCount}");
@@ -1442,7 +1442,7 @@ namespace SATInterface
 					case AtMostOneOfMethod.Heule:
 						return AtMostOneOfHeule(expr);
 					default:
-						throw new ArgumentException($"Invalid method specified: {nameof(_method)}");
+						throw new ArgumentOutOfRangeException($"Invalid method specified: {nameof(_method)}");
 				}
 			}
 			finally
@@ -1592,7 +1592,7 @@ namespace SATInterface
 					case ExactlyOneOfMethod.OneHot:
 						return ExactlyOneOfOneHot(expr);
 					default:
-						throw new ArgumentException($"Invalid _method specified: {nameof(_method)}");
+						throw new ArgumentOutOfRangeException($"Invalid _method specified: {nameof(_method)}");
 				}
 			}
 			finally
@@ -1845,7 +1845,7 @@ namespace SATInterface
 						return v[_k - 1] & !v[_k];
 
 					default:
-						throw new ArgumentException("Invalid method", nameof(_method));
+						throw new ArgumentOutOfRangeException("Invalid method", nameof(_method));
 				}
 			}
 			finally
@@ -1919,7 +1919,7 @@ namespace SATInterface
 						return !v[_k];
 
 					default:
-						throw new ArgumentException("Invalid method", nameof(_method));
+						throw new ArgumentOutOfRangeException("Invalid method", nameof(_method));
 				}
 			}
 			finally

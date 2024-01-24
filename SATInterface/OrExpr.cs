@@ -64,9 +64,8 @@ namespace SATInterface
 			var count = 0;
 			foreach (var es in _elems)
 			{
-				if (es is null)
-					throw new ArgumentNullException(nameof(_elems));
-				else if (ReferenceEquals(es, Model.True))
+				ArgumentNullException.ThrowIfNull(nameof(_elems));
+				if (ReferenceEquals(es, Model.True))
 					return Model.True;
 				else if (es is OrExpr oe)
 					count += oe.FlatCached ? 1 : oe.Elements.Length;

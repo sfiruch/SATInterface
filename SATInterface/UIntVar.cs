@@ -51,7 +51,7 @@ namespace SATInterface
 		internal UIntVar(Model _model, T _ub, BoolExpr[] _bits, bool _enforceUB = false)
 		{
 			if (T.IsNegative(_ub))
-				throw new ArgumentException("Invalid upper bound", nameof(_ub));
+				throw new ArgumentOutOfRangeException("Invalid upper bound", nameof(_ub));
 
 			Model = _model;
 			bit = _bits;
@@ -85,7 +85,7 @@ namespace SATInterface
 					_model.StartStatistics("UInt", (int)_ub.GetBitLength());
 
 				if (T.IsNegative(_ub))
-					throw new ArgumentException("Invalid upper bound", nameof(_ub));
+					throw new ArgumentOutOfRangeException("Invalid upper bound", nameof(_ub));
 
 				Model = _model;
 				UB = _ub;
@@ -161,7 +161,7 @@ namespace SATInterface
 		internal static UIntVar Const(Model _model, T _c)
 		{
 			if (T.IsNegative(_c))
-				throw new ArgumentException($"Value may not be negative", nameof(_c));
+				throw new ArgumentOutOfRangeException($"Value may not be negative", nameof(_c));
 
 			var bits = new BoolExpr[_c.GetBitLength()];
 			for (var i = 0; i < bits.Length; i++)
@@ -460,7 +460,7 @@ namespace SATInterface
 		public static UIntVar operator *(UIntVar _a, T _b)
 		{
 			if (_b < T.Zero)
-				throw new ArgumentException("Only multiplication by positive numbers supported.");
+				throw new ArgumentOutOfRangeException("Only multiplication by positive numbers supported.");
 			if (_b == T.Zero)
 				return _a.Model.AddUIntConst(T.Zero);
 			if (_b == T.One)

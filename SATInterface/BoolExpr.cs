@@ -75,8 +75,7 @@ namespace SATInterface
 
 		public static BoolExpr operator !(BoolExpr _v)
 		{
-			if (_v is null)
-				throw new ArgumentNullException(nameof(_v));
+			ArgumentNullException.ThrowIfNull(nameof(_v));
 
 			if (ReferenceEquals(_v, Model.False))
 				return Model.True;
@@ -113,8 +112,8 @@ namespace SATInterface
 
 		public static BoolExpr operator ==(BoolExpr lhsS, BoolExpr rhsS)
 		{
-			if (lhsS is null || rhsS is null)
-				throw new NullReferenceException();
+			ArgumentNullException.ThrowIfNull(lhsS, nameof(lhsS));
+			ArgumentNullException.ThrowIfNull(rhsS, nameof(rhsS));
 
 			if (ReferenceEquals(lhsS, rhsS))
 				return Model.True;
@@ -131,29 +130,7 @@ namespace SATInterface
 			if (ReferenceEquals(rhsS, Model.False))
 				return !lhsS;
 
-			//if (rhsS is AndExpr andExpr)
-			//{
-			//    var other = lhsS.Flatten();
-			//    var ands = new List<BoolExpr>(andExpr.Elements.Length + 1);
-			//    ands.Add(OrExpr.Create(andExpr.Elements.Select(e => !e).Append(other).ToArray()).Flatten());
-			//    foreach (var e in andExpr.Elements)
-			//        ands.Add(e | !other);
-			//    return AndExpr.Create(ands.ToArray());
-			//}
-			//if (rhsS is OrExpr orExpr)
-			//{
-			//    var other = lhsS.Flatten();
-			//    var ands = new List<BoolExpr>(orExpr.Elements.Length + 1);
-			//    ands.Add(OrExpr.Create(orExpr.Elements.Append(!other).ToArray()).Flatten());
-			//    foreach (var e in orExpr.Elements)
-			//        ands.Add(!e | other);
-			//    return AndExpr.Create(ands.ToArray());
-			//}
-			//if (!(rhsS is AndExpr) && lhsS is AndExpr)
-			//    return (rhsS == lhsS);
-			//if (!(rhsS is OrExpr) && lhsS is OrExpr)
-			//    return (rhsS == lhsS);
-
+			lhsS = lhsS.Flatten();
 			rhsS = rhsS.Flatten();
 			return lhsS.GetModel()!.ITE(lhsS, rhsS, !rhsS);
 		}
