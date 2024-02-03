@@ -858,28 +858,31 @@ namespace SATInterface
 		/// Returns an expression equivalent to the exclusive-or of the
 		/// supplied expressions.
 		/// </summary>
-		public BoolExpr Xor(BoolExpr _a, BoolExpr _b, BoolExpr _c) => _a ^ _b ^ _c;
+		public BoolExpr Xor(BoolExpr _a, BoolExpr _b, BoolExpr _c)
+		{
+			_a = _a.Flatten();
+			_b = _b.Flatten();
+			_c = _c.Flatten();
+			return Or(
+				(_a & _b & _c).Flatten(),
+				(_a & !_b & !_c).Flatten(),
+				(!_a & _b & !_c).Flatten(),
+				(!_a & !_b & _c).Flatten());
+		}
 
 		/// <summary>
 		/// Returns an expression equivalent to the exclusive-or of the
 		/// supplied expressions.
 		/// </summary>
-		public BoolExpr Xor(params BoolExpr[] _elems)
-		{
-			if (_elems.Length == 0)
-				return False;
-
-			if (_elems.Length == 1)
-				return _elems[0];
-
-			if (_elems.Length == 2)
-				return _elems[0] ^ _elems[1];
-
-			var res = False;
-			foreach (var v in _elems)
-				res ^= v;
-			return res;
-		}
+		public BoolExpr Xor(params BoolExpr[] _elems) =>
+			_elems.Length switch
+			{
+				0 => False,
+				1 => _elems[0],
+				2 => Xor(_elems[0], _elems[1]),
+				3 => Xor(_elems[0], _elems[1], _elems[2]),
+				_ => Xor(_elems.Chunk(3).Select(ch => Xor(ch)).ToArray())
+			};
 
 		/// <summary>
 		/// Returns an expression equivalent to a disjunction of the supplied
@@ -969,7 +972,7 @@ namespace SATInterface
 					if (UIntSumThreeCache.TryGetValue((_a, _b, _c), out var res))
 						return res;
 
-					var sum = (_a ^ _b ^ _c).Flatten();
+					var sum = Xor(_a, _b, _c).Flatten();
 					var carry = OrExpr.Create(_a & _b, _a & _c, _b & _c).Flatten();
 
 					//unitprop
@@ -1608,6 +1611,9 @@ namespace SATInterface
 						return expr[0];
 					case 2:
 						return expr[0] ^ expr[1];
+					case 3:
+						//TODO: implement something better
+						break;
 				}
 
 				switch (_method)
