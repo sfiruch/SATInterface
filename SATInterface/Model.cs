@@ -240,7 +240,7 @@ namespace SATInterface
 		/// </summary>
 		/// <param name="_ub">Upper bound of this variable or UIntVar.Unbounded when >2^30</param>
 		/// <param name="_bits">The bits making up this variable</param>
-		public UIntVar AddUIntVar(BoolExpr[] _bits, T? _ub = null) => new(this, _ub ?? T.One << _bits.Length, _bits, _ub.HasValue);
+		public UIntVar AddUIntVar(BoolExpr[] _bits, in T? _ub = null) => new(this, _ub ?? T.One << _bits.Length, _bits, _ub.HasValue);
 
 		/// <summary>
 		/// Creates a new unsigned integer variable with the specified upper bound.
