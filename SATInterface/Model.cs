@@ -1303,35 +1303,82 @@ namespace SATInterface
 
 		public enum ExactlyOneOfMethod
 		{
-			Commander,
-			SortTotalizer,
-			SortPairwise,
+            /// <summary>
+            /// Klieber, W. and Kwon, G., 2007, July. Efficient CNF encoding for selecting 1 from n objects. In Proc. International Workshop on Constraints in Formal Verification (p. 14).
+            /// </summary>
+            Commander,
+
+            /// <summary>
+            /// Bailleux, O. and Boufkhad, Y., 2003, September. Efficient CNF encoding of boolean cardinality constraints. In International conference on principles and practice of constraint programming (pp. 108-122). Berlin, Heidelberg: Springer Berlin Heidelberg.
+            /// </summary>
+            SortTotalizer,
+
+            /// <summary>
+            /// Parberry, I., 1992. The pairwise sorting network. Parallel Processing Letters, 2(02n03), pp.205-211.
+            /// </summary>
+            SortPairwise,
 			BinaryCount,
-			TwoFactor,
+
+            /// <summary>
+            /// Chen, J., 2010. A new SAT encoding of the at-most-one constraint. Proc. constraint modelling and reformulation, p.8.
+            /// </summary>
+            TwoFactor,
 			Pairwise,
 			PairwiseTree,
 			OneHot,
-			Sequential
-		}
+
+            /// <summary>
+            /// Sinz, C., 2005, October. Towards an optimal CNF encoding of boolean cardinality constraints. In International conference on principles and practice of constraint programming (pp. 827-831). Berlin, Heidelberg: Springer Berlin Heidelberg.
+            /// </summary>
+            Sequential
+        }
 
 		public enum AtMostOneOfMethod
 		{
 			Pairwise,
 			PairwiseTree,
+
+            /// <summary>
+            /// Klieber, W. and Kwon, G., 2007, July. Efficient CNF encoding for selecting 1 from n objects. In Proc. International Workshop on Constraints in Formal Verification (p. 14).
+            /// </summary>
 			Commander,
+
+            /// <summary>
+            /// Bailleux, O. and Boufkhad, Y., 2003, September. Efficient CNF encoding of boolean cardinality constraints. In International conference on principles and practice of constraint programming (pp. 108-122). Berlin, Heidelberg: Springer Berlin Heidelberg.
+            /// </summary>
 			SortTotalizer,
-			SortPairwise,
+
+            /// <summary>
+            /// Parberry, I., 1992. The pairwise sorting network. Parallel Processing Letters, 2(02n03), pp.205-211.
+            /// </summary>
+            SortPairwise,
 			OneHot,
+
+            /// <summary>
+            /// Sinz, C., 2005, October. Towards an optimal CNF encoding of boolean cardinality constraints. In International conference on principles and practice of constraint programming (pp. 827-831). Berlin, Heidelberg: Springer Berlin Heidelberg.
+            /// </summary>
 			Sequential,
 			BinaryCount,
-			Heule
-		}
+
+            /// <summary>
+            /// Slide 5 in https://www.cs.upc.edu/~erodri/webpage/cps/theory/sat/encodings/slides.pdf
+            /// </summary>
+            Heule
+        }
 
 		public enum KOfMethod
 		{
 			BinaryCount,
+
+            /// <summary>
+            /// Bailleux, O. and Boufkhad, Y., 2003, September. Efficient CNF encoding of boolean cardinality constraints. In International conference on principles and practice of constraint programming (pp. 108-122). Berlin, Heidelberg: Springer Berlin Heidelberg.
+            /// </summary>
 			SortTotalizer,
-			SortPairwise,
+
+            /// <summary>
+            /// Parberry, I., 1992. The pairwise sorting network. Parallel Processing Letters, 2(02n03), pp.205-211.
+            /// </summary>
+            SortPairwise,
 			Sequential,
 			LinExpr
 		}
@@ -1738,10 +1785,11 @@ namespace SATInterface
 		}
 
 
-		//Formulation by Chen: A New SAT Encoding of the At-Most-One Constraint
-		//- https://pdfs.semanticscholar.org/11ea/d39e2799fcb85a9064037080c0f2a1733d82.pdf
 		private BoolExpr ExactlyOneOfTwoFactor(ReadOnlySpan<BoolExpr> _expr)
 		{
+            //Formulation by Chen: A New SAT Encoding of the At-Most-One Constraint
+            //- https://pdfs.semanticscholar.org/11ea/d39e2799fcb85a9064037080c0f2a1733d82.pdf
+           
 			if (_expr.Length < 6)
 				return ExactlyOneOf(_expr, null);
 
