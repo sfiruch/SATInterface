@@ -2,6 +2,7 @@
 
 using SATInterface;
 using SATInterface.Solver;
+using System.Numerics;
 
 const int N = 3;
 
@@ -26,7 +27,7 @@ for (var y = 0; y < N; y++)
 	}
 
 
-var sum = m.AddUIntVar(UB * UB * N);
+var sum = m.AddUIntVar(UB * (BigInteger)UB * N);
 for (var i = 0; i < N; i++)
 {
 	m.AddConstr(sum == m.Sum(Enumerable.Range(0, N).Select(x => vN2[x, i])));
