@@ -29,7 +29,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Superpermutation", "Superpe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ParkerSquare", "ParkerSquare\ParkerSquare.csproj", "{2220C5C8-5217-42F2-996C-1DADED8F17CA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EternityII", "EternityII\EternityII.csproj", "{A8951974-B4BE-4E97-B2B1-62E15014AD89}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EternityII", "EternityII\EternityII.csproj", "{A8951974-B4BE-4E97-B2B1-62E15014AD89}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
