@@ -870,18 +870,44 @@ namespace SATInterface
 				(!_a & !_b & _c).Flatten());
 		}
 
-		/// <summary>
-		/// Returns an expression equivalent to the exclusive-or of the
-		/// supplied expressions.
-		/// </summary>
-		public BoolExpr Xor(params BoolExpr[] _elems) =>
-			_elems.Length switch
+        /// <summary>
+        /// Returns an expression equivalent to the exclusive-or of the
+        /// supplied expressions.
+        /// </summary>
+        public BoolExpr Xor(BoolExpr _a, BoolExpr _b, BoolExpr _c, BoolExpr _d)
+        {
+            _a = _a.Flatten();
+            _b = _b.Flatten();
+            _c = _c.Flatten();
+            _d = _d.Flatten();
+            return Or(
+				//1 true
+                (!_a & !_b & !_c & _d).Flatten(),
+                (!_a & !_b & _c & !_d).Flatten(),
+                (!_a & _b & !_c & !_d).Flatten(),
+                (_a & !_b & !_c & !_d).Flatten(),
+
+				//3 true
+                (_a & _b & _c & !_d).Flatten(),
+                (_a & _b & !_c & _d).Flatten(),
+                (_a & !_b & _c & _d).Flatten(),
+                (!_a & _b & _c & _d).Flatten());
+        }
+
+        /// <summary>
+        /// Returns an expression equivalent to the exclusive-or of the
+        /// supplied expressions.
+        /// </summary>
+        public BoolExpr Xor(params BoolExpr[] _elems) =>
+            //TODO cutting https://www.msoos.org/wordpress/wp-content/uploads/2011/06/GrainOfSalt-1.1-desc.pdf, pg8
+            _elems.Length switch
 			{
 				0 => False,
 				1 => _elems[0],
 				2 => Xor(_elems[0], _elems[1]),
 				3 => Xor(_elems[0], _elems[1], _elems[2]),
-				_ => Xor(_elems.Chunk(3).Select(ch => Xor(ch)).ToArray())
+				4 => Xor(_elems[0], _elems[1], _elems[2], _elems[3]),
+				_ => Xor(_elems.Chunk(4).Select(ch => Xor(ch)).ToArray())
 			};
 
 		/// <summary>
