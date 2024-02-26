@@ -71,7 +71,8 @@ namespace SATInterface.Solver
             }
             finally
             {
-                CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, null);
+                //race-condition? (https://github.com/arminbiere/cadical/issues/90)
+                //CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, null);
                 GC.KeepAlive(callback);
             }
         }
