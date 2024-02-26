@@ -10,6 +10,113 @@ namespace Tests
     public class BasicTests
     {
         [TestMethod]
+        public void AndShortCircuit1()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVar();
+            var r = v & true;
+            Assert.AreEqual(v, r);
+        }
+
+        [TestMethod]
+        public void OrShortCircuit1()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVar();
+            var r = v | false;
+            Assert.AreEqual(v, r);
+        }
+
+        [TestMethod]
+        public void AndShortCircuit3()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVar();
+            var r = v & false;
+            Assert.AreEqual(Model.False, r);
+        }
+
+        [TestMethod]
+        public void OrShortCircuit3()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVar();
+            var r = v | true;
+            Assert.AreEqual(Model.True, r);
+        }
+
+
+        [TestMethod]
+        public void AndShortCircuit2()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVar();
+            var r = v & !v;
+            Assert.AreEqual(Model.False, r);
+        }
+
+        [TestMethod]
+        public void AndHierarchyShortCircuit()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVars(2);
+            var r1 = v[0] & v[1];
+            var r2 = r1 & !v[0];
+            Assert.AreEqual(Model.False, r2);
+        }
+
+        [TestMethod]
+        public void OrShortCircuit2()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVar();
+            var r = v | !v;
+            Assert.AreEqual(Model.True, r);
+        }
+
+        [TestMethod]
+        public void OrHierarchyShortCircuit()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+
+            var v = m.AddVars(2);
+            var r1 = v[0] | v[1];
+            var r2 = r1 | !v[0];
+            Assert.AreEqual(Model.True, r2);
+        }
+
+        [TestMethod]
         public void EmptySolve()
         {
             using var m = new Model(new Configuration()

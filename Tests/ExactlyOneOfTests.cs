@@ -103,7 +103,7 @@ namespace Tests
 
         [DataRow(null)]
         //[DataRow(Model.ExactlyOneOfMethod.BinaryCount)]
-        //[DataRow(Model.ExactlyOneOfMethod.Commander)]
+        [DataRow(Model.ExactlyOneOfMethod.Commander)]
         //[DataRow(Model.ExactlyOneOfMethod.OneHot)]
         //[DataRow(Model.ExactlyOneOfMethod.Pairwise)]
         [DataRow(Model.ExactlyOneOfMethod.PairwiseTree)]
