@@ -1636,7 +1636,8 @@ namespace SATInterface
                             return uc[0] & !uc[1];
                         }
                         else
-                            return ExactlyOneOfPairwiseTree(expr);
+                            //return ExactlyOneOfPairwiseTree(expr);
+                            return ExactlyOneOfCommander(expr);
                     case ExactlyOneOfMethod.SortTotalizer:
                         return ExactlyKOf(expr.ToArray(), 1, KOfMethod.SortTotalizer);
                     case ExactlyOneOfMethod.SortPairwise:
@@ -2010,15 +2011,13 @@ namespace SATInterface
                     commanders[i] = groups[i].Single();
                 else
                 {
-                    commanders[i] = AddVar();
-
                     //1
                     for (var j = 0; j < groups[i].Length; j++)
                         for (var k = j + 1; k < groups[i].Length; k++)
                             valid.Add(OrExpr.Create(!groups[i][j], !groups[i][k]).Flatten());
 
-                    AddConstr((!commanders[i]) | OrExpr.Create(groups[i])); //2
-                    AddConstr(commanders[i] | (!OrExpr.Create(groups[i]))); //3
+                    //2 3
+                    commanders[i] = OrExpr.Create(groups[i]).Flatten();
                 }
 
             valid.Add(ExactlyOneOfCommander(commanders).Flatten());
