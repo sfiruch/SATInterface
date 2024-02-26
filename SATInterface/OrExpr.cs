@@ -120,13 +120,13 @@ namespace SATInterface
 					Debug.Assert(res[negIndex] < 0);
 					Debug.Assert(res[posIndex] > 0);
 
-					if (-res[negIndex] >= res[posIndex])
+					if (-res[negIndex] > res[posIndex])
 					{
 						negIndex++;
 						if (res[negIndex] > 0)
 							break;
 					}
-					else if (-res[negIndex] <= res[posIndex])
+					else if (-res[negIndex] < res[posIndex])
 					{
 						posIndex--;
 						if (res[posIndex] < 0)
