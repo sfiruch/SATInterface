@@ -67,7 +67,7 @@ namespace SATInterface
 
             public override string ToString()
             {
-                var res = $"{Clauses,10} ({(Clauses / (double)Model.ClauseCount),4:P0}) {Variables,10} ({(Variables / (double)Model.VariableCount),4:P0})";
+                var res = $"{Clauses,10:N0} ({(Clauses / (double)Model.ClauseCount),4:P0}) {Variables,10:N0} ({(Variables / (double)Model.VariableCount),4:P0})";
                 if (Histogram.Any())
                     res += $"       Count:{Histogram.Sum(e => e.Value)} Min:{Histogram.Keys.Min()} Med:{Histogram.MaxBy(e => e.Value).Key} Max:{Histogram.Keys.Max()}";
                 return res;
@@ -160,7 +160,7 @@ namespace SATInterface
             }
             Console.WriteLine($"{"Others",20}: {new Counter(this, otherVariables, otherClauses)}");
             Console.WriteLine($"---------------------------------------------------------");
-            Console.WriteLine($"{"",20}  {ClauseCount,10}        {VariableCount,10}");
+            Console.WriteLine($"{"",20}  {ClauseCount,10:N0}        {VariableCount,10:N0}");
         }
 
         private void AddConstrInternal(BoolExpr _c)
