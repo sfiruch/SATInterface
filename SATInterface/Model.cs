@@ -1036,23 +1036,6 @@ namespace SATInterface
                         break;
                     default:
                         {
-                            //var ub = _elems.Length + trueCount;
-                            //var newBits = new BoolExpr[ub.GetBitLength()];
-                            //var oldBits = new BoolExpr[newBits.Length];
-                            //for (var b = 0; b < newBits.Length; b++)
-                            //{
-                            //	newBits[b] = !(trueCount >> b).IsEven ? True : False;
-                            //	oldBits[b] = False;
-                            //}
-                            //for (var i = 0; i < _elems.Length; i++)
-                            //{
-                            //	newBits[0] ^= _elems[i];
-                            //	for(var b=1;b<newBits.Length;b++)
-                            //		newBits[b] ^= (oldBits[b-1] & !newBits[b-1]).Flatten();
-                            //	(oldBits, newBits) = (newBits, oldBits);
-                            //}
-                            //return new UIntVar(this, ub, oldBits);
-
                             var cnt = (_elems.Length + 2) / 3;
                             var vars = ArrayPool<UIntVar>.Shared.Rent(cnt);
                             for (var i = 0; i < cnt; i++)
@@ -1935,7 +1918,7 @@ namespace SATInterface
         {
             try
             {
-                StartStatistics("AMK", _expr.Count());
+                StartStatistics($"AMK {_method}", _expr.Count());
 
                 var expr = _expr.Where(e => !ReferenceEquals(e, False)).ToArray();
 
@@ -1990,7 +1973,7 @@ namespace SATInterface
             }
             finally
             {
-                StopStatistics("AMK");
+                StopStatistics($"AMK {_method}");
             }
         }
 
