@@ -28,7 +28,7 @@ namespace SATInterface
         public static readonly BoolExpr True = new BoolVar(null!, int.MaxValue);
         public static readonly BoolExpr False = new BoolVar(null!, int.MaxValue - 1);
 
-        private readonly List<bool> varsX = new();
+        private readonly List<bool> varsX = [];
 
         public State State { get; internal set; } = State.Undecided;
 
@@ -40,14 +40,14 @@ namespace SATInterface
         {
             internal Counter(Model _m) : this(_m, 0, 0) { }
             internal Counter(Model _m, int _v, int _c) { Model = _m; Variables = _v; Clauses = _c; }
-            Model Model;
+            private readonly Model Model;
             internal int Variables;
             internal int Clauses;
 
             int StartVariables;
             int StartClauses;
 
-            Dictionary<int, int> Histogram = new();
+            readonly Dictionary<int, int> Histogram = [];
 
             internal void Start(int _value)
             {
@@ -74,7 +74,7 @@ namespace SATInterface
             }
         }
 
-        private Dictionary<string, Counter> Statistics = new();
+        private readonly Dictionary<string, Counter> Statistics = [];
         private string? ActiveStatKey = null;
 
         [Conditional("DEBUG")]
@@ -417,7 +417,7 @@ namespace SATInterface
                 bool[]? lastAssignment = null;
                 for (; ; )
                 {
-                    (var state, var assignment) = InvokeSolver(timeout, assumptions.ToArray());
+                    (var state, var assignment) = InvokeSolver(timeout, [.. assumptions]);
 
                     if (state == State.Undecided)
                         AbortOptimization = true;
@@ -653,7 +653,7 @@ namespace SATInterface
                             Console.WriteLine($"Maximizing objective, range {(lb + objOffset)} - {(ub + objOffset)}, testing {(cur + objOffset)}");
                     }
 
-                    (var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, assumptions.ToArray());
+                    (var subState, var assignment) = State == State.Unsatisfiable ? (State, null) : InvokeSolver(timeout, [.. assumptions]);
 
                     if (subState == State.Satisfiable)
                     {
@@ -703,8 +703,8 @@ namespace SATInterface
             finally
             {
                 if (Configuration.SetVariablePhaseFromObjective)
-                    foreach (var t in _obj.Terms)
-                        if (t.Var is BoolVar bv)
+                    foreach (var (Var, _) in _obj.Terms)
+                        if (Var is BoolVar bv)
                             bv.SetPhase(null);
 
                 InOptimization = false;
@@ -884,7 +884,7 @@ namespace SATInterface
                 case 6:
                     {
                         var r = AddVar();
-                        AddXorConstr(_elems.Append(!r).ToArray());
+                        AddXorConstr([.. _elems, !r]);
                         return r;
                     }
                 default:
@@ -967,7 +967,7 @@ namespace SATInterface
                     else if (Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.PartialArith))
                         AddConstr(OrExpr.Create(!carry, !sum));
 
-                    return UIntSumTwoCache[(_a, _b)] = new UIntVar(this, T.CreateChecked(2), new[] { sum, carry }, false);
+                    return UIntSumTwoCache[(_a, _b)] = new UIntVar(this, T.CreateChecked(2), [sum, carry], false);
                 }
 
                 UIntVar SumThree(BoolVar _a, BoolVar _b, BoolVar _c)
@@ -997,7 +997,7 @@ namespace SATInterface
                         AddConstr(OrExpr.Create(carry, sum, !_c));
                     }
 
-                    return UIntSumThreeCache[(_a, _b, _c)] = new UIntVar(this, T.CreateChecked(3), new[] { sum, carry }, false);
+                    return UIntSumThreeCache[(_a, _b, _c)] = new UIntVar(this, T.CreateChecked(3), [sum, carry], false);
                 }
 
                 var beCount = 0;
@@ -1145,11 +1145,11 @@ namespace SATInterface
             }
         }
 
-        private readonly Dictionary<(BoolExpr, BoolExpr), UIntVar> UIntSumTwoCache = new();
-        private readonly Dictionary<(BoolExpr, BoolExpr, BoolExpr), UIntVar> UIntSumThreeCache = new();
-        internal readonly Dictionary<(UIntVar, UIntVar), UIntVar> UIntSumCache = new();
+        private readonly Dictionary<(BoolExpr, BoolExpr), UIntVar> UIntSumTwoCache = [];
+        private readonly Dictionary<(BoolExpr, BoolExpr, BoolExpr), UIntVar> UIntSumThreeCache = [];
+        internal readonly Dictionary<(UIntVar, UIntVar), UIntVar> UIntSumCache = [];
         internal readonly Dictionary<LinExpr, UIntVar> UIntCache = new(new IgnoreLinExprOffsetComparer());
-        private readonly Dictionary<T, UIntVar> UIntConstCache = new();
+        private readonly Dictionary<T, UIntVar> UIntConstCache = [];
         internal readonly Dictionary<(LinExpr, T), BoolExpr> LinExprEqCache = new(new IgnoreLinExprOffsetTupleComparer());
         internal readonly Dictionary<(LinExpr, T), BoolExpr> LinExprLECache = new(new IgnoreLinExprOffsetTupleComparer());
         private readonly Dictionary<int[], BoolExpr[]> SortCache = new(new IntArrayComparer());
@@ -1256,8 +1256,8 @@ namespace SATInterface
             return ITECache[(_if, _then, _else)] = ITEInternal(_if, _then, _else);
         }
 
-        private readonly Dictionary<(BoolExpr _i, BoolExpr _t, BoolExpr _e), BoolExpr> ITECache = new();
-        internal Dictionary<OrExpr, int> OrCache = new();
+        private readonly Dictionary<(BoolExpr _i, BoolExpr _t, BoolExpr _e), BoolExpr> ITECache = [];
+        internal readonly Dictionary<OrExpr, int> OrCache = [];
 
         private BoolExpr ITEInternal(BoolExpr _if, BoolExpr _then, BoolExpr _else)
         {
@@ -1486,7 +1486,7 @@ namespace SATInterface
                     case AtMostOneOfMethod.Heule:
                         return AtMostOneOfHeule(expr);
                     default:
-                        throw new ArgumentOutOfRangeException($"Invalid method specified: {nameof(_method)}");
+                        throw new ArgumentOutOfRangeException(nameof(_method), $"Invalid method specified");
                 }
             }
             finally
@@ -1640,7 +1640,7 @@ namespace SATInterface
                     case ExactlyOneOfMethod.OneHot:
                         return ExactlyOneOfOneHot(expr);
                     default:
-                        throw new ArgumentOutOfRangeException($"Invalid _method specified: {nameof(_method)}");
+                        throw new ArgumentOutOfRangeException(nameof(_method), $"Invalid method specified");
                 }
             }
             finally
@@ -1717,11 +1717,11 @@ namespace SATInterface
             var d = _expr[ic..];
 
             return AndExpr.Create(
-                AtMostOneOfPairwise(new[] {
+                AtMostOneOfPairwise([
                     OrExpr.Create(a).Flatten(),
                     OrExpr.Create(b).Flatten(),
                     OrExpr.Create(c).Flatten(),
-                    OrExpr.Create(d).Flatten() }),
+                    OrExpr.Create(d).Flatten() ]),
                 AtMostOneOfPairwiseTree(a),
                 AtMostOneOfPairwiseTree(b),
                 AtMostOneOfPairwiseTree(c),
@@ -1753,11 +1753,11 @@ namespace SATInterface
             var d = _expr[ic..];
 
             return AndExpr.Create(
-                ExactlyOneOfPairwise(new[] {
+                ExactlyOneOfPairwise([
                     OrExpr.Create(a).Flatten(),
                     OrExpr.Create(b).Flatten(),
                     OrExpr.Create(c).Flatten(),
-                    OrExpr.Create(d).Flatten() }),
+                    OrExpr.Create(d).Flatten() ]),
                 AtMostOneOfPairwiseTree(a),
                 AtMostOneOfPairwiseTree(b),
                 AtMostOneOfPairwiseTree(c),
@@ -1894,7 +1894,7 @@ namespace SATInterface
                         return v[_k - 1] & !v[_k];
 
                     default:
-                        throw new ArgumentOutOfRangeException("Invalid method", nameof(_method));
+                        throw new ArgumentOutOfRangeException(nameof(_method), "Invalid method");
                 }
             }
             finally
@@ -1968,7 +1968,7 @@ namespace SATInterface
                         return !v[_k];
 
                     default:
-                        throw new ArgumentOutOfRangeException("Invalid method", nameof(_method));
+                        throw new ArgumentOutOfRangeException(nameof(_method), "Invalid method");
                 }
             }
             finally
@@ -2028,11 +2028,11 @@ namespace SATInterface
             switch (_elems.Length)
             {
                 case 0:
-                    return Array.Empty<BoolExpr>();
+                    return [];
                 case 1:
-                    return new BoolExpr[] { _elems[0] };
+                    return [_elems[0]];
                 case 2:
-                    return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
+                    return [OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten()];
                 default:
                     var R = new BoolExpr[_elems.Length];
                     var cacheKey = new int[_elems.Length];
@@ -2108,11 +2108,11 @@ namespace SATInterface
                 switch (_elems.Length)
                 {
                     case 0:
-                        return Array.Empty<BoolExpr>();
+                        return [];
                     case 1:
-                        return new BoolExpr[] { _elems[0] };
+                        return [_elems[0]];
                     case 2:
-                        return new BoolExpr[] { OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten() };
+                        return [OrExpr.Create(_elems).Flatten(), AndExpr.Create(_elems).Flatten()];
                     default:
                         var elems = _elems.ToArray();
                         var cacheKey = new int[_elems.Length];
@@ -2132,8 +2132,8 @@ namespace SATInterface
                             R[i] = AddVar();
                         R[^1] = False;
 
-                        var A = new BoolExpr[] { True }.Concat(SortTotalizer(elems[..(elems.Length / 2)])).Append(False).ToArray();
-                        var B = new BoolExpr[] { True }.Concat(SortTotalizer(elems[(elems.Length / 2)..])).Append(False).ToArray();
+                        var A = new BoolExpr[] { True }.Concat(SortTotalizer(elems.AsSpan()[..(elems.Length / 2)])).Append(False).ToArray();
+                        var B = new BoolExpr[] { True }.Concat(SortTotalizer(elems.AsSpan()[(elems.Length / 2)..])).Append(False).ToArray();
                         for (var a = 0; a < A.Length - 1; a++)
                             for (var b = 0; b < B.Length - 1; b++)
                             {

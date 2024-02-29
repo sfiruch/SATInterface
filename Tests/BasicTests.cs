@@ -137,11 +137,11 @@ namespace Tests
 
             var v = m.AddVar();
 
-            m.Solve(new[] { v });
+            m.Solve([v]);
             Assert.AreEqual(State.Satisfiable, m.State);
             Assert.IsTrue(v.X);
 
-            m.Solve(new[] { !v });
+            m.Solve([!v]);
             Assert.AreEqual(State.Satisfiable, m.State);
             Assert.IsFalse(v.X);
         }

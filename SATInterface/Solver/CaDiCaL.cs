@@ -155,68 +155,68 @@ namespace SATInterface.Solver
     public static partial class CaDiCaLNative
     {
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial IntPtr ccadical_init();
 
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial void ccadical_release(IntPtr wrapper);
 
         [LibraryImport("CaDiCaL.dll")]
         [SuppressGCTransition]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial void ccadical_add(IntPtr wrapper, int lit);
 
         [LibraryImport("CaDiCaL.dll")]
         [SuppressGCTransition]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial void ccadical_assume(IntPtr wrapper, int lit);
 
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial int ccadical_solve(IntPtr wrapper);
 
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial int ccadical_simplify(IntPtr wrapper);
 
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial int ccadical_lookahead(IntPtr wrapper);
 
         [LibraryImport("CaDiCaL.dll")]
         [SuppressGCTransition]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial int ccadical_val(IntPtr wrapper, int lit);
 
 		[LibraryImport("CaDiCaL.dll")]
 		[SuppressGCTransition]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial void ccadical_phase(IntPtr wrapper, int lit);
 
 		[LibraryImport("CaDiCaL.dll")]
 		[SuppressGCTransition]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial void ccadical_unphase(IntPtr wrapper, int lit);
 
 		[LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial int ccadical_print_statistics(IntPtr wrapper);
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+		public static partial void ccadical_print_statistics(IntPtr wrapper);
 
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial void ccadical_set_option(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial void ccadical_limit(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial IntPtr ccadical_signature();
 
         [LibraryImport("CaDiCaL.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
 		public static partial void ccadical_set_terminate(IntPtr wrapper, IntPtr state, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

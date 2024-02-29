@@ -31,7 +31,7 @@ namespace SATInterface
         /// </summary>
         public LinExpr()
         {
-            Weights = new();
+            Weights = [];
             Offset = T.Zero;
         }
 
@@ -40,7 +40,7 @@ namespace SATInterface
         /// </summary>
         public LinExpr(T _c)
         {
-            Weights = new();
+            Weights = [];
             Offset = _c;
         }
 
@@ -48,7 +48,7 @@ namespace SATInterface
         {
             Model = _src.Model;
 
-            Weights = new();
+            Weights = [];
             Offset = T.Zero;
             for (var i = 0; i < _src.Bits.Length; i++)
                 AddTerm(_src.bit[i], T.One << i);
@@ -625,7 +625,7 @@ namespace SATInterface
                 _rhs -= weights[_s];
 
                 if (_rhs < T.Zero)
-                    resolvent.Add(active.ToArray());
+                    resolvent.Add([.. active]);
                 else
                     for (var i = _s + 1; i < weights.Length; i++)
                         Visit(i);
@@ -671,7 +671,7 @@ namespace SATInterface
                     _rhs -= weights[_s];
                     if (_rhs < T.Zero)
                     {
-                        resolvent.Add(count.ToArray());
+                        resolvent.Add([.. count]);
                         break;
                     }
                     else if (_rhs >= T.Zero && _s + 1 < weights.Length)
@@ -721,7 +721,7 @@ namespace SATInterface
                 {
                     for (var i = _s + 1; i < _weights.Length; i++)
                         active.Push(!vars[i]);
-                    res.Add(active.ToArray());
+                    res.Add([.. active]);
                     for (var i = _s + 1; i < _weights.Length; i++)
                         active.Pop();
                 }
@@ -775,7 +775,7 @@ namespace SATInterface
                 _rhs -= weights[_s] * T.CreateChecked(_cnt);
 
                 if (_rhs == T.Zero)
-                    validAssignments.Add(count.ToArray());
+                    validAssignments.Add([.. count]);
                 else if (_rhs > T.Zero && _s + 1 < weights.Length)
                     for (var i = 0; i <= max[_s + 1]; i++)
                         Visit(_s + 1, i);

@@ -44,30 +44,20 @@ namespace MaxMaze
                             "...........# XXXX............." +
                             "...........#     ............ ";
 
-        static void Main(string[] args)
+        static void Main()
         {
             using var m = new Model();
 
             var free = new BoolExpr[W, H];
             for (int y = 0; y < H; y++)
                 for (int x = 0; x < W; x++)
-                {
-                    switch (input[30 * y + x])
+                    free[x, y] = input[30 * y + x] switch
                     {
-                        case '.':
-                            free[x, y] = m.AddVar();
-                            break;
-                        case ' ':
-                            free[x, y] = true;
-                            break;
-                        case '#':
-                        case 'X':
-                            free[x, y] = false;
-                            break;
-                        default:
-                            throw new Exception();
-                    }
-                }
+                        '.' => m.AddVar(),
+                        ' ' => (BoolExpr)true,
+                        '#' or 'X' => (BoolExpr)false,
+                        _ => throw new Exception(),
+                    };
 
             free[0, 0] = true;
             free[W - 1, H - 1] = true;
