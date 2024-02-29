@@ -547,14 +547,17 @@ namespace SATInterface
 
                     var vAnd = new List<BoolExpr>();
 
-                    var maxVars = new List<BoolExpr>(maxVarCnt);
-                    foreach (var e in _a.Weights)
-                        if (e.Value == T.Abs(maxVar.Value))
-                            maxVars.Add(_a.Model.GetVariable(e.Key));
-                        else if (-e.Value == T.Abs(maxVar.Value))
-                            maxVars.Add(_a.Model.GetVariable(-e.Key));
+                    if (maxVarCnt <= _a.Model.Configuration.TotalizerLimit)
+                    {
+                        var maxVars = new List<BoolExpr>(maxVarCnt);
+                        foreach (var e in _a.Weights)
+                            if (e.Value == T.Abs(maxVar.Value))
+                                maxVars.Add(_a.Model.GetVariable(e.Key));
+                            else if (-e.Value == T.Abs(maxVar.Value))
+                                maxVars.Add(_a.Model.GetVariable(-e.Key));
 
-                    vAnd.Add(_a.Model.AtMostKOf(maxVars, int.CreateChecked(rhs / T.Abs(maxVar.Value)), Model.KOfMethod.SortTotalizer));
+                        vAnd.Add(_a.Model.AtMostKOf(maxVars, int.CreateChecked(rhs / T.Abs(maxVar.Value)), Model.KOfMethod.SortTotalizer));
+                    }
 
                     if (rhs * 2 <= _a.Model.Configuration.TotalizerLimit && ub <= 4096)
                     {
