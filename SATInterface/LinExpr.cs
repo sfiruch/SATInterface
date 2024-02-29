@@ -388,7 +388,7 @@ namespace SATInterface
                 }
 
             if (_a.Model.UIntCache.TryGetValue(_a, out var uintV))
-            	return uintV <= rhs;
+                return uintV <= rhs;
 
             Debug.Assert(rhs >= T.Zero);
             Debug.Assert(ub > rhs);
@@ -541,13 +541,11 @@ namespace SATInterface
             }
             else
             {
+                var ands = new List<BoolExpr>();
                 try
                 {
-                    _a.Model.StartStatistics("LE Bit", _a.Weights.Count);
-
-                    var vAnd = new List<BoolExpr>();
-
-                    if (maxVarCnt <= _a.Model.Configuration.TotalizerLimit)
+                    _a.Model.StartStatistics("LE MaxVar", _a.Weights.Count);
+                    if (maxVarCnt * 3 <= _a.Weights.Count * 2)
                     {
                         var maxVars = new List<BoolExpr>(maxVarCnt);
                         foreach (var e in _a.Weights)
@@ -556,11 +554,19 @@ namespace SATInterface
                             else if (-e.Value == T.Abs(maxVar.Value))
                                 maxVars.Add(_a.Model.GetVariable(-e.Key));
 
-                        vAnd.Add(_a.Model.AtMostKOf(maxVars, int.CreateChecked(rhs / T.Abs(maxVar.Value)), Model.KOfMethod.SortTotalizer));
+                        ands.Add(_a.Model.Sum(maxVars) <= rhs / T.Abs(maxVar.Value));
                     }
+                }
+                finally
+                {
+                    _a.Model.StopStatistics("LE MaxVar");
+                }
 
-                    if (rhs * 2 <= _a.Model.Configuration.TotalizerLimit && ub <= 4096)
+                if (rhs * 2 <= _a.Model.Configuration.LEHashingLimit && ub > rhs * 2)
+                    try
                     {
+                        _a.Model.StartStatistics("LE Hashing", _a.Weights.Count);
+
                         //Ben-Haim, Y., Ivrii, A., Margalit, O. and Matsliah, A., 2012, June. Perfect hashing and CNF encodings of cardinality constraints. In International Conference on Theory and Applications of Satisfiability Testing (pp. 397-409). Berlin, Heidelberg: Springer Berlin Heidelberg.
                         var varForY = Enumerable.Range(0, int.CreateChecked(rhs) * 2).Select(i => new List<BoolExpr>()).ToArray();
                         {
@@ -568,16 +574,23 @@ namespace SATInterface
                             foreach (var v in _a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))))
                                 varForY[i++ % varForY.Length].Add(v);
                         }
-                        vAnd.Add(_a.Model.AtMostKOf(varForY.Select(l => _a.Model.Or(l)), int.CreateChecked(rhs), Model.KOfMethod.SortTotalizer));
+                        ands.Add(_a.Model.Sum(varForY.Select(l => _a.Model.Or(l).Flatten())) <= rhs);
+                    }
+                    finally
+                    {
+                        _a.Model.StopStatistics("LE Hashing");
                     }
 
-                    vAnd.Add(_a.ToUIntAllPosNoOffset(_a.Model) <= rhs);
-                    return _a.Model.And(vAnd);
+                try
+                {
+                    _a.Model.StartStatistics("LE Bit", _a.Weights.Count);
+                    ands.Add(_a.ToUIntAllPosNoOffset(_a.Model) <= rhs);
                 }
                 finally
                 {
                     _a.Model.StopStatistics("LE Bit");
                 }
+                return _a.Model.And(ands);
             }
         }
 
@@ -1293,40 +1306,57 @@ namespace SATInterface
             if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 4 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 16 && T.Abs(maxVar.Value) * maxVarCnt > rhs)
             {
                 var maxVars = new List<BoolExpr>(maxVarCnt);
-                var withoutMaxVars = new LinExpr();
+                var leWithoutMaxVars = new LinExpr();
                 foreach (var e in _a.Weights)
                     if (e.Value == T.Abs(maxVar.Value))
                         maxVars.Add(_a.Model.GetVariable(e.Key));
                     else if (-e.Value == T.Abs(maxVar.Value))
                         maxVars.Add(_a.Model.GetVariable(-e.Key));
                     else
-                        withoutMaxVars.AddTerm(_a.Model.GetVariable(e.Value > T.Zero ? e.Key : -e.Key), T.Abs(e.Value));
+                        leWithoutMaxVars.AddTerm(_a.Model.GetVariable(e.Value > T.Zero ? e.Key : -e.Key), T.Abs(e.Value));
 
                 Debug.Assert(maxVars.Count == maxVarCnt);
 
-                var sorted = _a.Model.SortTotalizer(CollectionsMarshal.AsSpan(maxVars)).ToArray();
-                return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (s == 0 ? Model.True : sorted[s - 1]) & (withoutMaxVars + s * T.Abs(maxVar.Value) == rhs).Flatten())).Flatten();
+                try
+                {
+                    _a.Model.StartStatistics("Eq MaxVar", _a.Weights.Count);
+
+                    var sorted = _a.Model.SortTotalizer(CollectionsMarshal.AsSpan(maxVars)).ToArray();
+
+                    Debug.Assert(leWithoutMaxVars.Offset == 0);
+                    var uintWithoutMaxMars = leWithoutMaxVars.ToUIntAllPosNoOffset(_a.Model);
+                    return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (s == 0 ? Model.True : sorted[s - 1]) & (uintWithoutMaxMars == rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
+                }
+                finally
+                {
+                    _a.Model.StopStatistics("Eq MaxVar");
+                }
             }
             else
             {
+                var ands = new List<BoolExpr>();
                 try
                 {
                     _a.Model.StartStatistics("Eq Bit", _a.Weights.Count);
-
-                    var ands = new List<BoolExpr>
-                    {
-                        _a.ToUIntAllPosNoOffset(_a.Model) == rhs
-                    };
-
-                    if (rhs > 3)
-                        ands.Add(_a.EqualsMod(rhs, 3));
-
-                    return _a.Model.And(ands);
+                    ands.Add(_a.ToUIntAllPosNoOffset(_a.Model) == rhs);
                 }
                 finally
                 {
                     _a.Model.StopStatistics("Eq Bit");
                 }
+
+                if (rhs > 3)
+                    try
+                    {
+                        _a.Model.StartStatistics("Eq Mod3", _a.Weights.Count);
+                        ands.Add(_a.EqualsMod(rhs, 3));
+                    }
+                    finally
+                    {
+                        _a.Model.StopStatistics("Eq Mod3");
+                    }
+
+                return _a.Model.And(ands);
             }
         }
 

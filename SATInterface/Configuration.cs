@@ -195,12 +195,19 @@ namespace SATInterface
         /// </summary>
         public bool SetVariablePhaseFromObjective = true;
 
-		/// <summary>
-		/// The maximum number of variables for which linear constraints or
+        /// <summary>
+        /// The maximum number of variables for which linear constraints or
         /// EOO constraints are encoded using Totalizer.
-		/// 
-		/// Default: 512
-		/// </summary>
-		public int TotalizerLimit = 512;
-	}
+        /// 
+        /// Default: 24
+        /// </summary>
+        public int TotalizerLimit = 24;
+
+        /// <summary>
+        /// The maximum number of hashing buckets for <= linear constraints.
+        /// 
+        /// Default: 64
+        /// </summary>
+        public int LEHashingLimit = 64;
+    }
 }
