@@ -541,7 +541,7 @@ namespace SATInterface
                     _a.Model.StartStatistics("LE MaxVar", _a.Weights.Count);
 
                     var sorted = _a.Model.SortTotalizer(CollectionsMarshal.AsSpan(maxVars));
-                    Debug.Assert(leWithoutMaxVars.Offset==0);
+                    Debug.Assert(leWithoutMaxVars.Offset == 0);
                     var uintWithoutMaxVars = leWithoutMaxVars.ToUIntAllPosNoOffset(_a.Model);
                     return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (uintWithoutMaxVars <= rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
                 }
