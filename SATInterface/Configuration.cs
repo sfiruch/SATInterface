@@ -76,9 +76,14 @@ namespace SATInterface
         FullArith = 6,
 
         /// <summary>
+        /// Add additional clauses on the output of sorting networks.
+        /// </summary>
+        SortingNetworks = 8,
+
+        /// <summary>
         /// Add arc-consistency for UInt arithmetic and ITE
         /// </summary>
-        All = 7
+        All = 15
     }
 
     public class Configuration //<T> where T : struct, IBinaryInteger<T>
@@ -175,9 +180,9 @@ namespace SATInterface
         /// <summary>
         /// Controls which redundant clauses are added for arc-consistency.
         /// 
-        /// Default: ArcConstistencyClauses.ITE
+        /// Default: ArcConstistencyClauses.ITE | ArcConstistencyClauses.SortingNetworks
         /// </summary>
-        public ArcConstistencyClauses AddArcConstistencyClauses = ArcConstistencyClauses.ITE;
+        public ArcConstistencyClauses AddArcConstistencyClauses = ArcConstistencyClauses.ITE | ArcConstistencyClauses.SortingNetworks;
 
         /// <summary>
         /// Valid assignments for (in)equalities are enumerated, if there are
@@ -209,5 +214,16 @@ namespace SATInterface
         /// Default: 64
         /// </summary>
         public int LEHashingLimit = 64;
+
+        /// <summary>
+        /// Add bits in chunks of 7 bits, instead of 3 bits. This relies on totalizer
+        /// sorting internally.
+        /// </summary>
+        public bool SumBitsIn7Chunks = false;
+
+        /// <summary>
+        /// Add an additional mod 3 version for each equality constraint.
+        /// </summary>
+        public bool RedundantEqMod3Encoding = false;
     }
 }

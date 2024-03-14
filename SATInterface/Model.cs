@@ -555,6 +555,7 @@ namespace SATInterface
                             objOffset += e.Value;
                     }
                 var obj = _obj - objOffset;
+                Debug.Assert(obj.LB == 0);
 
                 bool[]? bestAssignment;
                 for (; ; )
@@ -605,11 +606,6 @@ namespace SATInterface
                         if (t.Var is BoolVar bv)
                             bv.SetPhase(t.Weight > 0 ? !_minimization : _minimization);
 
-                //if (Configuration.SetVariablePhaseFromObjective)
-                //	foreach (var t in obj.Bits)
-                //		if (t is BoolVar bv)
-                //			bv.SetPhase(!_minimization);
-
                 var lb = obj.X;
                 var ub = T.Min(_obj.UB - objOffset, obj.UB);
                 var objGELB = T.Zero;
@@ -634,15 +630,12 @@ namespace SATInterface
                     //and we already added the GE constraint?
                     if (assumptions.Count == 0 || objGELB != cur)
                     {
+                        Debug.Assert(cur > 0);
+
                         objGELB = cur;
-                        var ge = (obj >= cur).Flatten();
-                        if (ge is BoolVar v)
-                        {
-                            Debug.Assert(!ReferenceEquals(v, Model.True) && !ReferenceEquals(v, Model.False));
-                            assumptions.Add(v.Id);
-                        }
-                        else
-                            throw new NotImplementedException();
+                        var v = (BoolVar)(obj >= cur).Flatten();
+                        Debug.Assert(!ReferenceEquals(v, Model.True) && !ReferenceEquals(v, Model.False));
+                        assumptions.Add(v.Id);
                     }
 
                     if (Configuration.Verbosity > 0)
@@ -852,7 +845,7 @@ namespace SATInterface
 		/// supplied expressions.
 		/// </summary>
 		[Pure]
-		public BoolExpr Xor(BoolExpr _a, BoolExpr _b) => !(_a == _b);
+        public BoolExpr Xor(BoolExpr _a, BoolExpr _b) => !(_a == _b);
 
         /// <summary>
         /// Returns an expression equivalent to the exclusive-or of the
@@ -1019,41 +1012,29 @@ namespace SATInterface
                 }
 
                 UIntVar res;
-                switch (_elems.Length)
-                {
-                    case 0:
-                        res = AddUIntConst(T.Zero);
-                        break;
-                    case 1:
-                        res = UIntVar.ITE(_elems[0], AddUIntConst(trueCount + T.One), AddUIntConst(trueCount));
-                        trueCount = T.Zero;
-                        break;
-                    case 2:
-                        res = SumTwo((BoolVar)_elems[0], (BoolVar)_elems[1]);
-                        break;
-                    case 3:
-                        res = SumThree((BoolVar)_elems[0], (BoolVar)_elems[1], (BoolVar)_elems[2]);
-                        break;
-                    default:
+                if (_elems.Length == 0)
+                    res = AddUIntConst(T.Zero);
+                else
+                    res = Sum(_elems.ToArray().Chunk(Configuration.SumBitsIn7Chunks ? 7 : 3).Select(chunk =>
+                    {
+                        switch (chunk.Length)
                         {
-                            var cnt = (_elems.Length + 2) / 3;
-                            var vars = ArrayPool<UIntVar>.Shared.Rent(cnt);
-                            for (var i = 0; i < cnt; i++)
-                                if (i * 3 + 2 < _elems.Length)
-                                    vars[i] = SumThree((BoolVar)_elems[i * 3].Flatten(), (BoolVar)_elems[i * 3 + 1].Flatten(), (BoolVar)_elems[i * 3 + 2].Flatten());
-                                else if (i * 3 + 1 < _elems.Length)
-                                    vars[i] = SumTwo((BoolVar)_elems[i * 3].Flatten(), (BoolVar)_elems[i * 3 + 1].Flatten());
-                                else
-                                {
-                                    vars[i] = UIntVar.ITE(_elems[i * 3], AddUIntConst(trueCount + T.One), AddUIntConst(trueCount));
-                                    trueCount = T.Zero;
-                                }
-                            res = Sum(vars.AsSpan()[..cnt]);
-
-                            ArrayPool<UIntVar>.Shared.Return(vars);
+                            case 1:
+                                return UIntVar.ITE(chunk[0], AddUIntConst(T.One), AddUIntConst(0));
+                            case 2:
+                                return SumTwo((BoolVar)chunk[0].Flatten(), (BoolVar)chunk[1].Flatten());
+                            case 3:
+                                return SumThree((BoolVar)chunk[0].Flatten(), (BoolVar)chunk[1].Flatten(), (BoolVar)chunk[2].Flatten());
+                            default:
+                                chunk = SortTotalizer(chunk);
+                                return new UIntVar(this, chunk.Length,
+                                [
+                                    Xor(chunk),
+                                    (chunk.Length>5 ? chunk[5] : False) | (chunk[1] & !chunk[3]).Flatten(),
+                                    chunk.Length>3 ? chunk[3] : False
+                                ], false);
                         }
-                        break;
-                }
+                    }));
 
                 return res + AddUIntConst(trueCount);
             }
@@ -1338,12 +1319,12 @@ namespace SATInterface
             /// <summary>
             /// Klieber, W. and Kwon, G., 2007, July. Efficient CNF encoding for selecting 1 from n objects. In Proc. International Workshop on Constraints in Formal Verification (p. 14).
             /// </summary>
-			Commander,
+            Commander,
 
             /// <summary>
             /// Bailleux, O. and Boufkhad, Y., 2003, September. Efficient CNF encoding of boolean cardinality constraints. In International conference on principles and practice of constraint programming (pp. 108-122). Berlin, Heidelberg: Springer Berlin Heidelberg.
             /// </summary>
-			SortTotalizer,
+            SortTotalizer,
 
             /// <summary>
             /// Parberry, I., 1992. The pairwise sorting network. Parallel Processing Letters, 2(02n03), pp.205-211.
@@ -1354,7 +1335,7 @@ namespace SATInterface
             /// <summary>
             /// Sinz, C., 2005, October. Towards an optimal CNF encoding of boolean cardinality constraints. In International conference on principles and practice of constraint programming (pp. 827-831). Berlin, Heidelberg: Springer Berlin Heidelberg.
             /// </summary>
-			Sequential,
+            Sequential,
             BinaryCount,
 
             /// <summary>
@@ -1370,7 +1351,7 @@ namespace SATInterface
             /// <summary>
             /// Bailleux, O. and Boufkhad, Y., 2003, September. Efficient CNF encoding of boolean cardinality constraints. In International conference on principles and practice of constraint programming (pp. 108-122). Berlin, Heidelberg: Springer Berlin Heidelberg.
             /// </summary>
-			SortTotalizer,
+            SortTotalizer,
 
             /// <summary>
             /// Parberry, I., 1992. The pairwise sorting network. Parallel Processing Letters, 2(02n03), pp.205-211.
@@ -2090,6 +2071,10 @@ namespace SATInterface
                             }
                         }
 
+                    if (Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.SortingNetworks))
+                        for (var i = 1; i < R.Length; i++)
+                            AddConstr(!R[i] | R[i - 1]);
+
                     return SortCache[cacheKey] = R;
             }
         }
@@ -2144,6 +2129,10 @@ namespace SATInterface
                                     AddConstr(OrExpr.Create(A[a + 1], B[b + 1], !R[r + 1]));
                                 }
                             }
+
+                        if(Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.SortingNetworks))
+                            for (var i = 2; i < R.Length - 1; i++)
+                                AddConstr(!R[i] | R[i - 1]);
 
                         return SortCache[cacheKey] = R[1..^1];
                 }

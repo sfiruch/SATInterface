@@ -541,7 +541,6 @@ namespace SATInterface
                     _a.Model.StartStatistics("LE MaxVar", _a.Weights.Count);
 
                     var sorted = _a.Model.SortTotalizer(CollectionsMarshal.AsSpan(maxVars));
-                    Debug.Assert(leWithoutMaxVars.Offset == 0);
                     var uintWithoutMaxVars = leWithoutMaxVars.ToUIntAllPosNoOffset(_a.Model);
                     return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (uintWithoutMaxVars <= rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
                 }
@@ -553,11 +552,10 @@ namespace SATInterface
             else
             {
                 var ands = new List<BoolExpr>();
-                try
-                {
-                    _a.Model.StartStatistics("LE MaxVar", _a.Weights.Count);
-                    if (maxVarCnt * 3 <= _a.Weights.Count * 2)
+                if (maxVarCnt * 2 < _a.Weights.Count)
+                    try
                     {
+                        _a.Model.StartStatistics("LE MaxVar", _a.Weights.Count);
                         var maxVars = new List<BoolExpr>(maxVarCnt);
                         foreach (var e in _a.Weights)
                             if (e.Value == T.Abs(maxVar.Value))
@@ -567,11 +565,10 @@ namespace SATInterface
 
                         ands.Add(_a.Model.Sum(maxVars) <= rhs / T.Abs(maxVar.Value));
                     }
-                }
-                finally
-                {
-                    _a.Model.StopStatistics("LE MaxVar");
-                }
+                    finally
+                    {
+                        _a.Model.StopStatistics("LE MaxVar");
+                    }
 
                 if (rhs * 2 <= _a.Model.Configuration.LEHashingLimit && ub > rhs * 4)
                     try
@@ -591,6 +588,25 @@ namespace SATInterface
                     {
                         _a.Model.StopStatistics("LE Hashing");
                     }
+
+                ////log2 cut
+                //try
+                //{
+                //    _a.Model.StartStatistics("LE Log2", _a.Weights.Count);
+                //    foreach (var div in _a.Terms.Select(t => T.Abs(t.Weight)).Where(w => w > T.One && w < maxVar.Value).Distinct())
+                //    {
+                //        var aDiv = new LinExpr();
+                //        foreach (var t in _a.Terms)
+                //            aDiv.AddTerm(t.Var, t.Weight / div);
+
+                //        if (aDiv.Weights.Count > 0 && aDiv.Weights.Count * 8 < _a.Weights.Count)
+                //            ands.Add(aDiv <= rhs / div);
+                //    }
+                //}
+                //finally
+                //{
+                //    _a.Model.StopStatistics("LE Log2");
+                //}
 
                 try
                 {
@@ -1333,10 +1349,8 @@ namespace SATInterface
                     _a.Model.StartStatistics("Eq MaxVar", _a.Weights.Count);
 
                     var sorted = _a.Model.SortTotalizer(CollectionsMarshal.AsSpan(maxVars)).ToArray();
-
-                    Debug.Assert(leWithoutMaxVars.Offset == 0);
-                    var uintWithoutMaxMars = leWithoutMaxVars.ToUIntAllPosNoOffset(_a.Model);
-                    return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (s == 0 ? Model.True : sorted[s - 1]) & (uintWithoutMaxMars == rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
+                    var uintWithoutMaxVars = leWithoutMaxVars.ToUIntAllPosNoOffset(_a.Model);
+                    return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (s == 0 ? Model.True : sorted[s - 1]) & (uintWithoutMaxVars == rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
                 }
                 finally
                 {
@@ -1356,7 +1370,7 @@ namespace SATInterface
                     _a.Model.StopStatistics("Eq Bit");
                 }
 
-                if (rhs > 3)
+                if (_a.Model.Configuration.RedundantEqMod3Encoding && rhs > 3)
                     try
                     {
                         _a.Model.StartStatistics("Eq Mod3", _a.Weights.Count);
@@ -1492,6 +1506,9 @@ namespace SATInterface
         public void AddTerm(BoolExpr _be, T _weight)
         {
             Model ??= _be.GetModel();
+
+            if (_weight == T.Zero)
+                return;
 
             ClearCached();
 
