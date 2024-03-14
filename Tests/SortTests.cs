@@ -42,7 +42,7 @@ namespace Tests
         }
 
         [TestMethod]
-        public void TestSortBB()
+        public void TestSortTotalizer()
         {
             for (var i = 0; i < 127; i++)
                 SortCase(7, i, (m, v) => m.SortTotalizer(v));
@@ -51,7 +51,7 @@ namespace Tests
         }
 
         [TestMethod]
-        public void TestSortBitonic()
+        public void TestSortPairwise()
         {
             for (var i = 0; i < 127; i++)
                 SortCase(7, i, (m, v) => m.SortPairwise(v));
@@ -89,7 +89,7 @@ namespace Tests
         }
 
         [TestMethod]
-        public void TestReverseSortBB()
+        public void TestReverseSortTotalizer()
         {
             for (var i = 0; i < 7; i++)
                 SortCase(7, i, (m, v) => m.SortTotalizer(v));
@@ -98,7 +98,7 @@ namespace Tests
         }
 
         [TestMethod]
-        public void TestReverseSortBitonic()
+        public void TestReverseSortPairwise()
         {
             for (var i = 0; i < 7; i++)
                 SortCase(7, i, (m, v) => m.SortPairwise(v));
