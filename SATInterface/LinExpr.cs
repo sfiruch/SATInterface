@@ -522,7 +522,7 @@ namespace SATInterface
             //if (rhs <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
             //	return _a.Model.AtMostKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.Sequential);
 
-            if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 4 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 16 && T.Abs(maxVar.Value) * maxVarCnt >= rhs)
+            if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 3 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 8 && T.Abs(maxVar.Value) * maxVarCnt >= rhs)
             {
                 var maxVars = new List<BoolExpr>(maxVarCnt);
                 var leWithoutMaxVars = new LinExpr();
@@ -555,7 +555,7 @@ namespace SATInterface
                 if (maxVarCnt * 2 < _a.Weights.Count)
                     try
                     {
-                        _a.Model.StartStatistics("LE MaxVar", _a.Weights.Count);
+                        _a.Model.StartStatistics("LE Bit MV", _a.Weights.Count);
                         var maxVars = new List<BoolExpr>(maxVarCnt);
                         foreach (var e in _a.Weights)
                             if (e.Value == T.Abs(maxVar.Value))
@@ -567,7 +567,7 @@ namespace SATInterface
                     }
                     finally
                     {
-                        _a.Model.StopStatistics("LE MaxVar");
+                        _a.Model.StopStatistics("LE Bit MV");
                     }
 
                 if (rhs * 2 <= _a.Model.Configuration.LEHashingLimit && ub > rhs * 4)
@@ -1330,7 +1330,7 @@ namespace SATInterface
             //if (rhs <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
             //	return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.Sequential);
 
-            if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 4 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 16 && T.Abs(maxVar.Value) * maxVarCnt >= rhs)
+            if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 3 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 8 && T.Abs(maxVar.Value) * maxVarCnt >= rhs)
             {
                 var maxVars = new List<BoolExpr>(maxVarCnt);
                 var leWithoutMaxVars = new LinExpr();

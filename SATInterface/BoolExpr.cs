@@ -131,7 +131,7 @@ namespace SATInterface
 			lhsS = lhsS.Flatten();
 			rhsS = rhsS.Flatten();
 
-            return lhsS.GetModel()!.ITE(lhsS, rhsS, !rhsS);
+			return ((lhsS & rhsS).Flatten() | (!lhsS & !rhsS).Flatten()).Flatten();
 		}
 
 		public static BoolExpr operator !=(BoolExpr lhs, BoolExpr rhs) => !(lhs == rhs);

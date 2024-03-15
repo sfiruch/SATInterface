@@ -67,10 +67,10 @@ namespace BrentEquations
 
                                     if ((ra == rc) && (ca == rb) && (cb == cc))
                                         //odd
-                                        m.AddConstr(m.Xor(triples));
+                                        m.AddConstr(Model.Xor(triples));
                                     else
                                         //even
-                                        m.AddConstr(!m.Xor(triples));
+                                        m.AddConstr(!Model.Xor(triples));
                                 }
 
             Console.WriteLine($"Problem <{ARows}x{ACols}x{BCols}_{NoOfProducts}> setup in {watch.Elapsed.TotalSeconds:F2}s");

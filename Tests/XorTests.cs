@@ -33,7 +33,7 @@ namespace Tests
             });
 
             var v = m.AddVars(_n);
-            m.AddConstr(m.Xor(v));
+            m.AddConstr(Model.Xor(v));
 
             var count = 0;
             m.EnumerateSolutions(v, () =>
@@ -71,7 +71,7 @@ namespace Tests
             });
 
             var v = m.AddVars(_n);
-            m.AddConstr(!m.Xor(v));
+            m.AddConstr(!Model.Xor(v));
 
             var count = 0;
             m.EnumerateSolutions(v, () =>

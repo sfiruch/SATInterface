@@ -852,33 +852,41 @@ namespace SATInterface
         /// supplied expressions.
         /// </summary>
         [Pure]
-        public BoolExpr Xor(params BoolExpr[] _elems)
+        public static BoolExpr Xor(params BoolExpr[] _elems)
         {
-            void AddXorConstr(BoolExpr[] _elems)
+            static void AddXorConstr(Model _m, BoolExpr[] _elems)
             {
                 Debug.Assert(_elems.Length <= 16);
 
                 for (var v = 0; v < (1 << _elems.Length); v++)
                     if ((BitOperations.PopCount((uint)v) & 1) == 0)
-                        AddConstr(Or(_elems.Select((be, i) => (((v >> i) & 1) == 1) ? !be : be)));
+                        _m.AddConstr(_m.Or(_elems.Select((be, i) => (((v >> i) & 1) == 1) ? !be : be)));
             }
+
+            if (_elems.Contains(False))
+                _elems = _elems.Where(e => !ReferenceEquals(e, False)).ToArray();
+
+            var trueCount = _elems.Count(e => ReferenceEquals(e, True));
+            if (trueCount > 0)
+                _elems = _elems.Where(e => !ReferenceEquals(e, True)).ToArray();
 
             switch (_elems.Length)
             {
                 case 0:
-                    return False;
+                    return (trueCount & 1) == 1 ? True : False;
                 case 1:
-                    return _elems[0];
+                    return (trueCount & 1) == 1 ? !_elems[0] : _elems[0];
                 case 2:
-                    return _elems[0] ^ _elems[1];
+                    return (trueCount & 1) == 1 ? _elems[0] == _elems[1] : _elems[0] != _elems[1];
                 case 3:
                 case 4:
                 case 5:
                 case 6:
                     {
-                        var r = AddVar();
-                        AddXorConstr([.. _elems, !r]);
-                        return r;
+                        var m = _elems[0].GetModel()!;
+                        var r = m.AddVar();
+                        AddXorConstr(m, [.. _elems, !r]);
+                        return (trueCount & 1) == 1 ? !r : r;
                     }
                 default:
                     return Xor(_elems.Chunk(4).Select(ch => Xor(ch)).ToArray());
@@ -1030,7 +1038,7 @@ namespace SATInterface
                                 return new UIntVar(this, chunk.Length,
                                 [
                                     Xor(chunk),
-                                    (chunk.Length>5 ? chunk[5] : False) | (chunk[1] & !chunk[3]).Flatten(),
+                                    Xor(chunk[1], chunk[3], chunk.Length>5 ? chunk[5] : False),
                                     chunk.Length>3 ? chunk[3] : False
                                 ], false);
                         }
@@ -1587,8 +1595,14 @@ namespace SATInterface
                     case 2:
                         return expr[0] ^ expr[1];
                     case 3:
-                        //TODO: implement something better
-                        break;
+                        var a = expr[0].Flatten();
+                        var b = expr[1].Flatten();
+                        var c = expr[2].Flatten();
+
+                        return Or(
+                            And(a, !b, !c).Flatten(),
+                            And(!a, b, !c).Flatten(),
+                            And(!a, !b, c).Flatten());
                 }
 
                 switch (_method)
@@ -1600,7 +1614,6 @@ namespace SATInterface
                             return uc[0] & !uc[1];
                         }
                         else
-                            //return ExactlyOneOfPairwiseTree(expr);
                             return ExactlyOneOfCommander(expr);
                     case ExactlyOneOfMethod.SortTotalizer:
                         return ExactlyKOf(expr.ToArray(), 1, KOfMethod.SortTotalizer);
@@ -2130,7 +2143,7 @@ namespace SATInterface
                                 }
                             }
 
-                        if(Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.SortingNetworks))
+                        if (Configuration.AddArcConstistencyClauses.HasFlag(ArcConstistencyClauses.SortingNetworks))
                             for (var i = 2; i < R.Length - 1; i++)
                                 AddConstr(!R[i] | R[i - 1]);
 
