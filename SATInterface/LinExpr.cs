@@ -522,7 +522,7 @@ namespace SATInterface
             //if (rhs <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
             //	return _a.Model.AtMostKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.Sequential);
 
-            if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 3 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 8 && T.Abs(maxVar.Value) * maxVarCnt >= rhs)
+            if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 8 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 24 && T.Abs(maxVar.Value) * maxVarCnt * 2 >= rhs)
             {
                 var maxVars = new List<BoolExpr>(maxVarCnt);
                 var leWithoutMaxVars = new LinExpr();
@@ -541,8 +541,7 @@ namespace SATInterface
                     _a.Model.StartStatistics("LE MaxVar", _a.Weights.Count);
 
                     var sorted = _a.Model.SortTotalizer(CollectionsMarshal.AsSpan(maxVars));
-                    var uintWithoutMaxVars = leWithoutMaxVars.ToUIntAllPosNoOffset(_a.Model);
-                    return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (uintWithoutMaxVars <= rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
+                    return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (leWithoutMaxVars <= rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
                 }
                 finally
                 {
@@ -1330,7 +1329,7 @@ namespace SATInterface
             //if (rhs <= T.CreateChecked(_a.Model.Configuration.LinExprKOfLimit))
             //	return _a.Model.ExactlyKOf(_a.Weights.SelectMany(w => Enumerable.Repeat(_a.Model.GetVariable(w.Value > T.Zero ? w.Key : -w.Key), int.CreateChecked(T.Abs(w.Value)))), int.CreateChecked(rhs), Model.KOfMethod.Sequential);
 
-            if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 3 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 8 && T.Abs(maxVar.Value) * maxVarCnt >= rhs)
+            if (T.Min(maxVarCnt, rhs / T.Abs(maxVar.Value)) < 8 && _a.Weights.DistinctBy(e => T.Abs(e.Value)).Count() < 24 && T.Abs(maxVar.Value) * maxVarCnt * 2 >= rhs)
             {
                 var maxVars = new List<BoolExpr>(maxVarCnt);
                 var leWithoutMaxVars = new LinExpr();
@@ -1349,8 +1348,7 @@ namespace SATInterface
                     _a.Model.StartStatistics("Eq MaxVar", _a.Weights.Count);
 
                     var sorted = _a.Model.SortTotalizer(CollectionsMarshal.AsSpan(maxVars)).ToArray();
-                    var uintWithoutMaxVars = leWithoutMaxVars.ToUIntAllPosNoOffset(_a.Model);
-                    return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (s == 0 ? Model.True : sorted[s - 1]) & (uintWithoutMaxVars == rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
+                    return _a.Model.Or(Enumerable.Range(0, maxVarCnt + 1).Select(s => (s == maxVarCnt ? Model.True : !sorted[s]) & (s == 0 ? Model.True : sorted[s - 1]) & (leWithoutMaxVars == rhs - s * T.Abs(maxVar.Value)).Flatten())).Flatten();
                 }
                 finally
                 {

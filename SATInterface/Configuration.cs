@@ -188,9 +188,9 @@ namespace SATInterface
         /// Valid assignments for (in)equalities are enumerated, if there are
         /// fewer assignments than this limit.
         /// 
-        /// Default: 4
+        /// Default: 8
         /// </summary>
-        public int EnumerateLinExprComparisonsLimit = 4;
+        public int EnumerateLinExprComparisonsLimit = 8;
 
         /// <summary>
         /// Set the initial phase of all variables in the objective towards the
@@ -204,9 +204,9 @@ namespace SATInterface
         /// The maximum number of variables for which linear constraints or
         /// EOO constraints are encoded using Totalizer.
         /// 
-        /// Default: 16
+        /// Default: 24
         /// </summary>
-        public int TotalizerLimit = 16;
+        public int TotalizerLimit = 24;
 
         /// <summary>
         /// The maximum number of hashing buckets for <= linear constraints.
@@ -221,7 +221,7 @@ namespace SATInterface
         /// 
         /// Default: true
         /// </summary>
-        public bool SumBitsIn7Chunks = true;
+        public bool SumBitsInChunksOf7 = true;
 
         /// <summary>
         /// Add an additional mod 3 version for each equality constraint.

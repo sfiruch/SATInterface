@@ -1023,7 +1023,7 @@ namespace SATInterface
                 if (_elems.Length == 0)
                     res = AddUIntConst(T.Zero);
                 else
-                    res = Sum(_elems.ToArray().Chunk(Configuration.SumBitsIn7Chunks ? 7 : 3).Select(chunk =>
+                    res = Sum(_elems.ToArray().Chunk(Configuration.SumBitsInChunksOf7 ? 7 : 3).Select(chunk =>
                     {
                         switch (chunk.Length)
                         {
