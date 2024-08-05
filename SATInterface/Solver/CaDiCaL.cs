@@ -125,6 +125,10 @@ namespace SATInterface.Solver
             CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
 
+            //CaDiCaLNative.ccadical_set_option(Handle, "elimint", 200);
+            //CaDiCaLNative.ccadical_set_option(Handle, "elimocclim", 1000);
+            //CaDiCaLNative.ccadical_set_option(Handle, "elimboundmax", 500);
+
             switch (Model.Configuration.ExpectedOutcome)
             {
                 case ExpectedOutcome.Sat:
