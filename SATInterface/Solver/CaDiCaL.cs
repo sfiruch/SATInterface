@@ -13,9 +13,44 @@ namespace SATInterface.Solver
     public class CaDiCaL:Solver //<T> : Solver where T : struct, IBinaryInteger<T>
 	{
         public IntPtr Handle;
+        private int _declaredModelVarCount;
+        private int _solverMaxDeclaredVar;
+        // Each entry covers model vars [ModelStart .. next entry's ModelStart) mapped
+        // to solver vars starting at SolverStart. Only non-identity batches are stored
+        // (i.e. where factor created extension variables that shifted the numbering).
+        private readonly List<(int ModelStart, int SolverStart)> _varBatches = [];
 
         public CaDiCaL()
         {
+        }
+
+        private int SolverLit(int modelLit)
+        {
+            if (_varBatches.Count == 0) return modelLit;
+            var absVar = Math.Abs(modelLit);
+            for (var i = _varBatches.Count - 1; i >= 0; i--)
+                if (absVar >= _varBatches[i].ModelStart)
+                    return Math.Sign(modelLit) * (_varBatches[i].SolverStart + absVar - _varBatches[i].ModelStart);
+            return modelLit;
+        }
+
+        private void EnsureDeclared(int modelVarCount)
+        {
+            if (modelVarCount <= _declaredModelVarCount) return;
+
+            int newVars = modelVarCount - _declaredModelVarCount;
+            // declare_more_variables returns the new maximum solver variable index
+            // (last of the consecutively declared range). If factor has created
+            // extension variables since the last declaration, the solver skips over
+            // them, so newSolverMax > _solverMaxDeclaredVar + newVars.
+            int newSolverMax = CaDiCaLNative.ccadical_declare_more_variables(Handle, newVars);
+            int firstNewSolverVar = newSolverMax - newVars + 1;
+
+            if (firstNewSolverVar != _solverMaxDeclaredVar + 1)
+                _varBatches.Add((_declaredModelVarCount + 1, firstNewSolverVar));
+
+            _solverMaxDeclaredVar = newSolverMax;
+            _declaredModelVarCount = modelVarCount;
         }
 
         public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
@@ -33,9 +68,11 @@ namespace SATInterface.Solver
             {
                 CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, callback);
 
+                EnsureDeclared(_variableCount);
+
                 if (_assumptions != null)
                     foreach (var a in _assumptions)
-                        CaDiCaLNative.ccadical_assume(Handle, a);
+                        CaDiCaLNative.ccadical_assume(Handle, SolverLit(a));
 
                 if (Model.Configuration.Verbosity >= 2)
                 {
@@ -54,7 +91,7 @@ namespace SATInterface.Solver
                         //satisfiable
                         var res = new bool[_variableCount];
                         for (var i = 0; i < res.Length; i++)
-                            res[i] = CaDiCaLNative.ccadical_val(Handle, i + 1) > 0;
+                            res[i] = CaDiCaLNative.ccadical_val(Handle, SolverLit(i + 1)) > 0;
                         return (State.Satisfiable, res);
 
                     case 20:
@@ -79,8 +116,13 @@ namespace SATInterface.Solver
 
         public override void AddClause(ReadOnlySpan<int> _clause)
         {
+            var maxVar = 0;
             foreach (var i in _clause)
-                CaDiCaLNative.ccadical_add(Handle, i);
+                maxVar = Math.Max(maxVar, Math.Abs(i));
+            EnsureDeclared(maxVar);
+
+            foreach (var i in _clause)
+                CaDiCaLNative.ccadical_add(Handle, SolverLit(i));
             CaDiCaLNative.ccadical_add(Handle, 0);
         }
 
@@ -94,12 +136,15 @@ namespace SATInterface.Solver
 
 		internal override void SetPhase(int _variable, bool? _phase)
         {
+            EnsureDeclared(_variable);
+            var solverVar = SolverLit(_variable);
+
             if (_phase == true)
-                CaDiCaLNative.ccadical_phase(Handle, _variable);
+                CaDiCaLNative.ccadical_phase(Handle, solverVar);
             else if(_phase == false)
-				CaDiCaLNative.ccadical_phase(Handle, -_variable);
+				CaDiCaLNative.ccadical_phase(Handle, -solverVar);
             else
-                CaDiCaLNative.ccadical_unphase(Handle, _variable);
+                CaDiCaLNative.ccadical_unphase(Handle, solverVar);
 		}
 
 		internal override void ApplyConfiguration()
@@ -186,7 +231,7 @@ namespace SATInterface.Solver
 
         [LibraryImport("CaDiCaL.dll")]
 		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
-		public static partial int ccadical_lookahead(IntPtr wrapper);
+		public static partial int ccadical_declare_more_variables(IntPtr wrapper, int number_of_vars);
 
         [LibraryImport("CaDiCaL.dll")]
         [SuppressGCTransition]
