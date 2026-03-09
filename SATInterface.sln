@@ -33,6 +33,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EternityII", "EternityII\Et
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReverseGameOfLife", "ReverseGameOfLife\ReverseGameOfLife.csproj", "{21A2C414-A699-4876-9CB7-654D80BC75E3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StableGameOfLife", "StableGameOfLife\StableGameOfLife.csproj", "{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -95,6 +97,10 @@ Global
 		{21A2C414-A699-4876-9CB7-654D80BC75E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{21A2C414-A699-4876-9CB7-654D80BC75E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{21A2C414-A699-4876-9CB7-654D80BC75E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

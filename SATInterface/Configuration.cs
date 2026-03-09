@@ -1,4 +1,4 @@
-﻿using SATInterface.Solver;
+using SATInterface.Solver;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -209,7 +209,7 @@ namespace SATInterface
         public int TotalizerLimit = 24;
 
         /// <summary>
-        /// The maximum number of hashing buckets for <= linear constraints.
+        /// The maximum number of hashing buckets for &lt;= linear constraints.
         /// 
         /// Default: 64
         /// </summary>
