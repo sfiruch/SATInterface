@@ -1,19 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <Version>5.1.4</Version>
     <TargetFramework>net7.0</TargetFramework>
     <Nullable>enable</Nullable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/deiruch/SATInterface</PackageProjectUrl>
     <RepositoryUrl>https://github.com/deiruch/SATInterface.git</RepositoryUrl>
-    <LangVersion>latest</LangVersion>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<LangVersion>latest</LangVersion>
 	  <RepositoryType>git</RepositoryType>
     <PlatformTarget>x64</PlatformTarget>
     <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<DebugSymbols>true</DebugSymbols>
+		<EmbedAllSources>true</EmbedAllSources>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <IncludeSource>true</IncludeSource>
-    <PackageId>deiruch.SATInterface</PackageId>
+    <PackageId>sfiruch.SATInterface</PackageId>
     <Authors>Simon Felix</Authors>
     <Description>Library to formulate and solve SAT problems in .NET. Includes CaDiCaL, Kissat, CryptoMiniSat and YalSAT as solvers.</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -21,7 +23,10 @@
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>1701;1702;1591;1822</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
+	<PropertyGroup>
+		<PackageReadmeFile>readme.txt</PackageReadmeFile>
+	</PropertyGroup>
+	<ItemGroup>
     <None Pack="true" PackageCopyToOutput="true" Include="cryptominisat5win.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
