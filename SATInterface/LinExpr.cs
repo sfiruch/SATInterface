@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -932,7 +932,7 @@ namespace SATInterface
 
             var nonZero = new bool[vars.Length];
             for (var i = 0; i < vars.Length; i++)
-                nonZero[i] = resolvent.Any(r => r.Contains(i));
+                nonZero[i] = resolvent.Any(r => Array.IndexOf(r, i) >= 0);
 
             var newWeights = new T[vars.Length];
             for (var scale = T.One; scale < oldWeights[0]; scale++)
@@ -1081,7 +1081,7 @@ namespace SATInterface
 
                     for (var jkt = jk + 1; jkt < oldWeights.Length && (idx == r.Length - 1 || jkt < r[idx + 1]); jkt++)
                     {
-                        Debug.Assert(!r.Contains(jkt));
+                        Debug.Assert(Array.IndexOf(r, jkt) == -1);
 
                         var r2 = r.ToArray();
                         r2[idx] = jkt;
@@ -1098,7 +1098,7 @@ namespace SATInterface
 
             var newWeights = new T[vars.Length];
             for (var i = 0; i < vars.Length; i++)
-                if (resolvent.Any(r => r.Contains(i)))
+                if (resolvent.Any(r => Array.IndexOf(r, i) >= 0))
                     newWeights[i] = T.One;
 
             var increased = new bool[vars.Length];
