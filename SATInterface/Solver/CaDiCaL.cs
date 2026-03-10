@@ -20,16 +20,6 @@ namespace SATInterface.Solver
         // (i.e. where factor created extension variables that shifted the numbering).
         private readonly List<(int ModelStart, int SolverStart)> _varBatches = [];
 
-        // Held as a field so the delegate is never GC'd while CaDiCaL holds a pointer to it.
-        // See https://github.com/arminbiere/cadical/issues/90
-        private long _terminateTimeoutTicks = long.MaxValue;
-        private readonly CaDiCaLNative.TerminateCallback _terminateCallback;
-
-        public CaDiCaL()
-        {
-            _terminateCallback = _ => Environment.TickCount64 > _terminateTimeoutTicks ? 1 : 0;
-        }
-
         private int SolverLit(int modelLit)
         {
             if (_varBatches.Count == 0) return modelLit;
@@ -66,45 +56,54 @@ namespace SATInterface.Solver
             CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
 
-            _terminateTimeoutTicks = _timeout;
-            CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, _terminateCallback);
-
-            EnsureDeclared(_variableCount);
-
-            if (_assumptions != null)
-                foreach (var a in _assumptions)
-                    CaDiCaLNative.ccadical_assume(Handle, SolverLit(a));
-
-            if (Model.Configuration.Verbosity >= 2)
+            var callback = (CaDiCaLNative.TerminateCallback)(_ => Environment.TickCount64 > _timeout ? 1 : 0);
+            try
             {
-                //TODO: add banner to C API
-                Console.WriteLine("c " + Marshal.PtrToStringAnsi(CaDiCaLNative.ccadical_signature()));
+                CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, callback);
+
+                EnsureDeclared(_variableCount);
+
+                if (_assumptions != null)
+                    foreach (var a in _assumptions)
+                        CaDiCaLNative.ccadical_assume(Handle, SolverLit(a));
+
+                if (Model.Configuration.Verbosity >= 2)
+                {
+                    //TODO: add banner to C API
+                    Console.WriteLine("c " + Marshal.PtrToStringAnsi(CaDiCaLNative.ccadical_signature()));
+                }
+
+                var satisfiable = CaDiCaLNative.ccadical_solve(Handle);
+
+                if (Model.Configuration.Verbosity >= 3)
+                    CaDiCaLNative.ccadical_print_statistics(Handle);
+
+                switch (satisfiable)
+                {
+                    case 10:
+                        //satisfiable
+                        var res = new bool[_variableCount];
+                        for (var i = 0; i < res.Length; i++)
+                            res[i] = CaDiCaLNative.ccadical_val(Handle, SolverLit(i + 1)) > 0;
+                        return (State.Satisfiable, res);
+
+                    case 20:
+                        //unsat
+                        return (State.Unsatisfiable, null);
+
+                    case 0:
+                        //interrupted
+                        return (State.Undecided, null);
+
+                    default:
+                        throw new NotImplementedException();
+                }
             }
-
-            var satisfiable = CaDiCaLNative.ccadical_solve(Handle);
-
-            if (Model.Configuration.Verbosity >= 3)
-                CaDiCaLNative.ccadical_print_statistics(Handle);
-
-            switch (satisfiable)
+            finally
             {
-                case 10:
-                    //satisfiable
-                    var res = new bool[_variableCount];
-                    for (var i = 0; i < res.Length; i++)
-                        res[i] = CaDiCaLNative.ccadical_val(Handle, SolverLit(i + 1)) > 0;
-                    return (State.Satisfiable, res);
-
-                case 20:
-                    //unsat
-                    return (State.Unsatisfiable, null);
-
-                case 0:
-                    //interrupted
-                    return (State.Undecided, null);
-
-                default:
-                    throw new NotImplementedException();
+                //race-condition? (https://github.com/arminbiere/cadical/issues/90)
+                //CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, null);
+                GC.KeepAlive(callback);
             }
         }
 
