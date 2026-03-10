@@ -20,8 +20,14 @@ namespace SATInterface.Solver
         // (i.e. where factor created extension variables that shifted the numbering).
         private readonly List<(int ModelStart, int SolverStart)> _varBatches = [];
 
+        // Held as a field so the delegate is never GC'd while CaDiCaL holds a pointer to it.
+        // See https://github.com/arminbiere/cadical/issues/90
+        private long _terminateTimeoutTicks = long.MaxValue;
+        private readonly CaDiCaLNative.TerminateCallback _terminateCallback;
+
         public CaDiCaL()
         {
+            _terminateCallback = _ => Environment.TickCount64 > _terminateTimeoutTicks ? 1 : 0;
         }
 
         private int SolverLit(int modelLit)
@@ -60,57 +66,45 @@ namespace SATInterface.Solver
             CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
 
-            var callback = (CaDiCaLNative.TerminateCallback)(s =>
+            _terminateTimeoutTicks = _timeout;
+            CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, _terminateCallback);
+
+            EnsureDeclared(_variableCount);
+
+            if (_assumptions != null)
+                foreach (var a in _assumptions)
+                    CaDiCaLNative.ccadical_assume(Handle, SolverLit(a));
+
+            if (Model.Configuration.Verbosity >= 2)
             {
-                return Environment.TickCount64 > _timeout ? 1 : 0;
-            });
-            try
-            {
-                CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, callback);
-
-                EnsureDeclared(_variableCount);
-
-                if (_assumptions != null)
-                    foreach (var a in _assumptions)
-                        CaDiCaLNative.ccadical_assume(Handle, SolverLit(a));
-
-                if (Model.Configuration.Verbosity >= 2)
-                {
-                    //TODO: add banner to C API
-                    Console.WriteLine("c " + Marshal.PtrToStringAnsi(CaDiCaLNative.ccadical_signature()));
-                }
-
-                var satisfiable = CaDiCaLNative.ccadical_solve(Handle);
-
-                if (Model.Configuration.Verbosity >= 3)
-                    CaDiCaLNative.ccadical_print_statistics(Handle);
-
-                switch (satisfiable)
-                {
-                    case 10:
-                        //satisfiable
-                        var res = new bool[_variableCount];
-                        for (var i = 0; i < res.Length; i++)
-                            res[i] = CaDiCaLNative.ccadical_val(Handle, SolverLit(i + 1)) > 0;
-                        return (State.Satisfiable, res);
-
-                    case 20:
-                        //unsat
-                        return (State.Unsatisfiable, null);
-
-                    case 0:
-                        //interrupted
-                        return (State.Undecided, null);
-
-                    default:
-                        throw new NotImplementedException();
-                }
+                //TODO: add banner to C API
+                Console.WriteLine("c " + Marshal.PtrToStringAnsi(CaDiCaLNative.ccadical_signature()));
             }
-            finally
+
+            var satisfiable = CaDiCaLNative.ccadical_solve(Handle);
+
+            if (Model.Configuration.Verbosity >= 3)
+                CaDiCaLNative.ccadical_print_statistics(Handle);
+
+            switch (satisfiable)
             {
-                //race-condition? (https://github.com/arminbiere/cadical/issues/90)
-                //CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, null);
-                GC.KeepAlive(callback);
+                case 10:
+                    //satisfiable
+                    var res = new bool[_variableCount];
+                    for (var i = 0; i < res.Length; i++)
+                        res[i] = CaDiCaLNative.ccadical_val(Handle, SolverLit(i + 1)) > 0;
+                    return (State.Satisfiable, res);
+
+                case 20:
+                    //unsat
+                    return (State.Unsatisfiable, null);
+
+                case 0:
+                    //interrupted
+                    return (State.Undecided, null);
+
+                default:
+                    throw new NotImplementedException();
             }
         }
 
@@ -169,10 +163,6 @@ namespace SATInterface.Solver
             CaDiCaLNative.ccadical_set_option(Handle, "quiet", verbosity == 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
-
-            //CaDiCaLNative.ccadical_set_option(Handle, "elimint", 200);
-            //CaDiCaLNative.ccadical_set_option(Handle, "elimocclim", 1000);
-            //CaDiCaLNative.ccadical_set_option(Handle, "elimboundmax", 500);
 
             switch (Model.Configuration.ExpectedOutcome)
             {
