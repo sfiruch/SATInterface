@@ -2,7 +2,7 @@
 
 Library to formulate and solve SAT problems in .NET.
 
-- GitHub: https://github.com/deiruch/SATInterface
+- GitHub: https://github.com/sfiruch/SATInterface
 
 The interface includes these excellent SAT solvers, but any solver that supports DIMACS can be used (e.g. Lingeling, Clasp, RISS, MiniSAT, ...):
 
