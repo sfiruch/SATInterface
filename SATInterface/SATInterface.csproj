@@ -28,16 +28,16 @@
 	</PropertyGroup>
 	<ItemGroup>
     <None Pack="true" Include="readme.md" PackagePath="\" />
-    <None Pack="true" PackageCopyToOutput="true" Include="cryptominisat5win.dll">
+    <None Pack="true" Include="cryptominisat5win.dll" PackagePath="runtimes/win-x64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Pack="true" PackageCopyToOutput="true" Include="CaDiCaL.dll">
+    <None Pack="true" Include="CaDiCaL.dll" PackagePath="runtimes/win-x64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Pack="true" PackageCopyToOutput="true" Include="kissat.dll">
+    <None Pack="true" Include="kissat.dll" PackagePath="runtimes/win-x64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Pack="true" PackageCopyToOutput="true" Include="YalSAT.dll">
+    <None Pack="true" Include="YalSAT.dll" PackagePath="runtimes/win-x64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
