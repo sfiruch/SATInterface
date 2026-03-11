@@ -24,7 +24,7 @@
     <NoWarn>1701;1702;1591;1822</NoWarn>
   </PropertyGroup>
 	<PropertyGroup>
-		<PackageReadmeFile>readme.txt</PackageReadmeFile>
+		<PackageReadmeFile>readme.md</PackageReadmeFile>
 	</PropertyGroup>
 	<ItemGroup>
     <None Pack="true" PackageCopyToOutput="true" Include="cryptominisat5win.dll">

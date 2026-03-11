@@ -1,15 +1,18 @@
-﻿// SATInterface is a library to formulate SAT problems in .NET 
-// - https://github.com/deiruch/SATInterface
-//
-// The interface includes these excellent SAT solvers, but any solver
-// that supports DIMACS can be used (e.g. Lingeling, Clasp, RISS, MiniSAT, ...).
-//
-// * CaDiCaL is MIT-licensed and available from https://github.com/arminbiere/cadical
-// * Kissat is MIT-licensed and available from https://github.com/arminbiere/kissat
-// * CryptoMiniSat is MIT-licensed and available from https://github.com/msoos/cryptominisat
-//
-// Here's a usage example: Sudoku
+# SATInterface
 
+Library to formulate and solve SAT problems in .NET.
+
+- GitHub: https://github.com/deiruch/SATInterface
+
+The interface includes these excellent SAT solvers, but any solver that supports DIMACS can be used (e.g. Lingeling, Clasp, RISS, MiniSAT, ...):
+
+- **CaDiCaL** — MIT-licensed, https://github.com/arminbiere/cadical
+- **Kissat** — MIT-licensed, https://github.com/arminbiere/kissat
+- **CryptoMiniSat** — MIT-licensed, https://github.com/msoos/cryptominisat
+
+## Usage Example: Sudoku
+
+```csharp
 using System;
 using System.Linq;
 using SATInterface;
@@ -62,3 +65,4 @@ if (m.State == State.Satisfiable)
                     Console.Write($" {n + 1}");
         Console.WriteLine();
     }
+```
