@@ -1,12 +1,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/deiruch/SATInterface/workflows/.NET/badge.svg)](https://github.com/deiruch/SATInterface/actions)
-[![NuGet Package](https://img.shields.io/nuget/v/deiruch.SATInterface.svg)](https://www.nuget.org/packages/deiruch.SATInterface/)
+[![Build Status](https://github.com/sfiruch/SATInterface/workflows/.NET/badge.svg)](https://github.com/sfiruch/SATInterface/actions)
+[![NuGet Package](https://img.shields.io/nuget/v/sfiruch.SATInterface.svg)](https://www.nuget.org/packages/sfiruch.SATInterface/)
 
 # SATInterface
 SATInterface is a .NET library to formulate SAT problems
 
 ## Installation
-Add a reference to the NuGet Package [deiruch.SATInterface](https://www.nuget.org/packages/deiruch.SATInterface/).
+Add a reference to the NuGet Package [sfiruch.SATInterface](https://www.nuget.org/packages/sfiruch.SATInterface/).
 
 ## Features
 - Maximize or minimize linear objective functions (3 strategies)
