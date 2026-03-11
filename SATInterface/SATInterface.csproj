@@ -27,6 +27,7 @@
 		<PackageReadmeFile>readme.md</PackageReadmeFile>
 	</PropertyGroup>
 	<ItemGroup>
+    <None Pack="true" Include="readme.md" PackagePath="\" />
     <None Pack="true" PackageCopyToOutput="true" Include="cryptominisat5win.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
