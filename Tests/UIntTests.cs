@@ -205,5 +205,79 @@ namespace Tests
                     Assert.AreEqual(values.Count(i => i), sum.X, $"{n} {i} {string.Join("", values)}");
                 }
         }
+
+        [TestMethod]
+        public void LookUpTableBigIntegerConstIndex()
+        {
+            // Regression: constant index with fewer bits than needed to address the table
+            // caused spurious solutions (e.g. index=2 also matched entry 6 in a 10-entry table).
+            using var m = new Model(new Configuration { Verbosity = 0 });
+            var index = m.AddUIntConst(2);
+            var v = m.LookUpTable(index, (Span<System.Numerics.BigInteger>)[0, 100, 200, 300, 400, 500, 600, 700, 800, 1000000]);
+
+            var solutions = new List<System.Numerics.BigInteger>();
+            m.EnumerateSolutions(v.Bits, () => solutions.Add(v.X));
+
+            Assert.AreEqual(1, solutions.Count, $"Expected exactly 1 solution but got: {string.Join(", ", solutions)}");
+            Assert.AreEqual(new System.Numerics.BigInteger(200), solutions[0]);
+        }
+
+        [TestMethod]
+        public void LookUpTableBigIntegerVariableIndex()
+        {
+            // Variable index constrained to each position in turn must yield exactly that entry's value.
+            System.Numerics.BigInteger[] table = [0, 100, 200, 300, 400, 500, 600, 700, 800, 1000000];
+            for (var expected = 0; expected < table.Length; expected++)
+            {
+                using var m = new Model(new Configuration { Verbosity = 0 });
+                var index = m.AddUIntVar(table.Length - 1);
+                var v = m.LookUpTable(index, (Span<System.Numerics.BigInteger>)table);
+                m.AddConstr(index == expected);
+
+                var solutions = new List<System.Numerics.BigInteger>();
+                m.EnumerateSolutions(v.Bits, () => solutions.Add(v.X));
+
+                Assert.AreEqual(1, solutions.Count, $"index={expected}: got {string.Join(", ", solutions)}");
+                Assert.AreEqual(table[expected], solutions[0], $"index={expected}");
+            }
+        }
+
+        [TestMethod]
+        public void LookUpTableUIntVarConstIndex()
+        {
+            // Same regression as LookUpTableBigIntegerConstIndex but for the Span<UIntVar> overload.
+            System.Numerics.BigInteger[] rawTable = [0, 100, 200, 300, 400, 500, 600, 700, 800, 1000000];
+            using var m = new Model(new Configuration { Verbosity = 0 });
+            var index = m.AddUIntConst(2);
+            var tableVars = rawTable.Select(v => m.AddUIntConst(v)).ToArray();
+            var result = m.LookUpTable(index, (Span<UIntVar>)tableVars);
+
+            var solutions = new List<System.Numerics.BigInteger>();
+            m.EnumerateSolutions(result.Bits, () => solutions.Add(result.X));
+
+            Assert.AreEqual(1, solutions.Count, $"Expected exactly 1 solution but got: {string.Join(", ", solutions)}");
+            Assert.AreEqual(new System.Numerics.BigInteger(200), solutions[0]);
+        }
+
+        [TestMethod]
+        public void LookUpTableUIntVarVariableIndex()
+        {
+            // Variable index constrained to each position must yield exactly that entry's value (Span<UIntVar> overload).
+            System.Numerics.BigInteger[] rawTable = [0, 100, 200, 300, 400, 500, 600, 700, 800, 1000000];
+            for (var expected = 0; expected < rawTable.Length; expected++)
+            {
+                using var m = new Model(new Configuration { Verbosity = 0 });
+                var index = m.AddUIntVar(rawTable.Length - 1);
+                var tableVars = rawTable.Select(v => m.AddUIntConst(v)).ToArray();
+                var result = m.LookUpTable(index, (Span<UIntVar>)tableVars);
+                m.AddConstr(index == expected);
+
+                var solutions = new List<System.Numerics.BigInteger>();
+                m.EnumerateSolutions(result.Bits, () => solutions.Add(result.X));
+
+                Assert.AreEqual(1, solutions.Count, $"index={expected}: got {string.Join(", ", solutions)}");
+                Assert.AreEqual(rawTable[expected], solutions[0], $"index={expected}");
+            }
+        }
     }
 }

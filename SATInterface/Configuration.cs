@@ -180,9 +180,9 @@ namespace SATInterface
         /// <summary>
         /// Controls which redundant clauses are added for arc-consistency.
         /// 
-        /// Default: ArcConstistencyClauses.ITE | ArcConstistencyClauses.SortingNetworks
+        /// Default: ArcConstistencyClauses.SortingNetworks
         /// </summary>
-        public ArcConstistencyClauses AddArcConstistencyClauses = ArcConstistencyClauses.ITE | ArcConstistencyClauses.SortingNetworks;
+        public ArcConstistencyClauses AddArcConstistencyClauses = ArcConstistencyClauses.SortingNetworks;
 
         /// <summary>
         /// Valid assignments for (in)equalities are enumerated, if there are

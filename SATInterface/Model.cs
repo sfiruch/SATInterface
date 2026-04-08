@@ -1,4 +1,4 @@
-﻿global using T = System.Numerics.BigInteger;
+global using T = System.Numerics.BigInteger;
 global using VarId = System.Int32;
 
 using System.Runtime.CompilerServices;
@@ -2091,6 +2091,77 @@ namespace SATInterface
                     return SortCache[cacheKey] = R;
             }
         }
+
+        /// <summary>
+        /// Selects a value from the specified lookup table based on the provided index, returning the corresponding
+        /// value as a UIntVar.
+        /// </summary>
+        /// <remarks>The returned UIntVar will have a bit width sufficient to represent the largest value
+        /// in the table. The method enforces that exactly one value from the table is selected based on the index. The
+        /// caller must ensure that the index does not exceed the bounds of the table.</remarks>
+        /// <param name="index">The index used to select a value from the lookup table. The value must be within the range of valid indices
+        /// for the table.</param>
+        /// <param name="table">A span containing the values to be used as the lookup table. Each element represents a possible value that
+        /// can be selected.</param>
+        /// <returns>A UIntVar representing the value from the table at the specified index.</returns>
+        public UIntVar LookUpTable(UIntVar index, Span<UIntVar> table)
+        {
+            var b = AddVars((int)BigInteger.Min(index.UB + 1, table.Length));
+            AddConstr(ExactlyOneOf(b));
+            var indexBitCount = Math.Max(index.Bits.Length, b.Length <= 1 ? 0 : (int)((BigInteger)(b.Length - 1)).GetBitLength());
+            for (var i = 0; i < b.Length; i++)
+                for (var bit = 0; bit < indexBitCount; bit++)
+                    AddConstr(!b[i] | (index.Bits[bit] ^ (((i >> bit) & 1) == 0)));
+
+            BigInteger max = table[0].UB;
+            for (var i = 1; i < table.Length; i++)
+                if (table[i].UB > max)
+                    max = table[i].UB;
+
+            var maxBits = (int)max.GetBitLength();
+            var o = AddVars(maxBits);
+            for (var bit = 0; bit < o.Length; bit++)
+                for (var i = 0; i < b.Length; i++)
+                    AddConstr(!b[i] | (o[bit] ^ !table[i].Bits[bit]));
+
+            return AddUIntVar(o, max);
+        }
+
+        /// <summary>
+        /// Selects a value from the specified lookup table based on the provided index, returning the corresponding
+        /// value as a UIntVar.
+        /// </summary>
+        /// <remarks>The returned UIntVar will have a bit width sufficient to represent the largest value
+        /// in the table. The method enforces that exactly one value from the table is selected based on the index. The
+        /// caller must ensure that the index does not exceed the bounds of the table.</remarks>
+        /// <param name="index">The index used to select a value from the lookup table. The value must be within the range of valid indices
+        /// for the table.</param>
+        /// <param name="table">A span containing the values to be used as the lookup table. Each element represents a possible value that
+        /// can be selected.</param>
+        /// <returns>A UIntVar representing the value from the table at the specified index.</returns>
+        public UIntVar LookUpTable(UIntVar index, Span<BigInteger> table)
+        {
+            var b = AddVars((int)BigInteger.Min(index.UB + 1, table.Length));
+            AddConstr(ExactlyOneOf(b));
+            var indexBitCount = Math.Max(index.Bits.Length, b.Length <= 1 ? 0 : (int)((BigInteger)(b.Length - 1)).GetBitLength());
+            for (var i = 0; i < b.Length; i++)
+                for (var bit = 0; bit < indexBitCount; bit++)
+                    AddConstr(!b[i] | (index.Bits[bit] ^ (((i >> bit) & 1) == 0)));
+
+            BigInteger max = table[0];
+            for (var i = 1; i < table.Length; i++)
+                if (table[i] > max)
+                    max = table[i];
+
+            var maxBits = (int)max.GetBitLength();
+            var o = AddVars(maxBits);
+            for (var bit = 0; bit < o.Length; bit++)
+                for (var i = 0; i < b.Length; i++)
+                    AddConstr(!b[i] | (o[bit] ^ ((table[i] >> bit) & 1) == 0));
+
+            return AddUIntVar(o, max);
+        }
+
 
         /// <summary>
         /// Sorts the given expressions. True will be returned first, False last.
