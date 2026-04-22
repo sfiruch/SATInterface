@@ -39,7 +39,7 @@ namespace SATInterface.Solver
                 CryptoMiniSatNative.cmsat_set_max_time(Handle, remaining);
             }
             else
-                CryptoMiniSatNative.cmsat_set_max_time(Handle, double.MaxValue);
+                CryptoMiniSatNative.cmsat_set_max_time(Handle, double.PositiveInfinity);
 
             // CMS has no interrupt API in its C bindings, but cmsat_set_max_time is polled
             // from the search loop. Setting it to 0 from the cancellation callback forces the
