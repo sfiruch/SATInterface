@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.3.11520.95 d18.3
+VisualStudioVersion = 18.3.11520.95
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SATInterface", "SATInterface\SATInterface.csproj", "{1F113811-88B8-417A-8D4A-F4D9A33887AF}"
 EndProject
@@ -37,6 +37,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReverseGameOfLife", "ReverseGameOfLife\ReverseGameOfLife.csproj", "{21A2C414-A699-4876-9CB7-654D80BC75E3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StableGameOfLife", "StableGameOfLife\StableGameOfLife.csproj", "{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CRC16", "CRC16\CRC16.csproj", "{7B4D79E1-4458-45E3-9400-B6D78E65FE04}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -104,6 +106,10 @@ Global
 		{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C64BDEC0-8630-49F2-BDBF-DDE774EE2C05}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B4D79E1-4458-45E3-9400-B6D78E65FE04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B4D79E1-4458-45E3-9400-B6D78E65FE04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B4D79E1-4458-45E3-9400-B6D78E65FE04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B4D79E1-4458-45E3-9400-B6D78E65FE04}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
