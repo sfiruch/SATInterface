@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -9,13 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SATInterface\SATInterface.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="e2pieces.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <ProjectReference Include="..\..\SATInterface\SATInterface.csproj" />
   </ItemGroup>
 
 </Project>

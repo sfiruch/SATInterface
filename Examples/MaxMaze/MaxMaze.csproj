@@ -14,7 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SATInterface\SATInterface.csproj" />
+    <ProjectReference Include="..\..\SATInterface\SATInterface.csproj" />
   </ItemGroup>
 
 </Project>
