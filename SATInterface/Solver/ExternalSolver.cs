@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,7 +17,7 @@ namespace SATInterface.Solver
     /// Supports execution of an external solver in a separate process
     /// </summary>
     public class ExternalSolver : Solver //where T : struct, IBinaryInteger<T>
-	{
+    {
         private readonly string SolverExecutable;
         private readonly string? SolverArguments;
         private readonly string? FilenameInput;
@@ -55,19 +55,19 @@ namespace SATInterface.Solver
                     _out.WriteLine($"{c} 0");
         }
 
-        public override IEnumerable<bool[]> RandomSample(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
-            => InternalSolve(_variableCount, _timeout, _assumptions).Where(s => s.State == State.Satisfiable).Select(s => s.Vars!);
+        public override IEnumerable<bool[]> RandomSample(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null)
+            => InternalSolve(_variableCount, _timeout, _assumptions, _ct).Where(s => s.State == State.Satisfiable).Select(s => s.Vars!);
 
-        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null)
         {
-            var solutions = InternalSolve(_variableCount, _timeout, _assumptions).ToArray();
+            var solutions = InternalSolve(_variableCount, _timeout, _assumptions, _ct).ToArray();
             if (solutions.Length == 0)
                 return (State.Undecided, null);
 
             return solutions.Single();
         }
 
-        protected IEnumerable<(State State, bool[]? Vars)> InternalSolve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
+        protected IEnumerable<(State State, bool[]? Vars)> InternalSolve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, CancellationToken? _ct = null)
         {
             if (FilenameInput is not null)
             {
@@ -110,7 +110,10 @@ namespace SATInterface.Solver
 
             var UNSAT = Array.Empty<bool>();
 
-            using var cts = timeout == int.MaxValue ? new CancellationTokenSource() : new CancellationTokenSource(timeout);
+
+
+            using var ctsTimeout = timeout == int.MaxValue ? new CancellationTokenSource() : new CancellationTokenSource(timeout);
+            var ct = _ct.HasValue ? CancellationTokenSource.CreateLinkedTokenSource(ctsTimeout.Token, _ct.Value).Token : ctsTimeout.Token;
             using var bc = new BlockingCollection<bool[]>(1);
             var t = Task.Run(() =>
             {
@@ -130,7 +133,7 @@ namespace SATInterface.Solver
                         {
                             if (n == 0)
                             {
-                                bc.Add(assignments, cts.Token);
+                                bc.Add(assignments, ct);
                                 assignments = null;
                                 break;
                             }
@@ -150,7 +153,7 @@ namespace SATInterface.Solver
                         if (Model.Configuration.Verbosity > 0)
                             Console.WriteLine(line);
 
-                        bc.Add(UNSAT, cts.Token);
+                        bc.Add(UNSAT, ct);
                         break;
                     }
                     else if (Model.Configuration.Verbosity > 0)
@@ -169,7 +172,7 @@ namespace SATInterface.Solver
 
                     try
                     {
-                        assignment = bc.Take(cts.Token);
+                        assignment = bc.Take(ct);
 
                         if (ReferenceEquals(assignment, UNSAT))
                         {
@@ -196,7 +199,7 @@ namespace SATInterface.Solver
             }
             finally
             {
-                cts.Cancel();
+                ctsTimeout.Cancel();
 
                 if (FilenameInput is null)
                     p?.StandardInput.Dispose();

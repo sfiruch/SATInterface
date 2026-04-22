@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,8 +12,8 @@ namespace SATInterface.Solver
     /// <summary>
     /// Managed-code facade of the native Kissat solver
     /// </summary>
-    public class Kissat:Solver //<T> : Solver where T : struct, IBinaryInteger<T>
-	{
+    public class Kissat : Solver //<T> : Solver where T : struct, IBinaryInteger<T>
+    {
         private readonly List<int> clauses = new();
 
         public Kissat()
@@ -22,10 +22,11 @@ namespace SATInterface.Solver
                 throw new Exception("This library only supports x64 when using the bundled Kissat solver.");
         }
 
-        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout=long.MaxValue, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null)
         {
             var Handle = KissatNative.kissat_init();
-            CancellationTokenRegistration? ctr=null;
+            CancellationTokenRegistration? ctrTimeout = null;
+            CancellationTokenRegistration? ctrCancel = null;
             try
             {
                 if (_timeout != long.MaxValue)
@@ -34,8 +35,11 @@ namespace SATInterface.Solver
                     if (timeout <= 0)
                         return (State.Undecided, null);
 
-                    ctr = new CancellationTokenSource(timeout).Token.Register(() => KissatNative.kissat_terminate(Handle));
+                    ctrTimeout = new CancellationTokenSource(timeout).Token.Register(() => KissatNative.kissat_terminate(Handle));
                 }
+
+                if (_ct.HasValue)
+                    ctrCancel = _ct.Value.Register(() => KissatNative.kissat_terminate(Handle));
 
                 KissatNative.kissat_set_option(Handle, "quiet", Model.Configuration.Verbosity == 0 ? 1 : 0);
                 //KissatNative.kissat_set_option(Handle, "report", Verbosity > 0 ? 1 : 0);
@@ -59,14 +63,14 @@ namespace SATInterface.Solver
                     case ExpectedOutcome.Unsat:
                         KissatNative.kissat_set_option(Handle, "stable", 0);
                         break;
-                    //case ExpectedOutcome.RandomSampledAssignment:
-                    //    KissatNative.kissat_set_option(Handle, "target", 2);
-                    //    KissatNative.kissat_set_option(Handle, "restartint", 50);
-                    //    KissatNative.kissat_set_option(Handle, "restartreusetrail", 0);
-                    //    KissatNative.kissat_set_option(Handle, "walkeffort", 500000);
-                    //    KissatNative.kissat_set_option(Handle, "walkinitially", 1);
-                    //    KissatNative.kissat_set_option(Handle, "reluctant", 0);
-                    //    break;
+                        //case ExpectedOutcome.RandomSampledAssignment:
+                        //    KissatNative.kissat_set_option(Handle, "target", 2);
+                        //    KissatNative.kissat_set_option(Handle, "restartint", 50);
+                        //    KissatNative.kissat_set_option(Handle, "restartreusetrail", 0);
+                        //    KissatNative.kissat_set_option(Handle, "walkeffort", 500000);
+                        //    KissatNative.kissat_set_option(Handle, "walkinitially", 1);
+                        //    KissatNative.kissat_set_option(Handle, "reluctant", 0);
+                        //    break;
                 }
 
                 foreach (var v in clauses)
@@ -112,15 +116,19 @@ namespace SATInterface.Solver
             }
             finally
             {
-                ctr?.Unregister();
-                ctr?.Dispose();
+                ctrTimeout?.Unregister();
+                ctrTimeout?.Dispose();
+
+                ctrCancel?.Unregister();
+                ctrCancel?.Dispose();
+
                 KissatNative.kissat_release(Handle);
             }
         }
 
         public override void AddClause(ReadOnlySpan<int> _clause)
         {
-            foreach(var v in _clause)
+            foreach (var v in _clause)
                 clauses.Add(v);
             clauses.Add(0);
         }
@@ -130,59 +138,59 @@ namespace SATInterface.Solver
         }
     }
 
-	[SuppressMessage("Style", "IDE1006:Naming Styles")]
-	[SuppressMessage("Interoperability", "CA1401:P/Invokes should not be visible")]
-	public static partial class KissatNative
+    [SuppressMessage("Style", "IDE1006:Naming Styles")]
+    [SuppressMessage("Interoperability", "CA1401:P/Invokes should not be visible")]
+    public static partial class KissatNative
     {
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial IntPtr kissat_init();
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial IntPtr kissat_init();
 
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial void kissat_release(IntPtr wrapper);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial void kissat_release(IntPtr wrapper);
 
         [LibraryImport("kissat.dll")]
         [SuppressGCTransition]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial void kissat_add(IntPtr wrapper, int lit);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial void kissat_add(IntPtr wrapper, int lit);
 
         //[DllImport("kissat.dll", CallingConvention = CallingConvention.Cdecl)]
         //[SuppressGCTransition]
         //public static extern void kissat_assume(IntPtr wrapper, int lit);
 
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial int kissat_solve(IntPtr wrapper);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial int kissat_solve(IntPtr wrapper);
 
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial void kissat_terminate(IntPtr wrapper);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial void kissat_terminate(IntPtr wrapper);
 
         [LibraryImport("kissat.dll")]
         [SuppressGCTransition]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial int kissat_value(IntPtr wrapper, int lit);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial int kissat_value(IntPtr wrapper, int lit);
 
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial void kissat_print_statistics(IntPtr wrapper);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial void kissat_print_statistics(IntPtr wrapper);
 
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial int kissat_set_option(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial int kissat_set_option(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
 
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial int kissat_banner([MarshalAs(UnmanagedType.LPStr)] string line_prefix, [MarshalAs(UnmanagedType.LPStr)] string name_of_app);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial int kissat_banner([MarshalAs(UnmanagedType.LPStr)] string line_prefix, [MarshalAs(UnmanagedType.LPStr)] string name_of_app);
 
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial IntPtr kissat_signature();
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial IntPtr kissat_signature();
 
         [LibraryImport("kissat.dll")]
-		[UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-		public static partial void kissat_set_terminate(IntPtr wrapper, IntPtr state, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate);
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        public static partial void kissat_set_terminate(IntPtr wrapper, IntPtr state, [MarshalAs(UnmanagedType.FunctionPtr)] TerminateCallback? terminate);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int TerminateCallback(IntPtr State);
     }

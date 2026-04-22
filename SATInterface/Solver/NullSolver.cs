@@ -1,14 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SATInterface.Solver
 {
-    //TODO: refactor dimacsOutput to solver instead, support multiple solvers
-
     /// <summary>
     /// This NULL solver can be used to save memory when no
     /// solver is needed.
@@ -19,7 +18,7 @@ namespace SATInterface.Solver
         {
         }
 
-        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout=long.MaxValue, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout=long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null)
             => throw new NotImplementedException();
 
         internal override void ApplyConfiguration()

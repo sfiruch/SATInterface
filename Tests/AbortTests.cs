@@ -1,16 +1,57 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SATInterface;
+using SATInterface.Solver;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Tests
 {
     [TestClass]
     public class AbortTests
     {
+        // Time budget for a thread-based abort to actually stop the solver. Has to be
+        // generous so we don't flake under heavy parallel load; a regression would hang
+        // the solver indefinitely, so any finite bound catches it.
+        private static readonly TimeSpan AbortDeadline = TimeSpan.FromSeconds(30);
+
+        // Builds an UNSAT pigeonhole instance: (holes+1) pigeons into `holes` holes.
+        // Exponentially hard for CDCL-style solvers, so a well-chosen `holes` is guaranteed
+        // not to finish within AbortDeadline on any machine.
+        private static void AddPigeonhole(Model m, int holes)
+        {
+            var p = new BoolExpr[holes + 1, holes];
+            for (var i = 0; i <= holes; i++)
+                for (var j = 0; j < holes; j++)
+                    p[i, j] = m.AddVar();
+
+            for (var i = 0; i <= holes; i++)
+                m.AddConstr(m.Or(Enumerable.Range(0, holes).Select(j => p[i, j])));
+
+            for (var j = 0; j < holes; j++)
+                for (var i1 = 0; i1 <= holes; i1++)
+                    for (var i2 = i1 + 1; i2 <= holes; i2++)
+                        m.AddConstr(!p[i1, j] | !p[i2, j]);
+        }
+
+        // Spin-calls Abort() while the task is running. Idempotent, so it does not matter
+        // whether the first call happens before or after the solver creates its cancellation
+        // token — a later call will always land after the token exists. Bounded by a deadline
+        // so a broken Abort fails the test instead of hanging CI.
+        private static void AbortUntilCompleted(Model m, Task t)
+        {
+            var deadline = Environment.TickCount64 + (long)AbortDeadline.TotalMilliseconds;
+            while (!t.IsCompleted && Environment.TickCount64 < deadline)
+            {
+                m.Abort();
+                Thread.Sleep(10);
+            }
+            Assert.IsTrue(t.IsCompleted, $"Solver did not abort within {AbortDeadline.TotalSeconds}s");
+            t.GetAwaiter().GetResult();
+        }
+
         [TestMethod]
         public void AbortLazyOptimization()
         {
@@ -60,7 +101,7 @@ namespace Tests
                 Assert.AreEqual(obj.X, vars.Count(v => v.X));
 
                 objVal = obj.X;
-                
+
                 m.Abort();
                 abortCalled = true;
             });
@@ -103,30 +144,27 @@ namespace Tests
                 }
             });
 
-            Assert.AreEqual(State.Satisfiable,m.State);
+            Assert.AreEqual(State.Satisfiable, m.State);
             Assert.IsTrue(abortCalled);
             Assert.AreEqual(90, obj.X);
             Assert.AreEqual(90, objVal);
             Assert.AreEqual(90, vars.Count(v => v.X));
         }
 
-
         [TestMethod]
-        public void AbortOutsideCallbackException()
+        public void AbortOutsideSolveDoesNotThrow()
         {
             using var m = new Model(new Configuration()
             {
                 Verbosity = 0
             });
 
-            Assert.ThrowsException<InvalidOperationException>(() =>
-            {
-                m.Abort();
-            });
+            m.Abort();
+            m.Abort();
         }
 
         [TestMethod]
-        public void AbortAfterSolveException()
+        public void AbortAfterSolveDoesNotThrow()
         {
             using var m = new Model(new Configuration()
             {
@@ -135,10 +173,19 @@ namespace Tests
 
             m.Solve();
 
-            Assert.ThrowsException<InvalidOperationException>(() =>
+            m.Abort();
+            m.Abort();
+        }
+
+        [TestMethod]
+        public void AbortFromOtherThreadDoesNotThrow()
+        {
+            using var m = new Model(new Configuration()
             {
-                m.Abort();
+                Verbosity = 0
             });
+
+            Task.Run(() => m.Abort()).Wait();
         }
 
         [TestMethod]
@@ -173,7 +220,7 @@ namespace Tests
             {
                 cnt++;
 
-                if(cnt==4)
+                if (cnt == 4)
                     m.Abort();
                 if (cnt > 4)
                     Assert.Fail("Enumeration continued after calling Model.Abort()");
@@ -181,6 +228,64 @@ namespace Tests
 
             Assert.AreEqual(4, cnt);
             Assert.AreEqual(State.Satisfiable, m.State);
+        }
+
+        [DataRow(typeof(CaDiCaL))]
+        [DataRow(typeof(Kissat))]
+        [DataRow(typeof(CryptoMiniSat))]
+        [DataTestMethod]
+        public void AbortSolveFromOtherThread(Type _solver)
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0,
+                Solver = (Solver)_solver.GetConstructor(Type.EmptyTypes)!.Invoke(null)
+            });
+            AddPigeonhole(m, 14);
+
+            var t = Task.Run(() => m.Solve());
+            AbortUntilCompleted(m, t);
+
+            Assert.AreEqual(State.Undecided, m.State);
+        }
+
+        [TestMethod]
+        public void AbortMaximizeFromOtherThread()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+            AddPigeonhole(m, 14);
+
+            // Maximize needs a LinExpr. The pigeonhole portion is UNSAT, so the first
+            // feasibility call inside Optimize is what takes forever — exactly the call
+            // we want Abort to interrupt.
+            var extra = m.AddVars(10);
+            var obj = m.Sum(extra);
+
+            var t = Task.Run(() => m.Maximize(obj));
+            AbortUntilCompleted(m, t);
+
+            Assert.AreEqual(State.Undecided, m.State);
+        }
+
+        [TestMethod]
+        public void AbortEnumerationFromOtherThread()
+        {
+            using var m = new Model(new Configuration()
+            {
+                Verbosity = 0
+            });
+            var markers = m.AddVars(4);
+            AddPigeonhole(m, 14);
+
+            var t = Task.Run(() => m.EnumerateSolutions(
+                markers,
+                () => Assert.Fail("UNSAT instance yielded a solution")));
+            AbortUntilCompleted(m, t);
+
+            Assert.AreEqual(State.Undecided, m.State);
         }
     }
 }

@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Runtime.InteropServices;
-using System.Numerics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 
 namespace SATInterface.Solver
 {
@@ -21,9 +22,11 @@ namespace SATInterface.Solver
                 throw new Exception("This library only supports x64 when using the bundled YalSAT solver.");
         }
 
-        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout=long.MaxValue, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout=long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null)
         {
-            var callback = (YalSATNative.TerminateCallback)(s => Environment.TickCount64 > _timeout ? 1 : 0);
+            var ct = _ct;
+            var callback = (YalSATNative.TerminateCallback)(s => (Environment.TickCount64 > _timeout)
+                                                                || (ct?.IsCancellationRequested ?? false) ? 1 : 0);
             var Handle = YalSATNative.yals_new();
             try
             {

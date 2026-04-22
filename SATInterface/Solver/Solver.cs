@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 
 namespace SATInterface.Solver
 {
@@ -20,8 +21,9 @@ namespace SATInterface.Solver
         /// <param name="_variableCount">Assignments for all variables from 1 to _variableCount will be returned.</param>
         /// <param name="_timeout">Solution process should be aborted when Environment.TickCount64 >= _timeout.</param>
         /// <param name="_assumptions">The supplied variables must be true in a valid assignment.</param>
+        /// <param name="_ct">Solution process should be aborted when _ct.IsCancellationRequested is true.</param>
         /// <returns></returns>
-        public abstract (State State,bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null);
+        public abstract (State State,bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null);
 
         /// <summary>
         /// Randomly sample a valid assignment.
@@ -29,9 +31,10 @@ namespace SATInterface.Solver
         /// <param name="_variableCount">Assignments for all variables from 1 to _variableCount will be returned.</param>
         /// <param name="_timeout">Solution process should be aborted when Environment.TickCount64 >= _timeout.</param>
         /// <param name="_assumptions">The supplied variables must be true in a valid assignment.</param>
+        /// <param name="_ct">Solution process should be aborted when _ct.IsCancellationRequested is true.</param>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public virtual IEnumerable<bool[]> RandomSample(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
+        public virtual IEnumerable<bool[]> RandomSample(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null)
             => throw new NotImplementedException();
 
         internal virtual void SetPhase(int _variable, bool? _phase) { }

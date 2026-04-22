@@ -33,7 +33,7 @@ namespace SATInterface
         public State State { get; internal set; } = State.Undecided;
 
         internal bool InOptimization = false;
-        internal bool AbortOptimization = false;
+        internal CancellationTokenSource? AbortOptimization;
         internal bool UnsatWithAssumptions = false;
 
         internal class Counter
@@ -329,17 +329,16 @@ namespace SATInterface
             => Optimize(_obj, _solutionCallback, _minimization: false);
 
         /// <summary>
-        /// This method can be called from a callback during optimization or enumeration to abort
-        /// the optimization/enumeration early. The last solution or best-known solution will be retained.
+        /// This method can be called to abort the optimization/enumeration early. The last
+        /// solution or best-known solution will be retained.
+        /// 
+        /// The method can be called from any thread and will not throw exceptions. Aborting
+        /// the solution process is done in a cooperative fashion. This method does not wait
+        /// until the solver has stopped solving.
         /// </summary>
         public void Abort()
         {
-            Debug.Assert(!AbortOptimization);
-
-            if (!InOptimization)
-                throw new InvalidOperationException("Optimization/enumeration can only be aborted from a callback.");
-
-            AbortOptimization = true;
+            AbortOptimization?.Cancel();
         }
 
         private IEnumerable<bool[]> InvokeSampler(long _timeout, int[]? _assumptions)
@@ -352,7 +351,8 @@ namespace SATInterface
                 if (Environment.TickCount64 >= _timeout)
                     yield break;
 
-                foreach (var sol in Configuration.Solver.RandomSample(VariableCount, _timeout, _assumptions))
+                var ct = AbortOptimization?.Token;
+                foreach (var sol in Configuration.Solver.RandomSample(VariableCount, _timeout, _assumptions, in ct))
                     yield return sol;
             }
             finally
@@ -375,7 +375,8 @@ namespace SATInterface
                 if (_assumptions is not null)
                     Debug.Assert(_assumptions.All(a => a != 0 && Math.Abs(a) <= varsX.Count));
 
-                return Configuration.Solver.Solve(VariableCount, _timeout, _assumptions);
+                var ct = AbortOptimization?.Token;
+                return Configuration.Solver.Solve(VariableCount, _timeout, _assumptions, in ct);
             }
             finally
             {
@@ -409,7 +410,7 @@ namespace SATInterface
             try
             {
                 InOptimization = true;
-                AbortOptimization = false;
+                AbortOptimization = new();
 
                 var modelVariables = _modelVariables.Select(v => v.Flatten()).ToArray();
                 var assumptions = new List<int>();
@@ -420,7 +421,7 @@ namespace SATInterface
                     (var state, var assignment) = InvokeSolver(timeout, [.. assumptions]);
 
                     if (state == State.Undecided)
-                        AbortOptimization = true;
+                        AbortOptimization.Cancel();
 
                     if (assignment is null)
                         break;
@@ -436,7 +437,7 @@ namespace SATInterface
                     if (State == State.Unsatisfiable)
                         break;
 
-                    if (AbortOptimization)
+                    if (AbortOptimization.IsCancellationRequested)
                         break;
 
                     if (mClauses == ClauseCount)
@@ -463,7 +464,7 @@ namespace SATInterface
                     State = State.Satisfiable;
                 }
                 else
-                    State = AbortOptimization ? State.Undecided : State.Unsatisfiable;
+                    State = AbortOptimization.IsCancellationRequested ? State.Undecided : State.Unsatisfiable;
                 UnsatWithAssumptions = false;
             }
             finally
@@ -493,7 +494,7 @@ namespace SATInterface
             try
             {
                 InOptimization = true;
-                AbortOptimization = false;
+                AbortOptimization = new();
 
                 State = State.Undecided;
                 foreach (var assignment in InvokeSampler(timeout, null))
@@ -509,7 +510,7 @@ namespace SATInterface
                     if (State == State.Unsatisfiable)
                         break;
 
-                    if (AbortOptimization)
+                    if (AbortOptimization.IsCancellationRequested)
                         break;
 
                     if (mClauses != ClauseCount)
@@ -536,7 +537,7 @@ namespace SATInterface
             try
             {
                 InOptimization = true;
-                AbortOptimization = false;
+                AbortOptimization = new();
 
                 if (Configuration.Verbosity > 0)
                 {
@@ -585,7 +586,7 @@ namespace SATInterface
                         return;
                     }
 
-                    if (AbortOptimization)
+                    if (AbortOptimization.IsCancellationRequested)
                     {
                         if (State == State.Satisfiable && ClauseCount != mClauses)
                         {
@@ -610,7 +611,7 @@ namespace SATInterface
                 var ub = T.Min(_obj.UB - objOffset, obj.UB);
                 var objGELB = T.Zero;
                 var assumptions = new List<int>();
-                while (lb != ub && !AbortOptimization)
+                while (lb != ub && !AbortOptimization.IsCancellationRequested)
                 {
                     //determine common leading bits of lb and ub
                     var diffBit = checked((int)ub.GetBitLength() - 1);
@@ -670,7 +671,7 @@ namespace SATInterface
                             bestAssignment = assignment;
                         }
 
-                        if (AbortOptimization)
+                        if (AbortOptimization.IsCancellationRequested)
                             break;
                     }
                     else if (subState == State.Unsatisfiable)
@@ -734,6 +735,9 @@ namespace SATInterface
                         }
                     };
             }
+
+            if (!InOptimization)
+                AbortOptimization = new();
 
             (State, var assignment) = InvokeSolver(timeout, assumptions);
             if (State == State.Satisfiable)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Numerics;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 
 namespace SATInterface.Solver
 {
@@ -24,24 +25,49 @@ namespace SATInterface.Solver
             Handle = CryptoMiniSatNative.cmsat_new();
         }
 
-        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null)
         {
             CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)Math.Max(0, Model.Configuration.Verbosity - 1));
 
+            // max_time persists across cmsat_solve calls on the same handle, so always set
+            // it explicitly — a prior cancelled solve may have left it at 0.
             if (_timeout != long.MaxValue)
-                //CryptoMiniSatNative.cmsat_set_max_time(Handle, (_timeout - Environment.TickCount64) / 1000d);
-                throw new NotImplementedException("CryptoMiniSat does not support wall-clock time limits");
+            {
+                var remaining = (_timeout - Environment.TickCount64) / 1000d;
+                if (remaining <= 0)
+                    return (State.Undecided, null);
+                CryptoMiniSatNative.cmsat_set_max_time(Handle, remaining);
+            }
+            else
+                CryptoMiniSatNative.cmsat_set_max_time(Handle, double.MaxValue);
 
+            // CMS has no interrupt API in its C bindings, but cmsat_set_max_time is polled
+            // from the search loop. Setting it to 0 from the cancellation callback forces the
+            // solver to return L_UNDEF at its next time check.
+            CancellationTokenRegistration? ctrCancel = null;
+            if (_ct.HasValue)
+            {
+                var handle = Handle;
+                ctrCancel = _ct.Value.Register(() => CryptoMiniSatNative.cmsat_set_max_time(handle, 0));
+            }
 
             CryptoMiniSatNative.c_lbool result;
-            if (_assumptions == null || _assumptions.Length == 0)
-                result = CryptoMiniSatNative.cmsat_solve(Handle);
-            else
-                result = CryptoMiniSatNative.cmsat_solve_with_assumptions(
-                        Handle,
-                        _assumptions.Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
-                        (IntPtr)_assumptions.Length
-                    );
+            try
+            {
+                if (_assumptions == null || _assumptions.Length == 0)
+                    result = CryptoMiniSatNative.cmsat_solve(Handle);
+                else
+                    result = CryptoMiniSatNative.cmsat_solve_with_assumptions(
+                            Handle,
+                            _assumptions.Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
+                            (IntPtr)_assumptions.Length
+                        );
+            }
+            finally
+            {
+                ctrCancel?.Unregister();
+                ctrCancel?.Dispose();
+            }
 
             if (result == CryptoMiniSatNative.c_lbool.L_UNDEF)
                 return (State.Undecided, null);

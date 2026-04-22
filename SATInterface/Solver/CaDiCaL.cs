@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Numerics;
+using System.Threading;
 
 namespace SATInterface.Solver
 {
@@ -49,14 +50,16 @@ namespace SATInterface.Solver
             _declaredModelVarCount = modelVarCount;
         }
 
-        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null)
+        public override (State State, bool[]? Vars) Solve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, in CancellationToken? _ct = null)
         {
             var verbosity = Math.Max(0, Model.Configuration.Verbosity - 1);
             CaDiCaLNative.ccadical_set_option(Handle, "quiet", verbosity == 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "report", verbosity > 0 ? 1 : 0);
             CaDiCaLNative.ccadical_set_option(Handle, "verbose", Math.Max(0, verbosity - 1));
 
-            var callback = (CaDiCaLNative.TerminateCallback)(_ => Environment.TickCount64 > _timeout ? 1 : 0);
+            var ct = _ct;
+            var callback = (CaDiCaLNative.TerminateCallback)(_ => (Environment.TickCount64 > _timeout)
+                                                                || (ct?.IsCancellationRequested ?? false) ? 1 : 0);
             try
             {
                 CaDiCaLNative.ccadical_set_terminate(Handle, IntPtr.Zero, callback);
