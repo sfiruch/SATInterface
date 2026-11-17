@@ -250,7 +250,7 @@ namespace SATInterface.Solver
 
         [LibraryImport("CaDiCaL.dll")]
 		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
-		public static partial void ccadical_limit(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, int val);
+		public static partial void ccadical_limit(IntPtr wrapper, [MarshalAs(UnmanagedType.LPStr)] string name, long val);
 
         [LibraryImport("CaDiCaL.dll")]
 		[UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
