@@ -57,10 +57,10 @@ namespace SATInterface
 			bit = _bits;
 
 			UB = T.Min(_ub, (T.One << _bits.Length) - T.One);
-			if (_enforceUB && !T.IsPow2(UB))
+			if (_enforceUB && !T.IsPow2(UB + T.One))
 			{
 				UB++; //work around shortcut evaluation of comparison
-				Model.AddConstr(this <= UB);
+				Model.AddConstr(this <= (UB - T.One));
 				UB--;
 			}
 		}
@@ -491,9 +491,9 @@ namespace SATInterface
 			for (var b = 0; b < _a.bit.Length; b++)
 				sum[b] = (_b << b) * _a.Bits[b];
 
+			//don't tighten the UB of the sum in place: Sum may return a shared (e.g. cached constant) instance
 			var res = _a.Model.Sum(sum);
-			res.UB = checked(_a.UB * _b.UB);
-			return res;
+			return new UIntVar(_a.Model, T.Min(res.UB, checked(_a.UB * _b.UB)), res.bit);
 		}
 
 		/// <summary>
@@ -571,7 +571,9 @@ namespace SATInterface
 			var bits = new BoolExpr[(_a.UB | _b.UB).GetBitLength()];
 			for (var i = 0; i < bits.Length; i++)
 				bits[i] = (_a.Bits[i] | _b.Bits[i]).Flatten();
-			return new UIntVar(_a.Model, _a.UB | _b.UB, bits);
+
+			//a.UB | b.UB is no bound (3 | 4 = 7 > 4 | 4), but a | b <= a + b is
+			return new UIntVar(_a.Model, _a.UB + _b.UB, bits);
 		}
 
 		/// <summary>

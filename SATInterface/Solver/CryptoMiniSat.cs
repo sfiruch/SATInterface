@@ -29,6 +29,10 @@ namespace SATInterface.Solver
         {
             CryptoMiniSatNative.cmsat_set_verbosity(Handle, (uint)Math.Max(0, Model.Configuration.Verbosity - 1));
 
+            //variables that only occur in assumptions (or nowhere) must be known to the solver,
+            //otherwise CMS aborts on such assumptions and leaves them out of the model
+            EnsureVars(_variableCount);
+
             // max_time persists across cmsat_solve calls on the same handle, so always set
             // it explicitly — a prior cancelled solve may have left it at 0.
             if (_timeout != long.MaxValue)
@@ -97,14 +101,18 @@ namespace SATInterface.Solver
                     maxVar = v;
                 else if (-v > maxVar)
                     maxVar = -v;
-
-            var curVars = CryptoMiniSatNative.cmsat_nvars(Handle);
-            if (curVars < maxVar)
-                CryptoMiniSatNative.cmsat_new_vars(Handle, checked((nint)(maxVar - curVars)));
+            EnsureVars(maxVar);
 
             CryptoMiniSatNative.cmsat_add_clause(Handle,
                 _clause.ToArray().Select(v => v < 0 ? (-v - v - 2 + 1) : (v + v - 2)).ToArray(),
                 (IntPtr)_clause.Length);
+        }
+
+        private void EnsureVars(int _count)
+        {
+            var curVars = CryptoMiniSatNative.cmsat_nvars(Handle);
+            if (curVars < _count)
+                CryptoMiniSatNative.cmsat_new_vars(Handle, checked((nint)(_count - curVars)));
         }
 
         protected override void DisposeUnmanaged()

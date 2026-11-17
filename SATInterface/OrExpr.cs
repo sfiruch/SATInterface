@@ -101,7 +101,11 @@ namespace SATInterface
 				else
 					throw new NotImplementedException();
 
-			Debug.Assert(count == res.Length);
+			//flattening an AndExpr above can put an equal OrExpr into the cache, which
+			//then needs only one slot instead of the reserved Elements.Length
+			Debug.Assert(count > 0 && count <= res.Length);
+			if (count < res.Length)
+				Array.Resize(ref res, count);
 
 			if (res.Length == 1)
 				return model.GetVariable(res[0]);

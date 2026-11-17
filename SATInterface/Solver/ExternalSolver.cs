@@ -69,102 +69,117 @@ namespace SATInterface.Solver
 
         protected IEnumerable<(State State, bool[]? Vars)> InternalSolve(int _variableCount, long _timeout = long.MaxValue, int[]? _assumptions = null, CancellationToken? _ct = null)
         {
-            if (FilenameInput is not null)
-            {
-                using var fin = File.CreateText(FilenameInput);
-                Write(fin, _variableCount, _assumptions);
-            }
-
-            if (FilenameOutput is not null)
-                File.Delete(FilenameOutput);
-
-            var p = Process.Start(new ProcessStartInfo()
-            {
-                FileName = SolverExecutable,
-                Arguments = SolverArguments ?? "",
-                RedirectStandardInput = FilenameInput == null,
-                RedirectStandardOutput = FilenameOutput == null,
-                UseShellExecute = false
-            });
-
-            Thread? satWriterThread = null;
-            if (FilenameInput is null)
-            {
-                satWriterThread = new Thread(new ParameterizedThreadStart(delegate
-                {
-                    p!.StandardInput.AutoFlush = false;
-                    p!.StandardInput.NewLine = NewLine ?? "\n";
-                    Write(p!.StandardInput, _variableCount, _assumptions);
-                    p!.StandardInput.Close();
-                }))
-                {
-                    IsBackground = true,
-                    Name = "SAT Writer Thread"
-                };
-                satWriterThread.Start();
-            }
-
             var timeout = (int)Math.Min(int.MaxValue, _timeout - Environment.TickCount64);
             if (timeout <= 0)
                 yield break;
 
             var UNSAT = Array.Empty<bool>();
 
-
-
             using var ctsTimeout = timeout == int.MaxValue ? new CancellationTokenSource() : new CancellationTokenSource(timeout);
             var ct = _ct.HasValue ? CancellationTokenSource.CreateLinkedTokenSource(ctsTimeout.Token, _ct.Value).Token : ctsTimeout.Token;
             using var bc = new BlockingCollection<bool[]>(1);
-            var t = Task.Run(() =>
-            {
-                if (FilenameOutput is not null)
-                    p!.WaitForExit();
 
-                var log = new List<string>();
-                bool[]? assignments = null;
-
-                using StreamReader output = FilenameOutput is null ? p!.StandardOutput : File.OpenText(FilenameOutput);
-                for (var line = output.ReadLine(); line != null; line = output.ReadLine())
-                {
-                    if (line.StartsWith("v "))
-                    {
-                        Debug.Assert(assignments is not null);
-                        foreach (var n in line.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(s => int.Parse(s)))
-                        {
-                            if (n == 0)
-                            {
-                                bc.Add(assignments, ct);
-                                assignments = null;
-                                break;
-                            }
-                            if (n > 0)
-                                assignments[n - 1] = true;
-                        }
-                    }
-                    else if (line.StartsWith("s SATISFIABLE"))
-                    {
-                        if (Model.Configuration.Verbosity > 0)
-                            Console.WriteLine(line);
-
-                        assignments = new bool[_variableCount];
-                    }
-                    else if (line.StartsWith("s UNSATISFIABLE"))
-                    {
-                        if (Model.Configuration.Verbosity > 0)
-                            Console.WriteLine(line);
-
-                        bc.Add(UNSAT, ct);
-                        break;
-                    }
-                    else if (Model.Configuration.Verbosity > 0)
-                        Console.WriteLine(line);
-                }
-
-                bc.CompleteAdding();
-            });
-
+            Process? p = null;
+            Thread? satWriterThread = null;
+            Task? t = null;
             try
             {
+                if (FilenameInput is not null)
+                {
+                    using var fin = File.CreateText(FilenameInput);
+                    Write(fin, _variableCount, _assumptions);
+                }
+
+                if (FilenameOutput is not null)
+                    File.Delete(FilenameOutput);
+
+                p = Process.Start(new ProcessStartInfo()
+                {
+                    FileName = SolverExecutable,
+                    Arguments = SolverArguments ?? "",
+                    RedirectStandardInput = FilenameInput == null,
+                    RedirectStandardOutput = FilenameOutput == null,
+                    UseShellExecute = false
+                })!;
+
+                if (FilenameInput is null)
+                {
+                    satWriterThread = new Thread(new ParameterizedThreadStart(delegate
+                    {
+                        try
+                        {
+                            p.StandardInput.AutoFlush = false;
+                            p.StandardInput.NewLine = NewLine ?? "\n";
+                            Write(p.StandardInput, _variableCount, _assumptions);
+                            p.StandardInput.Close();
+                        }
+                        catch (IOException)
+                        {
+                            //the solver exited or was killed before reading all input
+                        }
+                    }))
+                    {
+                        IsBackground = true,
+                        Name = "SAT Writer Thread"
+                    };
+                    satWriterThread.Start();
+                }
+
+                t = Task.Run(() =>
+                {
+                    try
+                    {
+                        if (FilenameOutput is not null)
+                            p.WaitForExit();
+
+                        bool[]? assignments = null;
+
+                        using StreamReader output = FilenameOutput is null ? p.StandardOutput : File.OpenText(FilenameOutput);
+                        for (var line = output.ReadLine(); line != null; line = output.ReadLine())
+                        {
+                            if (line.StartsWith("v "))
+                            {
+                                if (assignments is null)
+                                    throw new InvalidDataException("Solver printed an assignment without 's SATISFIABLE'");
+
+                                foreach (var n in line.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(s => int.Parse(s)))
+                                {
+                                    if (n == 0)
+                                    {
+                                        bc.Add(assignments, ct);
+                                        assignments = null;
+                                        break;
+                                    }
+                                    if (n > 0)
+                                        assignments[n - 1] = true;
+                                }
+                            }
+                            else if (line.StartsWith("s SATISFIABLE"))
+                            {
+                                if (Model.Configuration.Verbosity > 0)
+                                    Console.WriteLine(line);
+
+                                assignments = new bool[_variableCount];
+                            }
+                            else if (line.StartsWith("s UNSATISFIABLE"))
+                            {
+                                if (Model.Configuration.Verbosity > 0)
+                                    Console.WriteLine(line);
+
+                                bc.Add(UNSAT, ct);
+                                break;
+                            }
+                            else if (Model.Configuration.Verbosity > 0)
+                                Console.WriteLine(line);
+                        }
+                    }
+                    finally
+                    {
+                        //unblock the consumer, also if reading the output failed
+                        bc.CompleteAdding();
+                    }
+                });
+
                 for (; ; )
                 {
                     State s;
@@ -188,7 +203,8 @@ namespace SATInterface.Solver
                     }
                     catch (InvalidOperationException)
                     {
-                        //enumeration complete
+                        //enumeration complete, rethrows if reading the solver output failed
+                        t.GetAwaiter().GetResult();
                         yield break;
                     }
 
@@ -201,17 +217,34 @@ namespace SATInterface.Solver
             {
                 ctsTimeout.Cancel();
 
-                if (FilenameInput is null)
-                    p?.StandardInput.Dispose();
-                if (FilenameOutput is null)
-                    p?.StandardOutput.Dispose();
+                if (p is not null)
+                {
+                    try
+                    {
+                        //don't leave the solver running after a timeout or cancellation
+                        if (!p.HasExited)
+                            p.Kill(entireProcessTree: true);
+                    }
+                    catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+                    {
+                        //already exited
+                    }
 
-                p?.Dispose();
+                    //the writer fails fast once the solver is gone; join it before disposing its stream
+                    satWriterThread?.Join();
+
+                    if (FilenameInput is null)
+                        p.StandardInput.Dispose();
+                    if (FilenameOutput is null)
+                        p.StandardOutput.Dispose();
+
+                    p.Dispose();
+                }
 
                 try
                 {
                     //let task close the file
-                    t.Wait();
+                    t?.Wait();
                 }
                 catch
 #pragma warning disable ERP022 // Unobserved exception in generic exception handler

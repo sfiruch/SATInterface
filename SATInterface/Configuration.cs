@@ -133,6 +133,11 @@ namespace SATInterface
 
             if (Verbosity < 0)
                 throw new ArgumentOutOfRangeException(nameof(Verbosity));
+
+            //long clauses are split into chunks of MaxClauseSize-1 literals plus one
+            //auxiliary literal, which only shrinks the clause for chunks of 2 or more
+            if (MaxClauseSize < 3)
+                throw new ArgumentOutOfRangeException(nameof(MaxClauseSize));
         }
 
         /// <summary>

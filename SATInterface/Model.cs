@@ -167,6 +167,12 @@ namespace SATInterface
         {
             if (ReferenceEquals(_c, False))
             {
+                //also make the solver (and DIMACS output) unsatisfiable, so the state survives
+                //resets in optimization/enumeration. A contradicting unit pair instead of an
+                //empty clause, as not all solvers support empty clauses.
+                var contradiction = AllocateVar();
+                AddClauseToSolver([contradiction]);
+                AddClauseToSolver([-contradiction]);
                 State = State.Unsatisfiable;
                 UnsatWithAssumptions = false;
             }
@@ -435,12 +441,18 @@ namespace SATInterface
                     _solutionCallback.Invoke();
 
                     if (State == State.Unsatisfiable)
-                        break;
+                    {
+                        //the callback added an unsatisfiable constraint
+                        UnsatWithAssumptions = false;
+                        return;
+                    }
 
                     if (AbortOptimization.IsCancellationRequested)
                         break;
 
-                    if (mClauses == ClauseCount)
+                    //new clauses only reject the solution if they cut off the assignment the
+                    //callback saw: building expressions also adds (defining) clauses
+                    if (mClauses == ClauseCount || InvokeSolver(timeout, [.. Enumerable.Range(1, assignment.Length).Select(v => assignment[v - 1] ? v : -v)]).State == State.Satisfiable)
                     {
                         //no new lazy-added constraints
                         lastAssignment = assignment;
@@ -601,11 +613,12 @@ namespace SATInterface
                         break;
                 }
 
-                //guide search towards better solutions
+                //guide search towards better solutions. _obj is always maximized here, as
+                //Minimize already negated it.
                 if (Configuration.SetVariablePhaseFromObjective)
                     foreach (var t in _obj.Terms)
                         if (t.Var is BoolVar bv)
-                            bv.SetPhase(t.Weight > 0 ? !_minimization : _minimization);
+                            bv.SetPhase(t.Weight > 0);
 
                 var lb = obj.X;
                 var ub = T.Min(_obj.UB - objOffset, obj.UB);
@@ -663,6 +676,13 @@ namespace SATInterface
                         //callback might add lazy constraints
                         var mClauses = ClauseCount;
                         _solutionCallback?.Invoke();
+
+                        if (State == State.Unsatisfiable)
+                        {
+                            //the callback added an unsatisfiable constraint
+                            UnsatWithAssumptions = false;
+                            return;
+                        }
 
                         if (State == State.Satisfiable && ClauseCount == mClauses)
                         {
@@ -723,17 +743,20 @@ namespace SATInterface
             int[]? assumptions = null;
             if (_assumptions is not null)
             {
-                assumptions = new int[_assumptions.Length];
-                for (var i = 0; i < _assumptions.Length; i++)
-                    assumptions[i] = _assumptions[i] switch
-                    {
-                        BoolVar bv => bv.Id,
-                        BoolExpr be => be.Flatten() switch
-                        {
-                            BoolVar ibv => ibv.Id,
-                            _ => throw new NotImplementedException()
-                        }
-                    };
+                var flattened = _assumptions.Select(a => a.Flatten()).ToArray();
+
+                //constants are not variables: True is always satisfied, False never
+                if (flattened.Any(a => ReferenceEquals(a, False)))
+                {
+                    State = State.Unsatisfiable;
+                    UnsatWithAssumptions = true;
+                    return;
+                }
+
+                assumptions = flattened
+                    .Where(a => !ReferenceEquals(a, True))
+                    .Select(a => a is BoolVar bv ? bv.Id : throw new NotImplementedException())
+                    .ToArray();
             }
 
             if (!InOptimization)
@@ -893,7 +916,10 @@ namespace SATInterface
                         return (trueCount & 1) == 1 ? !r : r;
                     }
                 default:
-                    return Xor(_elems.Chunk(4).Select(ch => Xor(ch)).ToArray());
+                    {
+                        var res = Xor(_elems.Chunk(4).Select(ch => Xor(ch)).ToArray());
+                        return (trueCount & 1) == 1 ? !res : res;
+                    }
             }
         }
 
