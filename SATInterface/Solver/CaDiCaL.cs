@@ -170,9 +170,9 @@ namespace SATInterface.Solver
             {
                 case ExpectedOutcome.Sat:
                     //copied from config.cpp
-                    CaDiCaLNative.ccadical_set_option(Handle, "elimreleff", 10);
+                    CaDiCaLNative.ccadical_set_option(Handle, "elimeffort", 10);
                     CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
-                    CaDiCaLNative.ccadical_set_option(Handle, "subsumereleff", 60);
+                    CaDiCaLNative.ccadical_set_option(Handle, "subsumeeffort", 60);
                     break;
                 case ExpectedOutcome.Unsat:
                     //copied from config.cpp
@@ -186,7 +186,7 @@ namespace SATInterface.Solver
                     //    CaDiCaLNative.ccadical_set_option(Handle, "restartreusetrail", 0);
                     //    CaDiCaLNative.ccadical_set_option(Handle, "stabilizeonly", 1);
 
-                    //    CaDiCaLNative.ccadical_set_option(Handle, "walkreleff", 100000); //TODO: ?
+                    //    CaDiCaLNative.ccadical_set_option(Handle, "walkeffort", 100000); //TODO: ?
                     //    break;
             }
         }
